@@ -6,7 +6,7 @@ import heroImage from "@/assets/LOGOS/BUENOS AIRES CIUDAD/Logo_escudo_vertical_b
 
 const Hero = () => {
     return (
-        <section className="bg-blue-950 h-120">
+        <section className="bg-azul-oscuro h-120">
             <div className="flex flex-col items-center h-full text-white">
                 <h4 className="text-2xl font-bold uppercase pt-8">1° congreso</h4>
                 <HeroHeading 
