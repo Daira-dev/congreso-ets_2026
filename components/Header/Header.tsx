@@ -12,7 +12,6 @@ const Header = () => {
                 <NavLink href="/participa">Participa</NavLink>
                 <NavLink href="/contacto">Contacto</NavLink>
                 <NavLink href="/materiales">Materiales</NavLink>
-                <NavLink href="/como-llego">Cómo Llego</NavLink>
 
                 <NavButton text="Ingresar" />
             </Nav>

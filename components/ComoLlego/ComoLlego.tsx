@@ -8,7 +8,7 @@ const ComoLlego = () => {
         {/* Encabezado de la sección */}
         <div className="flex flex-col gap-2 text-center">
           <h2 className="text-3xl md:text-4xl font-bold">Cómo Llego</h2>
-          <p className="text-lg text-gray-700">
+          <p className="text-lg text-[#1D3343]">
             Te esperamos en el <strong>Auditorio Polo Saavedra</strong>
             <br />
             Crisólogo Larralde 5085, Ciudad Autónoma de Buenos Aires.
@@ -35,7 +35,7 @@ const ComoLlego = () => {
             href="https://maps.google.com/?q=Crisólogo+Larralde+5085,+Ciudad+Autónoma+de+Buenos+Aires" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="bg-amber-400 text-gray-800 font-bold py-2 px-4 rounded hover:bg-black hover:text-white transition cursor-pointer inline-block text-center"
+            className="bg-[#FFCD02] text-[#1D3343] font-bold py-3 px-8 rounded-full hover:bg-[#1D3343] hover:text-[#FFCD02] transition cursor-pointer inline-block text-center"
           >
             Abrir en Google Maps
           </a>
