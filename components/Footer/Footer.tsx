@@ -6,13 +6,13 @@ import logoCongreso from "@/assets/LOGOS/Congreso/MARCA BLANCO.svg"
 const Footer = () => {
     return (
         <footer className="flex flex-col bg-azul-oscuro px-6 pb-4 pt-8 text-blanco ">
-            <div className="border-b-1 border-b-blanco flex flex-col items-start gap-4 pb-2">
+            <div className="border-b-1 border-b-blanco flex flex-wrap items-start pb-2 gap-3 sm:gap-1">
                 <Image 
                     className="w-auto sm:h-25" 
                     alt="Logo Ministerio" 
                     src={logoMinisterioGobierno}/>             
                 
-                <div className="flex items-center ml-10 sm:ml-40 w-auto gap-5 text-center">
+                <div className="flex items-center ml-10 sm:ml-40 w-auto gap-3 sm:gap-5 text-center">
                     <Image  
                     className="h-15 sm:h-25 w-auto " 
                     alt="Logo Ministerio" 
@@ -35,7 +35,7 @@ const Footer = () => {
 
             <div className="mx-auto max-w-5xl pt-4 text-center">
                 <p className="text-xs text-blanco/60">
-                    © 2026 · Todos los derechos reservados · Equipo Desarrollo IFTS4 
+                    © 2026 · Todos los derechos reservados · Equipo Desarrollo IFTS°4 {/* Esto hay que comentarlo porque en la documentacion figura PENDIENTE*/}
                 </p>
             </div>
             
