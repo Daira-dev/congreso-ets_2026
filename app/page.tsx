@@ -11,11 +11,7 @@ export default function Home() {
       <Header />
       <Hero />
       <SectionCongreso />
-      
-      {/*Provisorio - Las props se reciben x aca */}
-      <SectionExperiencia 
-        videoUrl="https://www.youtube.com/embed/fFaAyN6sBus?si=7NMzlsDyW2jo-esW"
-        videoTitle="Prueba"/> 
+      <SectionExperiencia />
       <Footer />
 
 

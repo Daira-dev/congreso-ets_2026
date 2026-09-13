@@ -12,7 +12,7 @@ const Footer = () => {
                     alt="Logo Ministerio" 
                     src={logoMinisterioGobierno}/>             
                 
-                <div className="flex items-center ml-10 sm:ml-40 w-auto gap-3 sm:gap-5 text-center">
+                <div className="flex items-center ml-10 sm:ml-20 w-auto gap-3 sm:gap-5 text-center">
                     <Image  
                     className="h-15 sm:h-25 w-auto " 
                     alt="Logo Ministerio" 
