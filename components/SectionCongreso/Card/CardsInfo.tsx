@@ -2,34 +2,35 @@
 import { useState, useRef } from "react";
 import AboutCongreso from "../AboutCongreso/AboutCongreso";
 import Card from "./Card";
-import imgPersona1 from "@/assets/PERSONAS/PERSONA1.png";
-import imgPersona2 from "@/assets/PERSONAS/PERSONA2.png";
-import imgPersona3 from "@/assets/PERSONAS/PERSONA3.png";
-import imgPersona4 from "@/assets/PERSONAS/PERSONA4.png";
+import imgCard1 from "@/assets/LOGOS/IFTS/logo-ifts-4.png";
+import imgCard2 from "@/assets/LOGOS/IFTS/logo-ifts-4.png";
+import imgCard3 from "@/assets/LOGOS/IFTS/logo-ifts-4.png";
+import imgCard4 from "@/assets/LOGOS/IFTS/logo-ifts-4.png";
+import Link from "next/link";
 
 const CardsInfo = () => {
     const cardsData = [
         {
             id: 1,
-            image: imgPersona1,
+            image: imgCard1,
             title: "Aula Abierta",
             description: "Orientaciones para presentar trabajos desarrollados durante la trayectoria formativa"
         },
         {
             id: 2,
-            image: imgPersona2,
+            image: imgCard2,
             title: "Muestra permanente/Stands",
             description: "Orientaciones para presentar experiencias, proyectos y producciones de manera continua"
         },
         {
             id: 3,
-            image: imgPersona3,
+            image: imgCard3,
             title: "Presentaciones académico-aplicadas",
             description: "Orientaciones para experiencias, sistematizaciones, investigaciones situadas y espacios de intercambio"
         },
         {
             id: 4,
-            image: imgPersona4,
+            image: imgCard4,
             title: "Proyectos y producciones estudiantiles",
             description: "Orientaciones para la presentación en mesa académica de proyectos estudiantiles"
         }
@@ -103,7 +104,7 @@ const CardsInfo = () => {
                     onMouseUp={handleMouseUp}
                     onMouseMove={handleMouseMove}
                     onScroll={handleScroll}
-                    className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-6 md:gap-8 pt-8 pb-8 mt-8 [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing"
+                    className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-6 md:gap-8 pt-8 pb-8 mt-8 [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing select-none"
                     style={{ scrollbarWidth: 'none' }}
                 >
                     {cardsData.map((card, index) => (
@@ -189,12 +190,10 @@ const CardsInfo = () => {
                     <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/30 to-transparent pointer-events-none"></div>
 
                     <a 
-                        href="https://maps.app.goo.gl/62AuuPLj4cZs9kkY7" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
+                        href="/components/ComoLlego/ComoLlego.tsx" 
                         className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10"
                     >
-                        <button className="bg-white px-6 py-2 rounded text-gray-800 text-sm font-semibold shadow-[0_4px_12px_rgb(0,0,0,0.15)] flex items-center gap-2 hover:bg-gray-50 hover:scale-105 transition-all cursor-pointer">
+                        <button className="bg-white px-6 py-2 rounded text-gray-800 text-sm font-semibold shadow-[0_4px_12px_rgb(0,0,0,0.15)] flex items-center gap-2 hover:bg-[#FFCD02] hover:scale-105 transition-all cursor-pointer">
                             Cómo llegar &rarr;
                         </button>
                     </a>
