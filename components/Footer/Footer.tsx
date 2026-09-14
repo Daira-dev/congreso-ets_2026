@@ -6,13 +6,13 @@ import logoCongreso from "@/assets/LOGOS/Congreso/MARCA BLANCO.svg"
 const Footer = () => {
     return (
         <footer className="flex flex-col bg-azul-oscuro px-6 pb-4 pt-8 text-blanco ">
-            <div className="border-b-1 border-b-blanco flex flex-wrap items-start pb-2 gap-3 sm:gap-1">
+            <div className="border-b-1 border-b-blanco flex flex-wrap justify-around pb-2 gap-3 sm:gap-1">
                 <Image 
                     className="w-auto sm:h-25" 
                     alt="Logo Ministerio" 
                     src={logoMinisterioGobierno}/>             
                 
-                <div className="flex items-center ml-10 sm:ml-20 w-auto gap-3 sm:gap-5 text-center">
+                <div className="flex items-center w-auto gap-3 sm:gap-5 text-center">
                     <Image  
                     className="h-15 sm:h-25 w-auto " 
                     alt="Logo Ministerio" 
