@@ -1,17 +1,14 @@
-import AboutCongreso from "./AboutCongreso/AboutCongreso"
-import Card from "./Card/Card"
-import cardImg from "@/assets/LOGOS/PARA WEB/flecha_7.png"
+import AboutCongreso from "./AboutCongreso/AboutCongreso";
+import Card from "./Card/CardsInfo";
+import cardImg from "@/assets/LOGOS/PARA WEB/flecha_7.png";
 
 const SectionCongreso = () => {
     return (
-        <section>
+        <section className="flex flex-col items-center w-full pb-10 overflow-hidden">
             <AboutCongreso />
-
-            {/* CARDS */}
-            <Card cardImg={cardImg} title="Lorem" description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec justo eget ipsum ultrices placerat quis eu urna."/>
+            <Card />
         </section>
-    )
-}
+    );
+};
 
-
-export default SectionCongreso
+export default SectionCongreso;
