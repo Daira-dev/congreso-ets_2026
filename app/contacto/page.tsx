@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Header from "../../components/Header/Header";
+import Footer from "@/components/Footer/Footer";
 
 
 interface FAQ {
@@ -87,7 +88,7 @@ export default function Contacto() {
     };
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-white pt-24">
             <title>Contacto | DETS 2026</title>
             <Header />
 
@@ -160,6 +161,8 @@ export default function Contacto() {
                 </div>
 
             </main>
+            <Footer />
         </div>
+
     );
 }

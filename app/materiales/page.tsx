@@ -78,11 +78,10 @@ const FilterButton = ({
         <button
             type="button"
             onClick={onClick}
-            className={`text-left text-sm transition ${
-                active
-                    ? "font-bold text-azul-claro"
-                    : "text-azul-oscuro/60 hover:text-azul-claro"
-            }`}
+            className={`text-left text-sm transition ${active
+                ? "font-bold text-azul-claro"
+                : "text-azul-oscuro/60 hover:text-azul-claro"
+                }`}
         >
             {children}
         </button>
@@ -131,9 +130,10 @@ export default function Materiales() {
 
     return (
         <>
+            <title>Materiales | DETS 2026</title>
             <Header />
 
-            <main className="min-h-screen bg-blanco">
+            <main className="min-h-screen bg-blanco pt-24">
 
                 {/* Encabezado de la sección */}
                 <section className="bg-azul-claro/10">
@@ -324,8 +324,8 @@ export default function Materiales() {
                                             onChange={(event) =>
                                                 setSortOrder(
                                                     event.target.value as
-                                                        | "recientes"
-                                                        | "antiguos"
+                                                    | "recientes"
+                                                    | "antiguos"
                                                 )
                                             }
                                             className="border border-azul-oscuro/20 bg-white px-3 py-2 text-sm text-azul-oscuro outline-none focus:border-azul-claro"
