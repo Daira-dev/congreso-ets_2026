@@ -2,11 +2,13 @@
 import { useState, useRef } from "react";
 import AboutCongreso from "../AboutCongreso/AboutCongreso";
 import Card from "./Card";
-import imgCard1 from "@/assets/LOGOS/IFTS/logo-ifts-4.png";
-import imgCard2 from "@/assets/LOGOS/IFTS/logo-ifts-4.png";
-import imgCard3 from "@/assets/LOGOS/IFTS/logo-ifts-4.png";
-import imgCard4 from "@/assets/LOGOS/IFTS/logo-ifts-4.png";
+import imgCard1 from "@/assets/ICONOS CARD/card4.svg";
+import imgCard2 from "@/assets/ICONOS CARD/card4.svg";
+import imgCard3 from "@/assets/ICONOS CARD/card4.svg";
+import imgCard4 from "@/assets/ICONOS CARD/card4.svg";
+import imgCard5 from "@/assets/ICONOS CARD/card4.svg";
 import Link from "next/link";
+
 
 const CardsInfo = () => {
     const cardsData = [
@@ -14,25 +16,36 @@ const CardsInfo = () => {
             id: 1,
             image: imgCard1,
             title: "Aula Abierta",
-            description: "Orientaciones para presentar trabajos desarrollados durante la trayectoria formativa"
+            description: "Instancias programadas para mostrar el saber hacer técnico-profesional en acción. Permiten presentar procedimientos, prácticas, simulaciones, intervenciones, uso de herramientas, resolución de problemas o secuencias de trabajo que necesitan ser observadas de manera dinámica y contextualizada.",
+            pdfUrl: "/PDF/1 Aula Abierta - demostraciones aplicadas.pdf"
         },
         {
             id: 2,
             image: imgCard2,
             title: "Muestra permanente/Stands",
-            description: "Orientaciones para presentar experiencias, proyectos y producciones de manera continua"
+            description: "Espacio institucional de muestra permanente destinado a exhibir experiencias, proyectos, producciones y evidencias formativas. El foco no está solamente en el resultado final, sino también en el proceso, las decisiones técnicas, la participación estudiantil y los aprendizajes construidos.",
+            pdfUrl: "/PDF/2 Muestra permanente - Stands.pdf"
         },
         {
             id: 3,
             image: imgCard3,
             title: "Presentaciones académico-aplicadas",
-            description: "Orientaciones para experiencias, sistematizaciones, investigaciones situadas y espacios de intercambio"
+            description: "Espacios para explicar, analizar y sistematizar experiencias reales vinculadas con la Educación Técnica Superior. Pueden incluir experiencias de enseñanza, prácticas profesionalizantes, investigaciones situadas, sistematizaciones, análisis de casos y modelos de gestión o enseñanza, siempre vinculados con procesos institucionales concretos.",
+            pdfUrl: "/PDF/3 Presentaciones académico-aplicadas.pdf"
         },
         {
             id: 4,
             image: imgCard4,
-            title: "Proyectos y producciones estudiantiles",
-            description: "Orientaciones para la presentación en mesa académica de proyectos estudiantiles"
+            title: "Proyectos y producciones de estudiantes",
+            description: "Espacio de presentación de proyectos, producciones y desarrollos realizados por estudiantes en el marco de sus trayectorias formativas. Las presentaciones deberán permitir comprender el problema abordado, el proceso de trabajo, las decisiones tomadas, las evidencias producidas y los aprendizajes construidos, con acompañamiento institucional.",
+            pdfUrl: "/PDF/4 Proyectos y producciones estudiantiles.pdf"
+        },
+        {
+            id: 5,
+            image: imgCard5,
+            title: "Talentos ETS",
+            description: "Dispositivo de presentación breve de proyectos aplicados con preguntas y devolución formativa de un panel. Su finalidad es enriquecer los proyectos y fortalecer capacidades de comunicación, argumentación y mejora. No constituye una competencia: no hay ranking, ganadores, premiación, reclutamiento ni promesas de oportunidades posteriores.",
+            pdfUrl: "/PDF/4 Proyectos y producciones estudiantiles.pdf"
         }
     ];
 
@@ -63,7 +76,7 @@ const CardsInfo = () => {
         carouselRef.current.scrollLeft = scrollLeft - walk;
     };
 
-    // ACTUALIZAR PUNTOS AL HACER SCROLL (Mouse o Táctil)
+    // ACTUALIZAR PUNTOS AL HACER SCROLL
     const handleScroll = () => {
         if (carouselRef.current) {
             const scrollPosition = carouselRef.current.scrollLeft;
@@ -90,11 +103,16 @@ const CardsInfo = () => {
     };
 
     return (
-        <section className="flex flex-col items-center w-full pb-10 overflow-hidden">
-            
+        <section className="flex flex-col items-center w-full pb-10 overflow-hidden bg-white">
+            <div className="max-w-6xl w-full mx-auto px-4 pt-16 pb-4">
+                <h2 className="text-3xl md:text-4xl font-bold text-[#1D3343] text-left">
+                    Actividades
+                </h2>
+                <p className="text-gray-600 text-base mt-2 text-left"> Conocé las diferentes modalidades de participación y presentación previstas para el congreso.</p>
+            </div>
 
-            {/* SECCIÓN DE CARDS Y CARRUSEL */}
-            <div className="max-w-6xl w-full mx-auto px-4 py-16">
+            {/* SECCION DE CARDS Y CARRUSEL */}
+            <div className="max-w-6xl w-full mx-auto px-4 pb-16">
                 
                 {/* Contenedor del Carrusel */}
                 <div 
@@ -104,33 +122,34 @@ const CardsInfo = () => {
                     onMouseUp={handleMouseUp}
                     onMouseMove={handleMouseMove}
                     onScroll={handleScroll}
-                    className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-6 md:gap-8 pt-8 pb-8 mt-8 [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing select-none"
+                    className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-6 pt-4 pb-8 [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing select-none"
                     style={{ scrollbarWidth: 'none' }}
                 >
                     {cardsData.map((card, index) => (
                         <div 
                             key={index} 
-                            className="min-w-[85%] sm:min-w-[calc(50%-1rem)] md:min-w-[calc(33.333%-1.5rem)] snap-center flex-shrink-0"
+                            className="w-[280px] sm:w-[320px] shrink-0 snap-center"
                         >
                             <Card 
                                 cardImg={card.image} 
                                 title={card.title} 
                                 description={card.description}
+                                pdfUrl={card.pdfUrl}
                             />
                         </div>
                     ))}
                 </div>
 
-                {/* PUNTOS DINÁMICOS */}
-                <div className="flex justify-center items-center gap-2 sm:gap-3 mt-4">
+                {/* PUNTOS */}
+                <div className="flex justify-center items-center gap-2 sm:gap-3 mt-2">
                     {cardsData.map((_, index) => (
                         <button
                             key={index}
                             onClick={() => scrollToCard(index)}
                             className={`transition-all duration-300 rounded-full ${
                                 activeIndex === index 
-                                    ? "w-8 sm:w-10 h-2.5 sm:h-3 bg-[#2A2B3A]" // Punto activo
-                                    : "w-2.5 sm:w-3 h-2.5 sm:h-3 bg-gray-300 hover:bg-gray-400" // Puntos inactivos
+                                    ? "w-8 sm:w-10 h-2.5 sm:h-3 bg-[#1D3343]" // Azul Oscuro para el activo
+                                    : "w-2.5 sm:w-3 h-2.5 sm:h-3 bg-gray-300 hover:bg-[#035C80]" // Azul Claro en hover
                             }`}
                             aria-label={`Ir a la tarjeta ${index + 1}`}
                         />
@@ -138,38 +157,38 @@ const CardsInfo = () => {
                 </div>
             </div>
 
-            {/* SECCIÓN DE INFORMACIÓN Y MAPA */}
-            <div className="w-full bg-[#E8E8E8] flex flex-col md:flex-row justify-between items-stretch min-h-[220px] mt-8">
+            {/* SECCION DE INFORMACION Y MAPA */}
+            <div className="w-full bg-[#FCFCFC] border-t border-gray-200 flex flex-col md:flex-row justify-between items-stretch min-h-[220px] mt-8">
                 
-                {/* Info Izquierda */}
+                {/* info izquierda */}
                 <div className="flex flex-col md:flex-row items-center justify-center flex-1 py-10 px-8 gap-8 md:gap-12">
                     
                     {/* Fecha */}
                     <div className="flex items-start gap-4">
-                        <div className="mt-1 text-black">
+                        <div className="mt-1 text-[#035C80]">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M19 4H18V2H16V4H8V2H6V4H5C3.89 4 3.01 4.9 3.01 6L3 20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V10H19V20ZM19 8H5V6H19V8Z"/>
                             </svg>
                         </div>
                         <div>
-                            <h4 className="font-bold text-gray-900 text-[17px]">Fecha</h4>
+                            <h4 className="font-bold text-[#1D3343] text-[17px]">Fecha</h4>
                             <p className="text-gray-700 text-sm mt-1 leading-snug">Viernes 6 de<br/>noviembre 2026</p>
                         </div>
                     </div>
                     
                     {/* Divisores */}
-                    <div className="hidden md:block w-px h-16 bg-gray-400"></div>
-                    <div className="block md:hidden w-1/2 h-px bg-gray-400"></div>
+                    <div className="hidden md:block w-px h-16 bg-gray-300"></div>
+                    <div className="block md:hidden w-1/2 h-px bg-gray-300"></div>
 
-                    {/* Ubicación */}
+                    {/* Ubiicación */}
                     <div className="flex items-start gap-4">
-                        <div className="mt-1 text-black">
+                        <div className="mt-1 text-[#035C80]">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z"/>
                             </svg>
                         </div>
                         <div>
-                            <h4 className="font-bold text-gray-900 text-[17px]">Auditorio Polo Saavedra</h4>
+                            <h4 className="font-bold text-[#1D3343] text-[17px]">Auditorio Polo Saavedra</h4>
                             <p className="text-gray-700 text-sm mt-1 leading-snug">Crisólogo Larralde 5085<br/>Buenos Aires</p>
                         </div>
                     </div>
@@ -187,16 +206,16 @@ const CardsInfo = () => {
                     ></iframe>
                     
                     {/* boton */}
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/30 to-transparent pointer-events-none"></div>
+                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#1D3343]/40 to-transparent pointer-events-none"></div>
 
-                    <a 
-                        href="/components/ComoLlego/ComoLlego.tsx" 
+                    <Link 
+                        href="/ComoLlego" 
                         className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10"
                     >
-                        <button className="bg-white px-6 py-2 rounded text-gray-800 text-sm font-semibold shadow-[0_4px_12px_rgb(0,0,0,0.15)] flex items-center gap-2 hover:bg-[#FFCD02] hover:scale-105 transition-all cursor-pointer">
+                        <button className="bg-[#FCFCFC] px-6 py-2 rounded text-[#1D3343] text-sm font-bold shadow-[0_4px_12px_rgb(0,0,0,0.25)] flex items-center gap-2 hover:bg-[#FFCD02] hover:scale-105 transition-all cursor-pointer">
                             Cómo llegar &rarr;
                         </button>
-                    </a>
+                    </Link>
                 </div>
 
             </div>
