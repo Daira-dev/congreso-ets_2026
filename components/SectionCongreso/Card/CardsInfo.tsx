@@ -189,14 +189,14 @@ const CardsInfo = () => {
                     {/* boton */}
                     <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/30 to-transparent pointer-events-none"></div>
 
-                    <a 
-                        href="/components/ComoLlego/ComoLlego.tsx" 
+                    <Link 
+                        href="/como-llego" 
                         className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10"
                     >
                         <button className="bg-white px-6 py-2 rounded text-gray-800 text-sm font-semibold shadow-[0_4px_12px_rgb(0,0,0,0.15)] flex items-center gap-2 hover:bg-[#FFCD02] hover:scale-105 transition-all cursor-pointer">
                             Cómo llegar &rarr;
                         </button>
-                    </a>
+                    </Link>
                 </div>
 
             </div>

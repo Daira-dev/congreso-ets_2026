@@ -5,10 +5,13 @@ import SectionExperiencia from "@/components/SectionExperiencia/SectionExperienc
 import SectionPrograma from "@/components/SectionPrograma/SectionPrograma";
 import Footer from "@/components/Footer/Footer";
 
+export const metadata = {
+  title: "Inicio | DETS 2026",
+};
+
 export default function Home() {
   return (
     <div className="pt-24">
-      <title>Inicio | DETS 2026</title>
       <Header />
       <Hero />
       <SectionCongreso />
