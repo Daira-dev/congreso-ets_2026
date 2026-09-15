@@ -1,6 +1,7 @@
 import Header from "../components/Header/Header";
 import Hero from "@/components/Hero/Hero";
 import SobreCongreso from "@/components/Congreso/SobreCongreso";
+import SectionCongreso from "@/components/SectionCongreso/SectionCongreso";
 import SectionExperiencia from "@/components/SectionExperiencia/SectionExperiencia";
 import SectionPrograma from "@/components/SectionPrograma/SectionPrograma";
 import Footer from "@/components/Footer/Footer";
@@ -12,6 +13,7 @@ export default function Home() {
       <Header />
       <Hero />
       <SobreCongreso />
+      <SectionCongreso />
       <SectionPrograma />
       <SectionExperiencia />
       <Footer />
