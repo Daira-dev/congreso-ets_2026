@@ -1,7 +1,7 @@
 "use client"; 
 import { useState } from "react";
 
-const categorias = ["Todos", "Plenaria", "Talleres", "Networking"];
+const categorias = ["Todos", "Institucional", "Masterclass", "Talleres / Actividades simultáneas"];
 
 interface FiltrosProgramaProps {
     categoriaSeleccionada: string;
