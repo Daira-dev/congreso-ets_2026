@@ -1,12 +1,11 @@
 "use client";
 import { useState, useRef } from "react";
-import AboutCongreso from "../AboutCongreso/AboutCongreso";
 import Card from "./Card";
-import imgCard1 from "@/assets/ICONOS CARD/card4.svg";
-import imgCard2 from "@/assets/ICONOS CARD/card4.svg";
-import imgCard3 from "@/assets/ICONOS CARD/card4.svg";
+import imgCard1 from "@/assets/ICONOS CARD/card1.svg";
+import imgCard2 from "@/assets/ICONOS CARD/card2.svg";
+import imgCard3 from "@/assets/ICONOS CARD/card3.svg";
 import imgCard4 from "@/assets/ICONOS CARD/card4.svg";
-import imgCard5 from "@/assets/ICONOS CARD/card4.svg";
+import imgCard5 from "@/assets/ICONOS CARD/card5.svg";
 import Link from "next/link";
 
 
@@ -45,7 +44,7 @@ const CardsInfo = () => {
             image: imgCard5,
             title: "Talentos ETS",
             description: "Dispositivo de presentación breve de proyectos aplicados con preguntas y devolución formativa de un panel. Su finalidad es enriquecer los proyectos y fortalecer capacidades de comunicación, argumentación y mejora. No constituye una competencia: no hay ranking, ganadores, premiación, reclutamiento ni promesas de oportunidades posteriores.",
-            pdfUrl: "/PDF/4 Proyectos y producciones estudiantiles.pdf"
+            pdfUrl: "/PDF/5 Talentos ETS.pdf"
         }
     ];
 
