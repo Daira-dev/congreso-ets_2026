@@ -1,5 +1,6 @@
 import Header from "../components/Header/Header";
 import Hero from "@/components/Hero/Hero";
+import SobreCongreso from "@/components/Congreso/SobreCongreso";
 import SectionCongreso from "@/components/SectionCongreso/SectionCongreso";
 import SectionExperiencia from "@/components/SectionExperiencia/SectionExperiencia";
 import SectionPrograma from "@/components/SectionPrograma/SectionPrograma";
@@ -14,6 +15,7 @@ export default function Home() {
     <div className="pt-24">
       <Header />
       <Hero />
+      <SobreCongreso />
       <SectionCongreso />
       <SectionPrograma />
       <SectionExperiencia />

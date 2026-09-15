@@ -5,8 +5,8 @@ import Link from "next/link";
 // Secciones disponibles en la navegación principal
 const links = [
     { href: "/", label: "Inicio" },
-    { href: "/congreso", label: "El Congreso" },
-    { href: "/programa", label: "Programa" },
+    { href: "/#congreso", label: "El Congreso" },
+    { href: "/#programa", label: "Programa" },
     { href: "/participa", label: "Participa" },
     { href: "/contacto", label: "Contacto" },
     { href: "/materiales", label: "Materiales" },

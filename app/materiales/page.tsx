@@ -4,6 +4,7 @@
 
 import { useMemo, useState } from "react";
 import Header from "../../components/Header/Header";
+import Footer from "../../components/Footer/Footer";
 import CardMateriales, {
     type Content,
 } from "../../components/CardMateriales/cardmateriales";
@@ -373,6 +374,8 @@ export default function Materiales() {
                     </div>
                 </section>
             </main>
+
+            <Footer />
         </>
     );
 }
