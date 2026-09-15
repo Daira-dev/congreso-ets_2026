@@ -1,23 +1,32 @@
-import HeroAddress from "./HeroAddress/HeroAddress"
-import HeroHeading from "./HeroHeading/HeroHeading"
-import HeroButton from "./HeroButton/HeroButton"
+import HeroAddress from "./HeroAddress";
+import HeroHeading from "./HeroHeading";
+import HeroButton from "./HeroButton";
 
-import heroImage from "@/assets/LOGOS/BUENOS AIRES CIUDAD/Logo_escudo_vertical_blanco.png"
+import heroImage from "@/assets/LOGOS/CONGRESO ETS/Logo_Cong_ETS_blanco.svg";
 
 const Hero = () => {
     return (
-        <section className="bg-azul-oscuro h-120">
-            <div className="flex flex-col items-center h-full text-white">
-                <h4 className="text-2xl font-bold uppercase pt-8">1° congreso</h4>
-                <HeroHeading 
-                    text="educacion tecnica superior"  
+        <section className="bg-azul-oscuro">
+        <div className="flex min-h-[520px] flex-col items-center justify-center text-white px-6 py-10">
+
+                {/* Nombre del Congreso */}
+                <h4 className="text-lg font-medium uppercase tracking-[0.2em] text-white/80 md:text-xl">
+                    1° Congreso
+                </h4>
+
+                <HeroHeading
+                    text="Educación Técnica Superior"
                     src={heroImage}
                 />
-                <HeroAddress text="6 de Noviembre . Auditorio Polo Saavedra 5085 . Buenos Aires" />
+
+                {/* Fecha y ubicación */}
+                <HeroAddress text="6 de noviembre · Auditorio Polo Saavedra 5085 · Buenos Aires" />
+
+                {/* Botón de inscripción */}
                 <HeroButton text="Inscribirse" />
             </div>
         </section>
-    )
-}
+    );
+};
 
-export default Hero
+export default Hero;

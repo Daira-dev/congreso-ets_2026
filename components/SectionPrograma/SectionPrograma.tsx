@@ -97,7 +97,7 @@ export default function SectionPrograma() {
         : charlas.filter(charla => charla.categoria === filtroActivo);
 
     return (
-        <section className="max-w-4xl mx-auto py-10 px-4">
+        <section id="programa" className="scroll-mt-32 max-w-4xl mx-auto py-10 px-4">
             <h2 className="text-3xl font-bold text-azul-oscuro mb-6">Programa del Congreso</h2>
 
             {/* Barra de botones de filtro */}
