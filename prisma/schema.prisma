@@ -1,0 +1,33 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Registrant {
+  id              String   @id @default(uuid())
+  nombre          String
+  apellido        String
+  tipoDocumento   String
+  numeroDocumento String
+  correo          String
+  telefono        String
+  institucion     String
+  rolPrincipal    String
+  rolAdicional    String?
+  intereses       String
+  estado          String   @default("CONFIRMADA")
+  asistencia      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+model AdminUser {
+  id           String   @id @default(uuid())
+  usuario      String   @unique
+  passwordHash String
+  rol          String   @default("ACOMPAÑADOR") // SUPER_ADMIN, ADMIN, ACOMPAÑADOR
+  createdAt    DateTime @default(now())
+}

@@ -16,9 +16,12 @@ export default function Participa() {
                         Gratuito, presencial y con streaming en vivo. Certificado oficial del GCBA incluido.
                     </h2>
                     <br /><br />
-                    <p>
-                        La inscripción para asistir al Congreso estará disponible próximamente. La participación es gratuita y estará sujeta a la capacidad de la sede.
+                    <p className="mb-6">
+                        La inscripción para asistir al Congreso ya se encuentra habilitada. La participación es gratuita y estará sujeta a la capacidad de la sede (los lugares se asignarán por orden de registro).
                     </p>
+                    <a href="/registro" className="bg-[#1D3343] hover:bg-[#035C80] text-white font-bold py-3 px-8 rounded transition-colors text-lg">
+                        Ir al formulario de inscripción
+                    </a>
                 </div>
             </main>
 
