@@ -49,11 +49,11 @@ SET descripcion = EXCLUDED.descripcion, requiere_actividad = EXCLUDED.requiere_a
 
 -- Operadores Iniciales (Contraseñas por defecto: SuperAdmin2026!, Verificador2026!, Operador2026!, AdminCongreso2026!)
 INSERT INTO operadores (nombre, apellido, email_institucional, punto_acceso_default_id, rol_id, password_hash, activo) VALUES
-    ('Operador 1', 'Puerta Principal', 'operador1.puerta@bue.edu.ar', 1, 5, '519a19591492bc470768b209e257eb3c:d947231ce81bfbe779836371cb765f04230d70da6d892ba94a530eb6a5f54316d9a9f2ce5eec5926ec03ddc4a9a0d8bbecceba462f92a472c3d014bc9fa86178', TRUE),
-    ('Operador 2', 'Puerta Lateral', 'operador2.lateral@bue.edu.ar', 2, 5, '519a19591492bc470768b209e257eb3c:d947231ce81bfbe779836371cb765f04230d70da6d892ba94a530eb6a5f54316d9a9f2ce5eec5926ec03ddc4a9a0d8bbecceba462f92a472c3d014bc9fa86178', TRUE),
-    ('Verificador', 'DETS Pergaminos', 'verificador.dets@bue.edu.ar', 1, 6, 'e8db685d65d095f87b8979b00ca36df2:82243d4c67676fb13437e408ec20584eb266cf17f041707ea24e930fbf0c8f5f8be0fec7d6a5ee5be602511414774338450125c192e4be0bbcf9b8ae2fe7e721', TRUE),
+    ('Operador 1', 'Puerta Principal', 'operador1.puerta@bue.edu.ar', 1, 5, '5a613d7f78021077a012e6f5981a99c5:64754a17fcbc6b58a34561cdf25ee2e4b4a5773fc33e58e9dabd6e269ef45d70e8925d355b72c0c1d24635d06ed09859735341886e642a83dffc54045f6e21db', TRUE),
+    ('Operador 2', 'Puerta Lateral', 'operador2.lateral@bue.edu.ar', 2, 5, '45e9179bfed0d74b14bb5d27c1134a34:36832a694398f98f8751a7d30b14e528626b5df378b8574a2d0bb0af37f4050cc4e6f1dee136763304b9c77132ea30749fdef18cec4b8edaf3d509ff051c1d3b', TRUE),
+    ('Verificador', 'DETS Pergaminos', 'verificador.dets@bue.edu.ar', 1, 6, 'd84cdc0f03c99b463f5d491014bd0c38:d63143ee97e49b66a8922847ece424e86a58016b16b8a0f3f5fe666bfb268091a68f2f4b45c7b6668869fb1a48a763e551ac24712cc4bb284d40f3221997ac1c', TRUE),
     ('Administrador', 'General DETS', 'admin@ifts04.edu.ar', 1, 7, '538c470bca95df46c04dce90b4d83bb3:a7bb8abcf659ac6c7a3cbdb35470359dfe93ab963a1ad458a810e58b90630c707279df9ae6d641c158fd45883fff51ccba64d260cd7b050453262e3f07178eeb', TRUE),
-    ('Superadmin', 'General', 'superadmin.congreso@bue.edu.ar', 1, 8, 'f8bb2219633e8e7d23d85836fae758a5:fe5e227091448b111dc54b1f49e49cb4a52ff37cffcf385b2ee50ba3ee27bb61c7414bc9697d812239f60f64beae89fa0821d3780369a4781498b3f6e1f0e4b8', TRUE)
+    ('Superadmin', 'General', 'superadmin.congreso@bue.edu.ar', 1, 8, '0d29755c7978e055d4c6f0b850704db1:527898815ae325199b87b34174b2e3632b7828302e0f2a2aaa535bbd6207545ffafa29f34bba62e30398e6524890644d73ee382748eba4831eb5a7f055f91b0a', TRUE)
 ON CONFLICT (email_institucional) DO UPDATE
 SET rol_id = EXCLUDED.rol_id, password_hash = EXCLUDED.password_hash;
 
