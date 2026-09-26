@@ -187,8 +187,11 @@ const CardsInfo = () => {
                             </svg>
                         </div>
                         <div>
-                            <h4 className="font-bold text-[#1D3343] text-[17px]">Auditorio Polo Saavedra</h4>
-                            <p className="text-gray-700 text-sm mt-1 leading-snug">Crisólogo Larralde 5085<br/>Buenos Aires</p>
+                            <h4 className="font-bold text-[#1D3343] text-[17px]">Universidad de la Ciudad de Buenos Aires</h4>
+                            <p className="text-gray-700 text-sm mt-1 leading-snug">
+                                Tte. Gral. Juan Domingo Perón 802<br/>
+                                Ciudad Autónoma de Buenos Aires
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -197,7 +200,7 @@ const CardsInfo = () => {
                 <div className="flex-1 relative min-h-[300px] md:min-h-full bg-gray-200">
                     
                     <iframe 
-                        src="https://maps.google.com/maps?q=Cris%C3%B3logo+Larralde+5085,+Buenos+Aires&t=&z=15&ie=UTF8&iwloc=&output=embed" 
+                        src="https://maps.google.com/maps?q=Universidad+de+la+Ciudad+de+Buenos+Aires,+Tte.+Gral.+Juan+Domingo+Per%C3%B3n+802,+Buenos+Aires&t=&z=15&ie=UTF8&iwloc=&output=embed"
                         className="absolute inset-0 w-full h-full border-0"
                         allowFullScreen
                         loading="lazy"

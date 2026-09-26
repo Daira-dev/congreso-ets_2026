@@ -9,30 +9,30 @@ const ComoLlego = () => {
         <div className="flex flex-col gap-2 text-center">
           <h2 className="text-3xl md:text-4xl font-bold">Cómo Llego</h2>
           <p className="text-lg text-[#1D3343]">
-            Te esperamos en el <strong>Auditorio Polo Saavedra</strong>
+            Te esperamos en la <strong>Universidad de la Ciudad de Buenos Aires</strong>
             <br />
-            Crisólogo Larralde 5085, Ciudad Autónoma de Buenos Aires.
+            Tte. Gral. Juan Domingo Perón 802, Ciudad Autónoma de Buenos Aires.
           </p>
         </div>
 
         {/* Mapa Embebido */}
         <div className="w-full h-80 md:h-96 rounded-2xl overflow-hidden shadow-lg border border-gray-200">
           <iframe 
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3285.801878893456!2d-58.49887752426177!3d-34.55855215509748!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x95bcb71d87e07ca7%3A0xb35a0ceb3fa10657!2sPolo%20Educativo%20Saavedra!5e0!3m2!1ses!2sar!4v1714413645398!5m2!1ses!2sar" 
+            src="https://www.google.com/maps?q=Universidad+de+la+Ciudad+de+Buenos+Aires,+Tte.+Gral.+Juan+Domingo+Per%C3%B3n+802,+Buenos+Aires&output=embed"
             width="100%" 
             height="100%" 
             style={{ border: 0 }} 
             allowFullScreen={true} 
             loading="lazy" 
             referrerPolicy="no-referrer-when-downgrade"
-            title="Mapa de ubicación Polo Saavedra"
+            title="Mapa de ubicación de la Universidad de la Ciudad de Buenos Aires"
           ></iframe>
         </div>
 
         {/* Botón de Google Maps */}
         <div className="flex justify-center">
           <a 
-            href="https://maps.google.com/?q=Crisólogo+Larralde+5085,+Ciudad+Autónoma+de+Buenos+Aires" 
+            href="https://www.google.com/maps/search/?api=1&query=Universidad+de+la+Ciudad+de+Buenos+Aires,+Tte.+Gral.+Juan+Domingo+Per%C3%B3n+802,+Buenos+Aires"
             target="_blank" 
             rel="noopener noreferrer"
             className="bg-[#FFCD02] text-[#1D3343] font-bold py-3 px-8 rounded-full hover:bg-[#1D3343] hover:text-[#FFCD02] transition cursor-pointer inline-block text-center"

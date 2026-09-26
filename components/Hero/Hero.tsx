@@ -7,10 +7,10 @@ import heroImage from "@/assets/LOGOS/CONGRESO ETS/Logo_Cong_ETS_blanco.svg";
 const Hero = () => {
     return (
         <section className="bg-azul-oscuro">
-            <div className="flex min-h-[520px] flex-col items-center justify-center text-white px-6 py-10">
+            <div className="flex min-h-[520px] flex-col items-center justify-center px-6 py-10 text-white">
 
                 {/* Nombre del Congreso */}
-                <h4 className="text-lg font-medium uppercase tracking-[0.2em] text-white/80 md:text-xl">
+                <h4 className="text-sm font-medium uppercase tracking-[0.18em] text-white/70 md:text-base">
                     1° Congreso
                 </h4>
 
@@ -19,18 +19,35 @@ const Hero = () => {
                     src={heroImage}
                 />
 
+                {/* Lema */}
+                <p className="mt-4 max-w-2xl text-center text-base font-medium leading-relaxed text-white/90 sm:text-lg md:text-xl">
+                    Construyendo Futuros desde la Educación Técnica Superior
+                </p>
+
                 {/* Fecha y ubicación */}
                 <HeroAddress
                     text={
                         <>
-                            <span className="block md:inline">
-                                6 de noviembre
+                            {/* Desktop */}
+                            <span className="hidden md:block">
+                                6 de noviembre de 2026 · 10:30 a 20:30 h
+                                <br />
+                                Universidad de la Ciudad de Buenos Aires · Tte. Gral. Juan Domingo Perón 802, CABA.
                             </span>
 
-                            <span className="hidden md:inline"> · </span>
+                            {/* Mobile */}
+                            <span className="block md:hidden">
+                                <span className="block">
+                                    6 de noviembre de 2026 · 10:30 a 20:30 h
+                                </span>
 
-                            <span className="block md:inline">
-                                Universidad de la Ciudad de Buenos Aires · Tte. Gral. Juan Domingo Perón 802
+                                <span className="mt-1 block">
+                                    Universidad de la Ciudad de Buenos Aires
+                                </span>
+
+                                <span className="mt-1 block">
+                                    Tte. Gral. Juan Domingo Perón 802, Ciudad Autónoma de Buenos Aires
+                                </span>
                             </span>
                         </>
                     }
