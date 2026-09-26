@@ -36,21 +36,16 @@ const Footer = () => {
             <div className="mx-auto max-w-7xl pt-5 text-center">
                 <p className="text-sm leading-relaxed">
                     Consultas institucionales:
-                    <a
-                        href="congreso.dets@bue.edu.ar"
-                        className="ml-1 font-semibold underline underline-offset-2 hover:no-underline"
-                    >
+                    <a className="ml-2 font-semibold underline hover:no-underline" href="mailto:congreso.dets@bue.edu.ar">
                         congreso.dets@bue.edu.ar
                     </a>
                 </p>
             </div>
 
-            {/* Copyright */}
-            <div className="mx-auto max-w-7xl pt-4 text-center">
-                <p className="text-xs leading-relaxed text-blanco/60">
-                    © 2026 · Todos los derechos reservados
+            <div className="mx-auto max-w-5xl pt-4 text-center">
+                <p className="text-xs text-blanco/60">
+                    © 2026 · Todos los derechos reservados · Equipo Desarrollo IFTS°4 {/* Esto hay que comentarlo porque en la documentacion figura PENDIENTE*/}
                 </p>
-                <p className="text-xs leading-relaxed text-blanco/60">Desarrollo del sistema web realizado en articulación con el IFTS Nº 4. | <a href="">Créditos</a></p>
             </div>
         </footer>
     );

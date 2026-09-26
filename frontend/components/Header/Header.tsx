@@ -27,8 +27,9 @@ const Header = () => {
                         <NavLinks />
 
                         {/* Botón de acceso. Apunta a /login */}
-                        <Link href="/login"
-                            className="hidden rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-bold text-gray-800 transition hover:bg-black hover:text-white xl:inline-flex"
+                        <Link
+                            href="/login"
+                            className="hidden rounded bg-amber-400 px-4 py-2 font-bold text-gray-800 transition hover:bg-black hover:text-white xl:inline-flex"
                         >
                             Ingresar
                         </Link>
@@ -61,16 +62,24 @@ const Header = () => {
 
                     {/* Botón para cerrar el menú */}
                     <div className="flex items-center justify-end border-b border-gray-200 pb-5">
-                        <MenuButton isOpen={isMenuOpen} onClick={closeMenu} />
+                        <MenuButton
+                            isOpen={isMenuOpen}
+                            onClick={closeMenu}
+                        />
                     </div>
 
                     <div className="mt-5">
-                        <NavLinks mobile onLinkClick={closeMenu} />
+                        <NavLinks
+                            mobile
+                            onLinkClick={closeMenu}
+                        />
                     </div>
 
                     {/* Mantener sincronizado con el botón de acceso del navbar */}
-                    <Link href="/login" onClick={closeMenu}
-                        className="mt-6 inline-flex rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-bold text-gray-800 transition hover:bg-black hover:text-white justify-center"
+                    <Link
+                        href="/login"
+                        onClick={closeMenu}
+                        className="mt-6 inline-flex justify-center rounded bg-amber-400 px-4 py-2 font-bold text-gray-800 transition hover:bg-black hover:text-white"
                     >
                         Ingresar
                     </Link>

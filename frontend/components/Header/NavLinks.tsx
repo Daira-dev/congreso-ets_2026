@@ -19,11 +19,13 @@ interface NavLinksProps {
 
 const NavLinks = ({ mobile = false, onLinkClick }: NavLinksProps) => {
     return (
-        <div className={
-            mobile
-                ? "flex flex-col gap-3"
-                : "hidden items-center gap-10 xl:flex"
-        }>
+        <div
+            className={
+                mobile
+                    ? "flex flex-col gap-3"
+                    : "hidden items-center gap-10 xl:flex"
+            }
+        >
             {links.map((link) => (
                 <Link
                     key={link.href}
@@ -31,8 +33,8 @@ const NavLinks = ({ mobile = false, onLinkClick }: NavLinksProps) => {
                     onClick={onLinkClick}
                     className={
                         mobile
-                            ? "py-2 font-bold text-gray-800 transition hover:text-amber-300"
-                            : "font-bold text-gray-800 transition hover:text-amber-300"
+                            ? "py-2 font-bold text-gray-800 no-underline transition hover:text-amber-300"
+                            : "font-bold text-gray-800 no-underline transition hover:text-amber-300"
                     }
                 >
                     {link.label}
