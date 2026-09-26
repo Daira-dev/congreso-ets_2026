@@ -198,6 +198,10 @@ body:not(.admin-root) header {
   color: var(--frontend-header-text, #1D3343) !important;
 }
 
+body:not(.admin-root) header a {
+  text-decoration: none !important;
+}
+
 body:not(.admin-root) header nav a,
 body:not(.admin-root) header a:not([href="/login"]) {
   color: var(--frontend-header-text, #1D3343);
