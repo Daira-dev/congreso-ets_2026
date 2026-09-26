@@ -129,13 +129,13 @@ body {
 /* Botones de Acento Principal */
 .admin-root .admin-btn-accent,
 .admin-root button[class*="bg-blue-600"]:not(.swal2-confirm) {
-  background-color: var(--admin-accent, #005691) !important;
+  background-color: var(--admin-accent, #1D3343) !important;
   color: var(--admin-accent-text, #ffffff) !important;
   border-radius: var(--admin-btn-radius, 8px) !important;
 }
 
 .admin-root button[class*="bg-blue-600"]:not(.swal2-confirm):hover {
-  background-color: var(--admin-accent-hover, #00416d) !important;
+  background-color: var(--admin-accent-hover, #035C80) !important;
 }
 
 /* Botones Secundarios / Cancelar / Volver */

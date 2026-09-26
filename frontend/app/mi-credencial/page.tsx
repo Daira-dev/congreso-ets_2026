@@ -417,6 +417,7 @@ function MiCredencialContent() {
 
             <CredencialDigital
               usuario={{
+                id: usuario.id,
                 nombre: usuario.nombre,
                 apellido: usuario.apellido,
                 dni_pasaporte: usuario.dni_pasaporte,

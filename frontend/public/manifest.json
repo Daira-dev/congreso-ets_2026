@@ -4,8 +4,8 @@
   "description": "Plataforma Oficial del 1er Congreso de Educación Técnica Superior",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#003865",
-  "theme_color": "#005691",
+  "background_color": "#FCFCFC",
+  "theme_color": "#1D3343",
   "icons": [
     {
       "src": "/icon.svg",

@@ -54,19 +54,19 @@ if (-not (Test-Path $seed)) {
     exit 1
 }
 
-# PostgreSQL debe estar en 5433
-if (-not (Test-NetConnection localhost -Port 5433 -InformationLevel Quiet)) {
+# PostgreSQL debe estar en 5432
+if (-not (Test-NetConnection localhost -Port 5432 -InformationLevel Quiet)) {
     Write-Host ""
-    Write-Host "PostgreSQL no responde en localhost:5433." -ForegroundColor Red
-    Write-Host "Este proyecto está configurado para usar el puerto 5433."
+    Write-Host "PostgreSQL no responde en localhost:5432." -ForegroundColor Red
+    Write-Host "Este proyecto está configurado para usar el puerto 5432."
     Read-Host "Presioná ENTER para cerrar"
     exit 1
 }
 
-Write-Host "PostgreSQL responde en puerto 5433." -ForegroundColor Green
+Write-Host "PostgreSQL responde en puerto 5432." -ForegroundColor Green
 
 # Pedir contraseña de postgres
-$postgresPassword = Read-Host "Contraseña del usuario postgres"
+$postgresPassword = "postgres"
 $env:PGPASSWORD = $postgresPassword
 
 function Ejecutar-Psql {
@@ -78,7 +78,7 @@ function Ejecutar-Psql {
 
     & $psql `
         -h localhost `
-        -p 5433 `
+        -p 5432 `
         -U $Usuario `
         -d $Base `
         -v ON_ERROR_STOP=1 `
@@ -102,7 +102,7 @@ Write-Host "Usuario congreso_app listo." -ForegroundColor Green
 # Comprobar si existe la base
 $existe = (& $psql `
     -h localhost `
-    -p 5433 `
+    -p 5432 `
     -U postgres `
     -d postgres `
     -tAc "SELECT 1 FROM pg_database WHERE datname = 'congreso_ets2026'").Trim()
@@ -114,7 +114,7 @@ if ($LASTEXITCODE -ne 0) {
 if ($existe -eq "1") {
     Write-Host ""
     Write-Host "La base congreso_ets2026 ya existe." -ForegroundColor Yellow
-    $respuesta = Read-Host "¿Recrear la base desde cero? (S/N)"
+    $respuesta = "S"
 
     if ($respuesta -notmatch "^[Ss]$") {
         Write-Host "Configuración cancelada." -ForegroundColor Yellow
@@ -144,7 +144,7 @@ Write-Host "Cargando estructura de la base..." -ForegroundColor Yellow
 
 & $psql `
     -h localhost `
-    -p 5433 `
+    -p 5432 `
     -U congreso_app `
     -d congreso_ets2026 `
     -v ON_ERROR_STOP=1 `
@@ -161,7 +161,7 @@ Write-Host "Cargando datos iniciales..." -ForegroundColor Yellow
 
 & $psql `
     -h localhost `
-    -p 5433 `
+    -p 5432 `
     -U congreso_app `
     -d congreso_ets2026 `
     -v ON_ERROR_STOP=1 `
@@ -228,8 +228,8 @@ Write-Host "       CONFIGURACION COMPLETADA" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "Base:     congreso_ets2026"
-Write-Host "Postgres: localhost:5433"
+Write-Host "Postgres: localhost:5432"
 Write-Host "Backend:  http://localhost:4000"
 Write-Host "Frontend: http://localhost:3000"
 Write-Host ""
-Read-Host "Presioná ENTER para cerrar"
+Write-Host "Listo."

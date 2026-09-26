@@ -192,18 +192,6 @@ export default function FormularioInscripcion() {
         </p>
 
         <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 mb-8 text-left space-y-2 text-sm">
-          <div className="flex justify-between border-b pb-2">
-            <span className="text-gray-500 font-medium">Participante:</span>
-            <span className="font-bold text-gray-900">{registradoExitoso.nombre}</span>
-          </div>
-          <div className="flex justify-between border-b pb-2">
-            <span className="text-gray-500 font-medium">DNI / Documento:</span>
-            <span className="font-mono font-bold text-gray-900">{registradoExitoso.dni}</span>
-          </div>
-          <div className="flex justify-between border-b pb-2">
-            <span className="text-gray-500 font-medium">Correo Electrónico:</span>
-            <span className="font-medium text-gray-900">{registradoExitoso.email}</span>
-          </div>
           <div className="flex justify-between items-center pt-1">
             <span className="text-gray-500 font-medium">Estado de Inscripción:</span>
             <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${isConfirmado ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
@@ -247,7 +235,7 @@ export default function FormularioInscripcion() {
             <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
             <div>
               <span className="font-bold text-gray-900">Aforo Oficial: </span>
-              <span className="text-gray-700">Auditorio Polo Saavedra 5085</span>
+              <span className="text-gray-700">UNICABA</span>
             </div>
           </div>
           <div className="flex items-center gap-2">

@@ -20,7 +20,7 @@ const Hero = () => {
                 />
 
                 {/* Fecha y ubicación */}
-                <HeroAddress text="6 de noviembre · Auditorio Polo Saavedra 5085 · Buenos Aires" />
+                <HeroAddress text="6 de noviembre · UNICABA, Tte. Gral. Juan D. Perón 802 · CABA" />
 
                 {/* Botón de inscripción */}
                 <HeroButton text="Inscribirse" />

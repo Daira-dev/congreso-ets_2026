@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 
 interface CredencialProps {
   usuario: {
+    id?: string | number;
     nombre: string;
     apellido: string;
     dni_pasaporte: string;
@@ -17,7 +18,6 @@ interface CredencialProps {
 }
 
 export const CredencialDigital: React.FC<CredencialProps> = ({ usuario, qr_token }) => {
-  const [currentTime, setCurrentTime] = useState<string>('');
 
   const esExpositor =
     (usuario.rol && usuario.rol.toLowerCase().includes('expositor')) ||
@@ -30,7 +30,7 @@ export const CredencialDigital: React.FC<CredencialProps> = ({ usuario, qr_token
   if (rolPrincipal.includes('autoridad')) {
     colorRol = '#b45309'; // Oro / Ámbar
   } else if (rolPrincipal.includes('docente')) {
-    colorRol = '#005691'; // Azul DETS
+    colorRol = '#1D3343'; // Azul DETS
   } else if (rolPrincipal.includes('expositor')) {
     colorRol = '#b91c1c'; // Rojo Carmesí
   } else if (rolPrincipal.includes('estudiante')) {
@@ -39,19 +39,7 @@ export const CredencialDigital: React.FC<CredencialProps> = ({ usuario, qr_token
 
   const homologado = usuario.homologacion_estado === 'VALIDADO';
 
-  useEffect(() => {
-    const update = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString('es-AR', { hour12: false }) +
-          '.' +
-          String(now.getMilliseconds()).padStart(3, '0').slice(0, 2)
-      );
-    };
-    update();
-    const interval = setInterval(update, 100);
-    return () => clearInterval(interval);
-  }, []);
+  // Timer removido a petición del cliente
 
   // Generación de código QR 100% local y offline con fallback
   const [localQrUrl, setLocalQrUrl] = useState<string>('');
@@ -87,13 +75,13 @@ export const CredencialDigital: React.FC<CredencialProps> = ({ usuario, qr_token
         <div style={{ fontSize: '10pt', fontWeight: 800, color: '#002B49', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           Gobierno de la Ciudad Autónoma de Buenos Aires · Ministerio de Educación
         </div>
-        <div style={{ fontSize: '9pt', color: '#005691', fontWeight: 700 }}>
+        <div style={{ fontSize: '9pt', color: '#1D3343', fontWeight: 700 }}>
           Dirección de Educación Técnica Superior (DETS) · 1er Congreso ETS 2026
         </div>
         <div style={{ fontSize: '7.5pt', color: '#64748b', marginTop: '1px' }}>
           Auditorio Polo Saavedra · 15, 16 y 17 de Octubre de 2026 · Ciudad de Buenos Aires
         </div>
-        <div style={{ borderBottom: '2px solid #005691', width: '70%', margin: '6px auto 6px auto' }}></div>
+        <div style={{ borderBottom: '2px solid #1D3343', width: '70%', margin: '6px auto 6px auto' }}></div>
         <div style={{ fontSize: '7.5pt', color: '#64748b' }}>
           ✂️ <em>Doblar o recortar por la línea punteada para portacredencial estándar (10 × 15 cm)</em>
         </div>
@@ -125,42 +113,15 @@ export const CredencialDigital: React.FC<CredencialProps> = ({ usuario, qr_token
           </span>
         </div>
 
-        {/* Marca de agua viva con segundero en tiempo real (Anti-captura digital en pantalla) */}
+        {/* Identificador Único del Asistente */}
         <div className="mb-2 no-print">
           <div className="live-watermark text-primary">
-            <i className="bx bx-time-five bx-spin"></i>
-            <span>EN VIVO: {currentTime}</span>
+            <i className="bx bx-fingerprint"></i>
+            <span>ID REGISTRO: {usuario.id || 'N/A'}</span>
           </div>
         </div>
 
-        {/* Foto del Participante */}
-        <div className="mb-2">
-          {usuario.foto_url ? (
-            <img
-              src={usuario.foto_url}
-              alt="Foto oficial"
-              className="rounded-circle shadow"
-              style={{
-                width: '100px',
-                height: '100px',
-                objectFit: 'cover',
-                border: '3px solid #005691',
-              }}
-            />
-          ) : (
-            <div
-              className="rounded-circle bg-light d-inline-flex align-items-center justify-content-center shadow-sm"
-              style={{ width: '100px', height: '100px', border: '3px solid #cbd5e1' }}
-            >
-              <i className="bx bx-user fs-1 text-secondary"></i>
-            </div>
-          )}
-        </div>
-
-        {/* Datos del Participante */}
-        <h2 className="h5 fw-bold text-dark mb-0">
-          {usuario.nombre} {usuario.apellido}
-        </h2>
+        {/* Rol del Participante */}
         <div className="d-flex flex-wrap justify-content-center gap-1 my-1">
           <span className="badge bg-warning text-dark fw-bold">
             {usuario.rol || usuario.rol_nombre || 'Participante'}
@@ -172,9 +133,7 @@ export const CredencialDigital: React.FC<CredencialProps> = ({ usuario, qr_token
               </span>
             ))}
         </div>
-        <p className="small text-muted mb-2">
-          DNI / Pasaporte: <strong>{usuario.dni_pasaporte}</strong>
-        </p>
+
 
         {/* Estado de Homologación para Expositores */}
         {esExpositor && (
@@ -218,7 +177,7 @@ export const CredencialDigital: React.FC<CredencialProps> = ({ usuario, qr_token
           style={{ fontSize: '0.8rem' }}
         >
           <i className="bx bx-info-circle me-1"></i>
-          <strong>Control en Puerta:</strong> Exhibí esta pantalla activa junto a tu DNI físico en el
+          <strong>Control en Puerta:</strong> Exhibí esta pantalla activa en el
           ingreso al Auditorio Polo Saavedra.
         </div>
 
@@ -236,7 +195,7 @@ export const CredencialDigital: React.FC<CredencialProps> = ({ usuario, qr_token
         <div style={{ borderTop: '1px solid #cbd5e1', width: '75%', margin: '0 auto 6px auto' }}></div>
         <div style={{ fontSize: '7.5pt', color: '#475569', lineHeight: '1.4' }}>
           <strong>Instrucciones para el Asistente:</strong><br />
-          1. Presentá esta credencial física o en tu teléfono junto con tu DNI físico en los molinetes de ingreso.<br />
+          1. Presentá esta credencial física o en tu teléfono en los molinetes de ingreso.<br />
           2. El código QR es personal e intransferible y registra tus ingresos y egresos al auditorio.<br />
           3. Las asistencias registradas habilitan automáticamente tu constancia de asistencia oficial.
         </div>
