@@ -14,14 +14,14 @@ const CardsInfo = () => {
         {
             id: 1,
             image: imgCard1,
-            title: "Aula Abierta",
+            title: "Aula Abierta / Demostraciones aplicadas",
             description: "Instancias programadas para mostrar el saber hacer técnico-profesional en acción. Permiten presentar procedimientos, prácticas, simulaciones, intervenciones, uso de herramientas, resolución de problemas o secuencias de trabajo que necesitan ser observadas de manera dinámica y contextualizada.",
             pdfUrl: "/PDF/1 Aula Abierta - demostraciones aplicadas.pdf"
         },
         {
             id: 2,
             image: imgCard2,
-            title: "Muestra permanente/Stands",
+            title: "Muestra permanente / Stands",
             description: "Espacio institucional de muestra permanente destinado a exhibir experiencias, proyectos, producciones y evidencias formativas. El foco no está solamente en el resultado final, sino también en el proceso, las decisiones técnicas, la participación estudiantil y los aprendizajes construidos.",
             pdfUrl: "/PDF/2 Muestra permanente - Stands.pdf"
         },
@@ -42,7 +42,7 @@ const CardsInfo = () => {
         {
             id: 5,
             image: imgCard5,
-            title: "Talentos ETS",
+            title: "Talentos \nETS",
             description: "Dispositivo de presentación breve de proyectos aplicados con preguntas y devolución formativa de un panel. Su finalidad es enriquecer los proyectos y fortalecer capacidades de comunicación, argumentación y mejora. No constituye una competencia: no hay ranking, ganadores, premiación, reclutamiento ni promesas de oportunidades posteriores.",
             pdfUrl: "/PDF/5 Talentos ETS.pdf"
         }
@@ -157,66 +157,62 @@ const CardsInfo = () => {
             </div>
 
             {/* SECCION DE INFORMACION Y MAPA */}
-            <div className="w-full bg-[#FCFCFC] border-t border-gray-200 flex flex-col md:flex-row justify-between items-stretch min-h-[220px] mt-8">
-                
-                {/* info izquierda */}
-                <div className="flex flex-col md:flex-row items-center justify-center flex-1 py-10 px-8 gap-8 md:gap-12">
+            <div className="max-w-6xl w-full mx-auto px-4 mt-8">
+                <div className="w-full bg-[#FCFCFC] border border-gray-200 rounded-xl overflow-hidden shadow-sm flex flex-col md:flex-row justify-between items-stretch min-h-[220px]">
                     
-                    {/* Fecha */}
-                    <div className="flex items-start gap-4">
-                        <div className="mt-1 text-[#035C80]">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M19 4H18V2H16V4H8V2H6V4H5C3.89 4 3.01 4.9 3.01 6L3 20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V10H19V20ZM19 8H5V6H19V8Z"/>
-                            </svg>
+                    {/* info izquierda */}
+                    <div className="flex flex-col md:flex-row items-center justify-center flex-1 py-10 px-8 gap-8 md:gap-12">
+                        
+                        {/* Fecha */}
+                        <div className="flex items-start gap-4">
+                            <div className="mt-1 text-[#035C80]">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19 4H18V2H16V4H8V2H6V4H5C3.89 4 3.01 4.9 3.01 6L3 20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V10H19V20ZM19 8H5V6H19V8Z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-[#1D3343] text-[17px]">Fecha</h4>
+                                <p className="text-gray-700 text-sm mt-1 leading-snug">Viernes 6 de<br/>noviembre 2026</p>
+                            </div>
                         </div>
-                        <div>
-                            <h4 className="font-bold text-[#1D3343] text-[17px]">Fecha</h4>
-                            <p className="text-gray-700 text-sm mt-1 leading-snug">Viernes 6 de<br/>noviembre 2026</p>
+                        
+                        {/* Divisores */}
+                        <div className="hidden md:block w-px h-16 bg-gray-300"></div>
+                        <div className="block md:hidden w-1/2 h-px bg-gray-300"></div>
+
+                        {/* Ubicación */}
+                        <div className="flex items-start gap-4">
+                            <div className="mt-1 text-[#035C80]">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-[#1D3343] text-[17px]">UNICABA</h4>
+                                <p className="text-gray-700 text-sm mt-1 leading-snug">Tte. Gral. Juan D. Perón 802<br/>CABA</p>
+                            </div>
                         </div>
                     </div>
-                    
-                    {/* Divisores */}
-                    <div className="hidden md:block w-px h-16 bg-gray-300"></div>
-                    <div className="block md:hidden w-1/2 h-px bg-gray-300"></div>
 
-                    {/* Ubiicación */}
-                    <div className="flex items-start gap-4">
-                        <div className="mt-1 text-[#035C80]">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-[#1D3343] text-[17px]">UNICABA</h4>
-                            <p className="text-gray-700 text-sm mt-1 leading-snug">Tte. Gral. Juan D. Perón 802<br/>CABA</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Mapa Derecha */}
-                <div className="flex-1 relative min-h-[300px] md:min-h-full bg-gray-200">
-                    
-                    <iframe 
-                        src="https://maps.google.com/maps?q=Tte.+Gral.+Juan+D.+Per%C3%B3n+802,+CABA&t=&z=15&ie=UTF8&iwloc=&output=embed" 
-                        className="absolute inset-0 w-full h-full border-0"
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                    ></iframe>
-                    
-                    {/* boton */}
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#1D3343]/40 to-transparent pointer-events-none"></div>
-
-                    <Link 
-                        href="/como-llego"
-                        className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10"
-                    >
-                        <button className="bg-[#FCFCFC] px-6 py-2 rounded text-[#1D3343] text-sm font-bold shadow-[0_4px_12px_rgb(0,0,0,0.25)] flex items-center gap-2 hover:bg-[#FFCD02] hover:scale-105 transition-all cursor-pointer">
+                    {/* Mapa Derecha */}
+                    <div className="flex-1 relative min-h-[300px] md:min-h-full bg-gray-200">
+                        
+                        <iframe 
+                            src="https://maps.google.com/maps?q=Tte.+Gral.+Juan+D.+Per%C3%B3n+802,+CABA&t=&z=15&ie=UTF8&iwloc=&output=embed" 
+                            className="absolute inset-0 w-full h-full border-0"
+                            allowFullScreen
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                        ></iframe>
+                        
+                        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#1D3343]/40 to-transparent pointer-events-none"></div>
+                        {/* boton */}
+                        <button onClick={() => window.location.href = "/como-llego"} className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 bg-[#FCFCFC] px-6 py-2 rounded text-[#1D3343] text-sm font-bold shadow-[0_4px_12px_rgb(0,0,0,0.25)] flex items-center gap-2 hover:bg-[#FFCD02] hover:scale-105 transition-all cursor-pointer">
                             Cómo llegar &rarr;
                         </button>
-                    </Link>
+                           
+                    </div>
                 </div>
-
             </div>
         </section>
     );
