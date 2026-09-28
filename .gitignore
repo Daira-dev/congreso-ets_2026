@@ -41,3 +41,6 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 "@ | Set-Content .gitignore -Encoding UTF8
+backup_antes_Luis.dump
+
+backup_antes_Luis.dump
