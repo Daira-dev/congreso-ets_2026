@@ -6,7 +6,9 @@ import { pool } from "./lib/db";
 import authRoutes from "./routes/auth.routes";
 import registroRoutes from "./routes/registro.routes";
 import { authenticateOperator } from "./middlewares/authMiddleware";
-
+import actividadesRoutes from "./routes/actividades.routes";
+import { adminActividadesRouter } from "./routes/actividades.routes";
+import inscriptosRoutes from "./routes/inscriptos.routes";
 
 dotenv.config();
 
@@ -22,9 +24,16 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+
 app.use(authenticateOperator);
 app.use("/api/admin/auth", authRoutes);
+app.use("/api/admin/actividades", adminActividadesRouter);
+app.use("/api/admin/inscriptos", inscriptosRoutes);
+
 app.use("/api/registro", registroRoutes);
+
+app.use("/api/actividades", actividadesRoutes);
+
 
 app.get("/health", async (_req, res) => {
   try {
