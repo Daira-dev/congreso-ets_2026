@@ -357,10 +357,70 @@ CREATE TABLE IF NOT EXISTS logs_auditoria (
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- --------------------------------------- •
+-- 14. CONTENIDO / CMS
+-- --------------------------------------- •
+
+CREATE TABLE IF NOT EXISTS novedades (
+    id SERIAL PRIMARY KEY,
+    evento_id INT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    titulo VARCHAR(200) NOT NULL,
+    slug VARCHAR(220) NOT NULL,
+    resumen VARCHAR(500),
+    contenido TEXT NOT NULL,
+    imagen_url VARCHAR(500),
+    publicada BOOLEAN NOT NULL DEFAULT FALSE,
+    activa BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (evento_id, slug)
+);
+
+CREATE TABLE IF NOT EXISTS materiales (
+    id SERIAL PRIMARY KEY,
+    evento_id INT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    titulo VARCHAR(200) NOT NULL,
+    descripcion TEXT,
+    categoria VARCHAR(100),
+    archivo_url VARCHAR(500),
+    publicada BOOLEAN NOT NULL DEFAULT FALSE,
+    activa BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS preguntas_frecuentes (
+    id SERIAL PRIMARY KEY,
+    evento_id INT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    pregunta VARCHAR(500) NOT NULL,
+    respuesta TEXT NOT NULL,
+    orden INT NOT NULL DEFAULT 0,
+    activa BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 -- -- -- --------------------------------------- •
--- 14. ÍNDICES
+-- 15. ÍNDICES
 -- -- -- --------------------------------------- •
+
+CREATE INDEX IF NOT EXISTS idx_novedades_evento
+    ON novedades(evento_id);
+
+CREATE INDEX IF NOT EXISTS idx_novedades_publicada
+    ON novedades(evento_id, publicada, activa);
+
+CREATE INDEX IF NOT EXISTS idx_materiales_evento
+    ON materiales(evento_id);
+
+CREATE INDEX IF NOT EXISTS idx_materiales_publicada
+    ON materiales(evento_id, publicada, activa);
+
+CREATE INDEX IF NOT EXISTS idx_faq_evento
+    ON preguntas_frecuentes(evento_id);
+
+CREATE INDEX IF NOT EXISTS idx_faq_activa
+    ON preguntas_frecuentes(evento_id, activa, orden);
 
 CREATE INDEX IF NOT EXISTS idx_usuarios_apellido
     ON usuarios(apellido);

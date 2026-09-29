@@ -258,6 +258,148 @@ router.get(
   }
 );
 
+// ============================================================
+// PATCH /api/admin/inscriptos/:id/estado
+// Cambiar estado de inscripción
+// Actualmente solo permite CANCELADO.
+// ============================================================
+
+router.patch(
+  "/:id/estado",
+  async (
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> => {
+    const id = req.params.id;
+    const estado = req.body?.estado;
+
+    if (estado !== "CANCELADO") {
+      res.status(400).json({
+        ok: false,
+        error: "ERR_INVALID_STATUS",
+        message:
+          "Actualmente solo se permite cambiar una inscripción a CANCELADO.",
+      });
+
+      return;
+    }
+
+    try {
+      const currentResult = await query(
+        `
+        SELECT
+          u.id,
+          ei.codigo AS estado_actual
+        FROM usuarios u
+        JOIN eventos e
+          ON e.id = u.evento_id
+        JOIN estados_inscripcion ei
+          ON ei.id = u.estado_inscripcion_id
+        WHERE u.id = $1
+          AND e.codigo = 'ETS_2026'
+        LIMIT 1
+        `,
+        [id]
+      );
+
+      if (currentResult.rows.length === 0) {
+        res.status(404).json({
+          ok: false,
+          error: "ERR_USER_NOT_FOUND",
+          message: "No se encontró el inscripto.",
+        });
+
+        return;
+      }
+
+      const estadoActual = currentResult.rows[0].estado_actual;
+
+      if (estadoActual === "CANCELADO") {
+        res.status(400).json({
+          ok: false,
+          error: "ERR_ALREADY_CANCELLED",
+          message: "La inscripción ya se encuentra cancelada.",
+        });
+
+        return;
+      }
+
+      const estadoResult = await query(
+        `
+        SELECT id
+        FROM estados_inscripcion
+        WHERE codigo = 'CANCELADO'
+        LIMIT 1
+        `
+      );
+
+      if (estadoResult.rows.length === 0) {
+        res.status(500).json({
+          ok: false,
+          error: "ERR_STATUS_NOT_CONFIGURED",
+          message: "El estado CANCELADO no está configurado.",
+        });
+
+        return;
+      }
+
+      const estadoCanceladoId = estadoResult.rows[0].id;
+
+      const updateResult = await query(
+        `
+        UPDATE usuarios
+        SET
+          estado_inscripcion_id = $1,
+          actualizado_en = NOW()
+        WHERE id = $2
+        RETURNING
+          id,
+          estado_inscripcion_id,
+          actualizado_en
+        `,
+        [estadoCanceladoId, id]
+      );
+
+      await query(
+        `
+        INSERT INTO logs_auditoria (
+          operador_id,
+          accion,
+          usuario_id,
+          detalles
+        )
+        VALUES ($1, $2, $3, $4)
+        `,
+        [
+          req.operator?.sub ?? null,
+          "INSCRIPCION_CANCELADA",
+          id,
+          JSON.stringify({
+            estado_anterior: estadoActual,
+            estado_nuevo: "CANCELADO",
+          }),
+        ]
+      );
+
+      res.json({
+        ok: true,
+        mensaje: "La inscripción fue cancelada correctamente.",
+        inscripto: updateResult.rows[0],
+      });
+    } catch (error) {
+      console.error(
+        "Error en PATCH /api/admin/inscriptos/:id/estado:",
+        error
+      );
+
+      res.status(500).json({
+        ok: false,
+        error: "ERR_STATUS_UPDATE",
+        message: "No fue posible actualizar el estado.",
+      });
+    }
+  }
+);
 
 // ============================================================
 // GET /api/admin/inscriptos/:id
