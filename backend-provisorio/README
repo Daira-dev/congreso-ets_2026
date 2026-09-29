@@ -1,0 +1,377 @@
+# Backend Provisorio — Congreso ETS 2026
+
+Backend provisorio para la segunda entrega del proyecto Congreso ETS 2026.
+
+Este backend se creó para que el equipo pueda trabajar de forma independiente del backend original ubicado en `backend/`, utilizando una base de datos PostgreSQL separada, por cuestiones de complejidad del mismo.
+
+> **Importante:** este directorio (`backend-provisorio/`) es el backend con el que estamos trabajando actualmente. El directorio `backend/` corresponde al backend original de Néstor y **NO debe modificarse**.
+
+---
+
+# 1. Qué se hizo
+
+* Registro público de asistentes.
+* Validación de datos.
+* Control de duplicados por tipo y número de documento.
+* Estados `CONFIRMADO`, `LISTA_ESPERA` y `CANCELADO`.
+* Cupo configurable.
+* Lista de espera.
+* Generación de `qr_token` para confirmados.
+* Autenticación de operadores.
+* Jerarquía de roles y permisos.
+* Auditoría.
+* Base de datos PostgreSQL independiente.
+
+---
+
+# 2. Estructura actual
+
+```text
+backend-provisorio/
+
+├── src/
+│   ├── db/
+│   │   └── seed.sql
+│   ├── lib/
+│   │   ├── authService.ts
+│   │   ├── db.ts
+│   │   └── schemas.ts
+│   ├── middlewares/
+│   │   └── authMiddleware.ts
+│   ├── routes/
+│   │   ├── auth.routes.ts
+│   │   └── registro.routes.ts
+│   └── server.ts
+│
+├── .env
+├── .env.example
+├── package.json
+└── tsconfig.json
+```
+
+---
+
+# 3. Puertos
+
+```text
+Frontend       → 3000
+Backend        → 4001
+PostgreSQL     → 5433
+```
+
+> **No usar PostgreSQL en `5432` para este backend.**
+
+PostgreSQL utilizado: **17**
+
+---
+
+# 4. Base de datos
+
+```text
+Base de datos:
+congresoets_dbprovisoria
+
+Usuario:
+congreso_app
+
+Puerto:
+5433
+```
+
+La contraseña se configura solamente en `.env`.
+
+---
+
+# 5. Variables de entorno
+
+Crear `.env` a partir de `.env.example`:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+```env
+PORT=4001
+CORS_ORIGIN=http://localhost:3000
+
+DATABASE_URL=postgresql://congreso_app:TU_PASSWORD@localhost:5433/congresoets_dbprovisoria
+
+SESSION_SECRET=TU_SECRETO
+```
+
+---
+
+# 6. Instalación y ejecución
+
+Desde `backend-provisorio/`:
+
+```powershell
+npm install
+```
+
+Para iniciar:
+
+```powershell
+npm run dev
+```
+
+Backend:
+
+```text
+http://localhost:4001
+```
+
+---
+
+# 7. Base de datos desde cero
+
+Crear la base:
+
+```powershell
+psql -U postgres -p 5433
+```
+
+```sql
+CREATE USER congreso_app WITH PASSWORD 'TU_PASSWORD';
+
+CREATE DATABASE congresoets_dbprovisoria
+OWNER congreso_app;
+```
+
+Luego:
+
+```sql
+\q
+```
+
+Conectarse:
+
+```powershell
+psql -U congreso_app -p 5433 -d congresoets_dbprovisoria
+```
+
+---
+
+# 8. Seed
+
+El archivo está en:
+
+```text
+src/db/seed.sql
+```
+
+En Windows:
+
+```powershell
+chcp 65001
+$env:PGCLIENTENCODING="UTF8"
+```
+
+Ejecutar:
+
+```powershell
+psql `
+    -U congreso_app `
+    -p 5433 `
+    -d congresoets_dbprovisoria `
+    -f ".\src\db\seed.sql"
+```
+
+---
+
+# 9. Backup
+
+Crear backup:
+
+```powershell
+pg_dump `
+    -U congreso_app `
+    -p 5433 `
+    -d congresoets_dbprovisoria `
+    -F c `
+    -f ".\backup_congresoets_dbprovisoria.dump"
+```
+
+Restaurar:
+
+```powershell
+pg_restore `
+    -U congreso_app `
+    -p 5433 `
+    -d congresoets_dbprovisoria `
+    --clean `
+    --if-exists `
+    ".\backup_congresoets_dbprovisoria.dump"
+```
+
+---
+
+# 10. Tablas actuales
+
+Actualmente hay 13 tablas:
+
+```text
+roles
+estados_inscripcion
+eventos
+puntos_acceso
+tipos_acreditacion
+actividades
+usuarios
+usuario_roles_adicionales
+operadores
+acreditaciones
+asistencias
+configuraciones_sistema
+logs_auditoria
+```
+
+---
+
+# 11. Datos principales
+
+## Roles
+
+```text
+Estudiante
+Docente
+Expositor
+Autoridad
+Operador
+Verificador
+Administrador
+Superadmin
+```
+
+Los roles operativos (`Operador`, `Verificador`, `Administrador`, `Superadmin`) no aparecen como opciones del formulario público.
+
+## Estados
+
+```text
+CONFIRMADO
+LISTA_ESPERA
+CANCELADO
+```
+
+## Configuraciones
+
+```text
+aforo_maximo_confirmados
+inscripciones_habilitadas
+```
+
+Ejemplo:
+```json
+{"cupo": 10}
+```
+```json
+{"habilitada": true}
+```
+
+## Registro
+
+```text
+POST /api/registro
+GET  /api/registro/roles
+```
+
+El registro incluye:
+
+```text
+tipo_documento
+dni_pasaporte
+nombre
+apellido
+email
+celular
+institucion
+rol_principal_id
+roles_adicionales_ids
+condiciones_adicionales
+intereses
+acepta_comunicaciones
+consentimiento_datos
+```
+
+## Autenticación
+
+```text
+POST /api/admin/auth/login
+POST /api/admin/auth/logout
+GET  /api/admin/auth/me
+```
+
+## Health
+
+```text
+GET /health
+```
+
+---
+
+# 14. Pruebas realizadas
+
+Ya se probó:
+
+```text
+Registro confirmado
+Documento duplicado
+Inscripciones deshabilitadas
+Cupo configurable
+Lista de espera
+QR para confirmados
+```
+
+---
+
+# 15. Falta
+
+## APIs
+
+* Actividades.
+* Administración de inscriptos.
+* Contenidos/CMS.
+* Configuraciones desde el panel.
+
+## QR / correo
+
+* Generación visual del QR.
+* Mostrar/descargar QR.
+* Envío por SMTP institucional.
+
+## Próxima etapa
+
+* Escaneo QR.
+* Acreditación.
+* Asistencia a actividades.
+
+> La promoción automática de lista de espera todavía no está definida y no debe inventarse.
+
+---
+
+# 16. Frontend
+
+Frontend:
+
+```text
+http://localhost:3000
+```
+
+Backend provisional:
+
+```text
+http://localhost:4001
+```
+
+Al empezar la integración hay que revisar:
+
+```text
+frontend/next.config.ts
+frontend/.env.local
+```
+
+para que apunten al backend provisional (`4001`).
+
+El frontend **no se conecta directamente a PostgreSQL**.
+
+---
