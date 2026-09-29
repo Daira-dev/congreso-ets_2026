@@ -9,7 +9,7 @@ import { authenticateOperator } from "./middlewares/authMiddleware";
 import actividadesRoutes from "./routes/actividades.routes";
 import { adminActividadesRouter } from "./routes/actividades.routes";
 import inscriptosRoutes from "./routes/inscriptos.routes";
-
+import credencialRoutes from "./routes/credencial.routes";
 dotenv.config();
 
 const app = express();
@@ -29,10 +29,12 @@ app.use(authenticateOperator);
 app.use("/api/admin/auth", authRoutes);
 app.use("/api/admin/actividades", adminActividadesRouter);
 app.use("/api/admin/inscriptos", inscriptosRoutes);
+app.use("/api/admin/usuarios", inscriptosRoutes);
 
 app.use("/api/registro", registroRoutes);
 
 app.use("/api/actividades", actividadesRoutes);
+app.use("/api/credencial", credencialRoutes);
 
 
 app.get("/health", async (_req, res) => {

@@ -3,7 +3,7 @@
 -- Datos iniciales de desarrollo
 -- --------------------------------------- •
 
-\encoding UTF8
+-- \encoding UTF8
 
 -- --------------------------------------- •
 -- 1. ROLES

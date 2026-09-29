@@ -3,7 +3,7 @@
 -- Segunda entrega
 -- --------------------------------------- •
 
-\encoding UTF8
+-- \encoding UTF8
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- -- --------------------------------------- •

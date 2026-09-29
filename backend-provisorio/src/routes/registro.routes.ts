@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { pool, query } from "../lib/db";
 import { registerSchema } from "../lib/schemas";
+import { enviarCredencialPorEmail } from "../lib/emailService";
 
 const router = Router();
 
@@ -497,6 +498,11 @@ async (req: Request, res: Response): Promise<void> => {
         usuario_id: usuario.id,
         qr_token: usuario.qr_token,
         qr_pendiente_envio: true,
+        });
+
+        // Enviar correo electrónico de manera asíncrona sin bloquear la respuesta
+        enviarCredencialPorEmail(email, nombre, dni_pasaporte, usuario.qr_token).catch(e => {
+            console.error("Error enviando correo de credencial:", e);
         });
 
         return;

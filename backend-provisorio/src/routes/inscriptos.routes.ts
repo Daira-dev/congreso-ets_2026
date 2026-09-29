@@ -77,6 +77,7 @@ router.get(
         ok: true,
         total: result.rows.length,
         inscriptos: result.rows,
+        usuarios: result.rows,
       });
     } catch (error) {
       console.error("Error en GET /api/admin/inscriptos:", error);

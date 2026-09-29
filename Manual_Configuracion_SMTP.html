@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Técnico de Configuración SMTP</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #005691;
+            border-bottom: 2px solid #005691;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #0288d1;
+            margin-top: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        h3 {
+            color: #333;
+            margin-top: 25px;
+        }
+        p {
+            margin-bottom: 15px;
+        }
+        ul, ol {
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        a {
+            color: #0d6efd;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        pre {
+            background-color: #272822;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        code {
+            background-color: #f1f1f1;
+            color: #d63384;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+            font-size: 0.9em;
+        }
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        .highlight {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffecb5;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .badge {
+            background-color: #ffc107;
+            color: #000;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        hr {
+            border: 0;
+            border-top: 1px solid #ddd;
+            margin: 40px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Manual Técnico de Configuración del Servidor SMTP (Nodemailer)</h1>
+
+    <p>Este documento detalla el procedimiento técnico para configurar el envío automático de credenciales digitales y confirmaciones de registro del <strong>Congreso ETS 2026</strong> utilizando una cuenta oficial de Google Workspace o Gmail convencional.</p>
+
+    <p>El sistema backend está desarrollado en Node.js y utiliza el paquete <code>nodemailer</code> con el protocolo SMTP. Para cuentas de Google, la autenticación tradicional (usuario y contraseña) está deprecada por políticas de seguridad, por lo que es de carácter obligatorio implementar <strong>Contraseñas de Aplicaciones</strong>.</p>
+
+    <hr>
+
+    <h2>FASE 1: Preparación de la Cuenta Remitente (Google)</h2>
+
+    <h3>1.1 Activación de Verificación en Dos Pasos (2FA)</h3>
+    <ol>
+        <li>Inicie sesión en su navegador principal con la cuenta de Gmail desde la cual desea que salgan los correos (ej. <code>congreso@ejemplo.com</code>).</li>
+        <li>Diríjase al panel de <strong>Gestión de cuenta de Google</strong>: <a href="https://myaccount.google.com/" target="_blank">https://myaccount.google.com/</a></li>
+        <li>En el menú de navegación izquierdo, seleccione <strong>Seguridad</strong>.</li>
+        <li>Desplácese hasta la sección <strong>"Cómo inicias sesión en Google"</strong>.</li>
+        <li>Verifique el estado de <strong>"Verificación en dos pasos"</strong>. Si se encuentra inactiva, proceda a activarla siguiendo las instrucciones en pantalla (requerirá validación vía SMS a un dispositivo móvil).</li>
+    </ol>
+
+    <h3>1.2 Generación de App Password (Contraseña de Aplicación)</h3>
+    <ol>
+        <li>Con la 2FA activa, acceda directamente al panel de contraseñas de aplicaciones mediante el siguiente enlace:<br>
+            👉 <a href="https://myaccount.google.com/apppasswords" target="_blank">https://myaccount.google.com/apppasswords</a></li>
+        <li>En el campo de "Nombre de la aplicación", asigne un identificador de sistema, por ejemplo: <code>Servidor Node Congreso</code>.</li>
+        <li>Haga clic en <strong>Crear</strong>.</li>
+        <li>El sistema arrojará un token temporal de <span class="badge">16 caracteres alfabéticos</span> (resaltado en un recuadro amarillo).</li>
+        <li>Copie esta cadena. <em>(Nota: los espacios mostrados en la interfaz gráfica son meramente visuales, la cadena original no posee espacios y debe usarse de corrido).</em></li>
+    </ol>
+
+    <h3>1.3 Desbloqueo de Seguridad SMTP (DisplayUnlockCaptcha)</h3>
+    <p>Para evitar que el firewall de Google bloquee las primeras transacciones del servidor bajo el error <code>535-5.7.8 BadCredentials</code>:</p>
+    <ol>
+        <li>Desde el mismo navegador donde mantiene la sesión iniciada, acceda a:<br>
+            👉 <a href="https://accounts.google.com/DisplayUnlockCaptcha" target="_blank">https://accounts.google.com/DisplayUnlockCaptcha</a></li>
+        <li>Presione el botón <strong>Continuar</strong>.</li>
+        <li>Google otorgará una ventana de 10 minutos de gracia para que la nueva aplicación (su sistema backend) pueda establecer el apretón de manos inicial (Handshake) con el servidor SMTP.</li>
+    </ol>
+
+    <hr>
+
+    <h2>FASE 2: Inyección de Credenciales en el Entorno Backend</h2>
+
+    <h3>2.1 Modificación del Archivo de Entorno (<code>.env</code>)</h3>
+    <ol>
+        <li>Localice el directorio raíz del módulo de backend: <code>/backend-provisorio</code>.</li>
+        <li>Ubique y edite el archivo oculto <strong><code>.env</code></strong> (Environment Variables).</li>
+        <li>Asegúrese de que las variables del bloque SMTP se encuentren configuradas exactamente de la siguiente manera:</li>
+    </ol>
+
+<pre><code># Configuración de Correo Electrónico (Nodemailer - Gmail)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=su_correo_oficial@gmail.com
+SMTP_PASSWORD=lasdieciseisletras</code></pre>
+
+    <div class="highlight">
+        <strong>Importante:</strong><br>
+        <ul>
+            <li>Reemplace <code>su_correo_oficial@gmail.com</code> por la dirección real.</li>
+            <li>Reemplace <code>lasdieciseisletras</code> por el token de 16 caracteres obtenido en la Fase 1.2, <strong>sin comillas y sin espacios</strong>.</li>
+        </ul>
+    </div>
+
+    <h3>2.2 Reinicio del Proceso Node.js</h3>
+    <p>Para que el motor de Node.js rehidrate las variables de entorno en el objeto global <code>process.env</code>, el servicio debe ser reiniciado forzosamente.</p>
+
+    <ol>
+        <li>Abra la terminal donde se está ejecutando el servicio de backend.</li>
+        <li>Interrumpa el proceso actual utilizando <code>Ctrl + C</code>.</li>
+        <li>Vuelva a iniciar el orquestador:</li>
+    </ol>
+
+<pre><code>npm run dev
+# o en entorno de producción: npm run start</code></pre>
+
+    <hr>
+
+    <h2>FASE 3: Validación Final</h2>
+
+    <ol>
+        <li>Ingrese a la plataforma web (Frontend) y navegue a la interfaz de la credencial digital generada de cualquier usuario de prueba.</li>
+        <li>Oprima el botón azul de <strong>"Enviar por E-Mail"</strong>.</li>
+        <li>Revise la consola del servidor backend; si la configuración fue exitosa, visualizará la transcripción en la salida estándar (<code>stdout</code>):</li>
+    </ol>
+
+<pre><code>-----------------------------------------
+Email enviado a: participante@dominio.com
+-----------------------------------------</code></pre>
+
+    <ol start="4">
+        <li>Adicionalmente, el envío del correo electrónico quedará auditado en la carpeta de <em>Enviados</em> de la cuenta de Gmail configurada.</li>
+    </ol>
+</div>
+
+</body>
+</html>

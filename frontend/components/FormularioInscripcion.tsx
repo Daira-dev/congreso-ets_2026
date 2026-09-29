@@ -101,6 +101,7 @@ export default function FormularioInscripcion() {
 
     try {
       const payload = {
+        tipo_documento: 'DNI',
         dni_pasaporte: cleanDni,
         nombre: nombre.trim(),
         apellido: apellido.trim(),

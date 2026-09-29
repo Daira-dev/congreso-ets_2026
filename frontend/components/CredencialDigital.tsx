@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 
 interface CredencialProps {
   usuario: {
@@ -18,6 +19,46 @@ interface CredencialProps {
 }
 
 export const CredencialDigital: React.FC<CredencialProps> = ({ usuario, qr_token }) => {
+
+  const [enviando, setEnviando] = useState(false);
+
+  const handleEnviarEmail = async () => {
+    setEnviando(true);
+    try {
+      const res = await fetch('/api/credencial/enviar-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dni: usuario.dni_pasaporte }),
+      });
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Email Enviado',
+          text: 'La credencial se envió correctamente a tu correo registrado.',
+          footer: data.previewUrl ? `<a href="${data.previewUrl}" target="_blank">Ver previsualización Ethereal</a>` : undefined,
+          confirmButtonColor: '#005691',
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: data.message || 'No se pudo enviar el correo.',
+          confirmButtonColor: '#005691',
+        });
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de Red',
+        text: 'Hubo un problema al intentar enviar el correo. Verificá tu conexión.',
+        confirmButtonColor: '#005691',
+      });
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   const esExpositor =
     (usuario.rol && usuario.rol.toLowerCase().includes('expositor')) ||
@@ -178,15 +219,25 @@ export const CredencialDigital: React.FC<CredencialProps> = ({ usuario, qr_token
         >
           <i className="bx bx-info-circle me-1"></i>
           <strong>Control en Puerta:</strong> Exhibí esta pantalla activa en el
-          ingreso al Auditorio Polo Saavedra.
+          ingreso a UNICABA.
         </div>
 
         <button
           type="button"
-          className="btn btn-sm btn-outline-primary w-100 no-print fw-bold d-flex align-items-center justify-content-center gap-1 shadow-sm cursor-pointer"
+          className="btn btn-sm btn-outline-primary w-100 no-print fw-bold d-flex align-items-center justify-content-center gap-1 shadow-sm cursor-pointer mb-2"
           onClick={() => window.print()}
         >
           <i className="bx bx-printer fs-6"></i> Imprimir Credencial / Guardar PDF
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-sm btn-primary w-100 no-print fw-bold d-flex align-items-center justify-content-center gap-1 shadow-sm cursor-pointer"
+          onClick={handleEnviarEmail}
+          disabled={enviando}
+        >
+          <i className={`bx ${enviando ? 'bx-loader-alt bx-spin' : 'bx-envelope'} fs-6`}></i>
+          {enviando ? 'Enviando...' : 'Enviar por E-Mail'}
         </button>
       </div>
 

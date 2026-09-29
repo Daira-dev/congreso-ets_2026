@@ -19,16 +19,16 @@ if %errorlevel% equ 0 (
     exit /b 0
 )
 
-:: 2. Iniciar Backend (Puerto 4000)
-echo  [1/2] Iniciando Servidor Backend API (Puerto 4000)...
-start "Congreso ETS 2026 - Backend API" /min cmd /c "cd /d ""%~dp0backend"" && npm start"
+:: 2. Iniciar Backend (Puerto 4001)
+echo  [1/2] Iniciando Servidor Backend API (Puerto 4001)...
+start "Congreso ETS 2026 - Backend API" /min cmd /c "cd /d ""%~dp0backend-provisorio"" && npm run dev"
 
 :: Esperar 3 segundos para inicialización de la API
 timeout /t 3 /nobreak >nul
 
 :: 3. Iniciar Frontend (Puerto 3000)
 echo  [2/2] Iniciando Interfaz Frontend Web (Puerto 3000)...
-start "Congreso ETS 2026 - Frontend Web" /min cmd /c "cd /d ""%~dp0frontend"" && npm start"
+start "Congreso ETS 2026 - Frontend Web" /min cmd /c "cd /d ""%~dp0frontend"" && npm run dev"
 
 echo.
 echo  Esperando disponibilidad de la plataforma...
