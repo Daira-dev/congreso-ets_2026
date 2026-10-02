@@ -109,8 +109,9 @@ export default function SectionPrograma() {
       {/* Selector de Jornada / Día Multidía */}
       {jornadasDisponibles.length > 0 && (
         <div className="mb-6 bg-slate-50 p-3 rounded-2xl border border-gray-200 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider mr-1 flex items-center gap-1">
-            <span>📅</span> Jornada:
+          <span className="mr-1 flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-gray-600">
+              <i className="bx bx-calendar text-base" aria-hidden="true"></i>
+              JORNADA:
           </span>
           <button
             type="button"
@@ -180,8 +181,9 @@ export default function SectionPrograma() {
             return (
               <div key={act.id} className="relative">
                 {jornadaSeleccionada === "Todas" && fechaStr && (
-                  <div className="text-xs font-bold uppercase tracking-wider text-blue-800 bg-blue-50/80 px-3 py-1 rounded-md inline-block mb-2">
-                    📅 {fechaStr}
+                  <div className="mb-3 inline-flex items-center gap-2 border-l-4 border-amarillo px-3 py-1 text-sm font-bold capitalize text-azul-oscuro">
+                      <i className="bx bx-calendar text-base" aria-hidden="true"></i>
+                      {fechaStr}
                   </div>
                 )}
                 <CardPrograma
