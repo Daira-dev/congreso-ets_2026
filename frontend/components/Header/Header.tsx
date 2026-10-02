@@ -43,9 +43,7 @@ const Header = () => {
 
                         {/* Botón de acceso y punto de estado */}
                         <div className="hidden xl:flex items-center gap-2">
-                            <Link href="/login"
-                                className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-bold text-gray-800 transition hover:bg-black hover:text-white"
-                            >
+                            <Link href="/login" className="hidden rounded bg-amber-400 px-4 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-black hover:text-white xl:inline-flex">
                                 Ingresar
                             </Link>
                             <div 
@@ -90,10 +88,8 @@ const Header = () => {
                     </div>
 
                     {/* Mantener sincronizado con el botón de acceso del navbar */}
-                    <div className="mt-6 flex items-center justify-center gap-2">
-                        <Link href="/login" onClick={closeMenu}
-                            className="inline-flex rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-bold text-gray-800 transition hover:bg-black hover:text-white justify-center"
-                        >
+                    <div className="mt-6 flex items-center justify-start gap-2">
+                        <Link href="/login" onClick={closeMenu} className="inline-flex shrink-0 rounded-lg bg-amber-400 px-5 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-black hover:text-white">
                             Ingresar
                         </Link>
                         <div 

@@ -1,14 +1,12 @@
 // Logos.tsx — Logos institucionales de la barra de navegación
 
 import Image from "next/image";
+import Link from "next/link";
 import logoMinisterio from "@/assets/LOGOS/MINISTERIO DE EDUCACIÓN/Bajada_azul.png";
 
 const Logos = () => {
     return (
-        <div className="flex items-center gap-5">
-
-            {/* Logo del Congreso reservado para incorporar cuando corresponda */}
-
+        <Link href="/" className="flex items-center">
             <Image
                 src={logoMinisterio}
                 alt="Dirección de Educación Técnica Superior - Ministerio de Educación - Gobierno de la Ciudad de Buenos Aires"
@@ -17,7 +15,7 @@ const Logos = () => {
                 className="h-auto w-[250px] md:w-[280px]"
                 priority
             />
-        </div>
+        </Link>
     );
 };
 

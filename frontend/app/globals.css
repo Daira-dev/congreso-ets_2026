@@ -44,6 +44,10 @@ body {
   font-family: var(--font-principal);
 }
 
+body:not(.admin-root) a {
+    text-decoration: none !important;
+}
+
 /* ==========================================================================
    ESTILOS DINÁMICOS EXCLUSIVOS DEL PANEL ADMINISTRATIVO (BACKEND)
    ========================================================================== */
@@ -308,26 +312,26 @@ body:not(.admin-root) main textarea {
   color: var(--frontend-input-text, #1D3343) !important;
 }
 
-/* 9. Identificación Digital y QR Criptográfico */
+/* 9. Credencial Digital y QR Criptográfico */
 body:not(.admin-root) .credential-card,
 body:not(.admin-root) div[class*="credential-preview"] {
-  background-color: var(--frontend-identificación-card-bg, #ffffff) !important;
-  border-color: var(--frontend-identificación-border, #CBD5E1) !important;
+  background-color: var(--frontend-credencial-card-bg, #ffffff) !important;
+  border-color: var(--frontend-credencial-border, #CBD5E1) !important;
 }
 
 body:not(.admin-root) .credential-card-header {
-  background-color: var(--frontend-identificación-header-bg, #1D3343) !important;
-  color: var(--frontend-identificación-header-text, #ffffff) !important;
+  background-color: var(--frontend-credencial-header-bg, #1D3343) !important;
+  color: var(--frontend-credencial-header-text, #ffffff) !important;
 }
 
 body:not(.admin-root) .credential-badge {
-  background-color: var(--frontend-identificación-badge-bg, #035C80) !important;
-  color: var(--frontend-identificación-badge-text, #ffffff) !important;
+  background-color: var(--frontend-credencial-badge-bg, #035C80) !important;
+  color: var(--frontend-credencial-badge-text, #ffffff) !important;
 }
 
 body:not(.admin-root) .btn-diploma {
-  background-color: var(--frontend-identificación-btn-diploma-bg, #FFCD02) !important;
-  color: var(--frontend-identificación-btn-diploma-text, #1D3343) !important;
+  background-color: var(--frontend-credencial-btn-diploma-bg, #FFCD02) !important;
+  color: var(--frontend-credencial-btn-diploma-text, #1D3343) !important;
 }
 
 /* 10. Centro de Recursos y Tarjetas de Materiales */
