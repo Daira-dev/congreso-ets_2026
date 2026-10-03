@@ -44,7 +44,10 @@ const Footer = () => {
 
             <div className="mx-auto max-w-5xl pt-4 text-center">
                 <p className="text-xs text-blanco/60">
-                    © 2026 · Todos los derechos reservados · Equipo Desarrollo IFTS°4 {/* Esto hay que comentarlo porque en la documentacion figura PENDIENTE*/}
+                    © 2026 · Todos los derechos reservados
+                </p>
+                <p className="text-xs text-blanco/60">
+                    Desarrollo del sistema web realizado en articulación con el IFTS Nº 4. | <a href="./creditos">Créditos</a>
                 </p>
             </div>
         </footer>

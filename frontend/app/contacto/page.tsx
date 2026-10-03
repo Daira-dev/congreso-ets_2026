@@ -28,7 +28,7 @@ const faqData: FAQ[] = [
         id: 3,
         question: '¿Dónde se realiza?',
         answer:
-            'La sede prevista es el Auditorio Polo Saavedra, Crisólogo Larralde 5085, Ciudad de Buenos Aires.',
+            'La sede prevista es la Universidad de la Ciudad de Buenos Aires, Tte. Gral. Juan Domingo Perón 802, Ciudad Autónoma de Buenos Aires',
     },
     {
         id: 4,
