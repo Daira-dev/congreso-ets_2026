@@ -1,0 +1,18 @@
+
+# Dependencias
+node_modules/
+**/node_modules/
+
+# Compilaciones
+frontend/.next/
+frontend/out/
+backend/dist/
+
+# Variables de entorno y credenciales
+.env
+.env.*
+!.env.example
+backend/.env
+
+# Backups locales
+backend/backups/
