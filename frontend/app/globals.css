@@ -44,6 +44,10 @@ body {
   font-family: var(--font-principal);
 }
 
+body:not(.admin-root) a {
+    text-decoration: none !important;
+}
+
 /* ==========================================================================
    ESTILOS DINÁMICOS EXCLUSIVOS DEL PANEL ADMINISTRATIVO (BACKEND)
    ========================================================================== */

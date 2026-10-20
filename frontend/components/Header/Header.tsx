@@ -2,35 +2,33 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Logo from "./Logos";
 import NavLinks from "./NavLinks";
 import MenuButton from "./MenuBoton";
-import { useBackendSyncStatus } from "@/hooks/useBackendSyncStatus";
 
 const Header = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const { isSynced } = useBackendSyncStatus();
+    const [isSynced, setIsSynced] = useState<boolean | null>(null);
 
     const closeMenu = () => {
         setIsMenuOpen(false);
     };
 
-    // Indicador de color: Verde (sincronizado), Rojo (no sincronizado / error), Gris/Amarillo (conectando)
-    const syncDotClass =
-        isSynced === true
-            ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"
-            : isSynced === false
-            ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] animate-pulse"
-            : "bg-amber-400 animate-pulse";
-
-    const syncTooltip =
-        isSynced === true
-            ? "Sincronización activa con Backend (OK)"
-            : isSynced === false
-            ? "Sin sincronización con Backend (Desconectado)"
-            : "Comprobando sincronización...";
+    useEffect(() => {
+        const checkSync = () => {
+            fetch('/api/vacantes/evento-activo')
+                .then(res => {
+                    if (res.ok) setIsSynced(true);
+                    else setIsSynced(false);
+                })
+                .catch(() => setIsSynced(false));
+        };
+        checkSync();
+        const interval = setInterval(checkSync, 10000);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <header className="fixed left-0 top-0 z-50 w-full border-b border-gray-200 bg-white">
@@ -43,17 +41,16 @@ const Header = () => {
                     <div className="flex items-center gap-10">
                         <NavLinks />
 
-                        {/* Botón de acceso. Apunta a /login con indicador de sincronización a la izquierda */}
-                        <Link href="/login"
-                            className="hidden items-center gap-2 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-bold text-gray-800 transition hover:bg-black hover:text-white xl:inline-flex"
-                            title={syncTooltip}
-                        >
-                            <span 
-                                className={`inline-block h-2 w-2 rounded-full transition-colors duration-300 ${syncDotClass}`}
-                                aria-label={syncTooltip}
+                        {/* Botón de acceso y punto de estado */}
+                        <div className="hidden xl:flex items-center gap-2">
+                            <Link href="/login" className="hidden rounded bg-amber-400 px-4 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-black hover:text-white xl:inline-flex">
+                                Ingresar
+                            </Link>
+                            <div 
+                                className={`w-3 h-3 rounded-full ${isSynced === null ? 'bg-gray-300' : isSynced ? 'bg-green-500' : 'bg-red-500'}`} 
+                                title={isSynced ? 'Sincronizado con el servidor' : 'Sin conexión con el servidor'}
                             />
-                            <span>Ingresar</span>
-                        </Link>
+                        </div>
 
                         <MenuButton
                             isOpen={isMenuOpen}
@@ -91,16 +88,15 @@ const Header = () => {
                     </div>
 
                     {/* Mantener sincronizado con el botón de acceso del navbar */}
-                    <Link href="/login" onClick={closeMenu}
-                        className="mt-6 inline-flex items-center justify-center gap-2 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-bold text-gray-800 transition hover:bg-black hover:text-white"
-                        title={syncTooltip}
-                    >
-                        <span 
-                            className={`inline-block h-2 w-2 rounded-full transition-colors duration-300 ${syncDotClass}`}
-                            aria-label={syncTooltip}
+                    <div className="mt-6 flex items-center justify-start gap-2">
+                        <Link href="/login" onClick={closeMenu} className="inline-flex shrink-0 rounded-lg bg-amber-400 px-5 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-black hover:text-white">
+                            Ingresar
+                        </Link>
+                        <div 
+                            className={`w-3 h-3 rounded-full ${isSynced === null ? 'bg-gray-300' : isSynced ? 'bg-green-500' : 'bg-red-500'}`} 
+                            title={isSynced ? 'Sincronizado con el servidor' : 'Sin conexión con el servidor'}
                         />
-                        <span>Ingresar</span>
-                    </Link>
+                    </div>
                 </div>
             </aside>
         </header>

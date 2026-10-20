@@ -1,48 +1,151 @@
 interface CardProgramaProps {
-    
     horario: string;
     duracion: string;
     categoria: string;
     title: string;
     expositor: string;
-    descripcion?: string; // Opcional
+    descripcion?: string;
     estado: string;
-    sala: string
+    sala: string;
 }
 
-const CardPrograma = ({ horario, duracion, categoria, title, expositor, descripcion, estado, sala}: CardProgramaProps) => {
+const CardPrograma = ({
+    horario,
+    duracion,
+    categoria,
+    title,
+    expositor,
+    descripcion,
+    estado,
+    sala
+}: CardProgramaProps) => {
+
+    /* Separa inicio y fin del horario para desktop */
+    const partesHorario = horario.split(/\s*[–-]\s*/);
+
+    const horaInicio = partesHorario[0] || horario;
+    const horaFin = partesHorario[1] || "";
+
     return (
-        <div className="border rounded-xl p-4 md:p-6 shadow-sm border-azul-oscuro mb-3 md:mb-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
-                <div className="flex items-start md:items-center gap-3 md:gap-4">
-                    <div className="min-w-[4rem]">
-                        <span className="font-bold text-base md:text-lg block">{horario}</span>
-                        <p className="text-[10px] md:text-xs text-gray-500">{duracion}</p>
+        <article className="mb-4 rounded-xl border border-azul-oscuro bg-white shadow-sm">
+
+            <div className="p-4 md:p-5">
+
+                {/* DESKTOP */}
+                <div className="hidden md:grid md:grid-cols-[max-content_1px_minmax(0,1fr)_220px] md:items-center md:gap-x-6">
+                    {/* Horario */}
+                    <div className="w-max text-left leading-none">
+                        <p className="text-lg font-bold text-azul-oscuro">
+                            {horaInicio}
+                        </p>
+
+                        {horaFin && (
+                            <p className="text-lg font-bold text-azul-oscuro">
+                                {horaFin}
+                            </p>
+                        )}
+
+                        <p className="mt-0.5 text-xs leading-none text-gray-500">
+                            {duracion}
+                        </p>
                     </div>
 
-                    <div className="h-full min-h-[3rem] md:min-h-[4rem] border-l border-black-300 mx-1 md:mx-2"></div>
+                    {/* Separador */}
+                    <div className="h-full min-h-[65px] border-l border-gray-300"></div>
 
-                    
-                    <div className="flex-1">
-                        <span className="text-[10px] md:text-xs px-2 py-0.5 md:px-3 md:py-1 bg-gray-100 border border-black rounded-full inline-block mb-1.5 md:mb-2 leading-none">{categoria}</span>
-                        <h3 className="font-semibold text-azul-claro text-sm md:text-lg leading-tight">{title}</h3>
-                        <p className="text-xs md:text-sm text-gray-600 mt-0.5 md:mt-1">{expositor}</p>
+                    {/* Información */}
+                    <div className="min-w-0">
+                        <span className="inline-block max-w-full break-words rounded-full border border-gray-300 bg-gray-100 px-2.5 py-1 text-xs leading-tight">
+                            {categoria}
+                        </span>
+
+                        <h3 className="mt-3 break-words text-lg font-semibold leading-snug text-azul-claro">
+                            {title}
+                        </h3>
+
+                        <p className="mt-1 break-words text-sm text-gray-600">
+                            {expositor}
+                        </p>
+                    </div>
+
+                    {/* Estado + Sala */}
+                    <div className="min-w-0 text-sm">
+                        <p>
+                            <span className="text-xs text-gray-500">
+                                Estado:
+                            </span>{" "}
+                            <span className="font-semibold">
+                                {estado}
+                            </span>
+                        </p>
+
+                        <p className="mt-2 break-words">
+                            <span className="text-xs text-gray-500">
+                                Sala:
+                            </span>{" "}
+                            <span className="font-semibold">
+                                {sala}
+                            </span>
+                        </p>
                     </div>
                 </div>
-                {/* Sala y Estado */}
-                <div className="flex flex-col gap-1 md:gap-2 w-full md:w-auto md:min-w-[180px] bg-gray-50 md:bg-transparent p-2 md:p-0 rounded-lg">
-                    <div className="text-[10px] md:text-xs font-semibold">
-                        <p className="text-[10px] md:text-xs">Estado: <span className="font-normal">{estado}</span></p>
+
+                {/* MOBILE */}
+                <div className="md:hidden">
+
+                    {/* Horario + estado */}
+                    <div className="flex items-start justify-between gap-2">
+
+                        <div className="min-w-0 leading-tight">
+                            <p className="text-sm font-bold text-azul-oscuro sm:text-base">
+                                {horario}
+                            </p>
+
+                            <p className="mt-0 text-xs leading-tight text-gray-500">
+                                {duracion}
+                            </p>
+                        </div>
+
+                        <p className="shrink-0 text-xs font-semibold leading-tight">
+                            {estado}
+                        </p>
                     </div>
-                    <div className="text-[10px] md:text-xs font-semibold">
-                        <p className="text-[10px] md:text-xs">Sala: <span className="font-normal">{sala}</span></p>
+
+                    {/* Información */}
+                    <div className="mt-1 min-w-0">
+
+                        <span className="inline-block max-w-full break-words rounded-full border border-gray-300 bg-gray-100 px-2.5 py-1 text-xs leading-tight">
+                            {categoria}
+                        </span>
+
+                        <h3 className="mt-2 break-words text-base font-semibold leading-snug text-azul-claro">
+                            {title}
+                        </h3>
+
+                        <p className="mt-1 break-words text-sm text-gray-600">
+                            {expositor}
+                        </p>
+
+                        <p className="mt-2 break-words text-xs text-gray-600">
+                            <span className="font-semibold text-gray-700">
+                                Sala:
+                            </span>{" "}
+                            {sala}
+                        </p>
                     </div>
                 </div>
             </div>
+
+            {/* Descripción */}
             {descripcion && (
-                <p className="mt-3 md:mt-4 text-xs md:text-sm text-gray-600 border-t pt-3 md:pt-4">{descripcion}</p>
+                <div className="border-t border-gray-200 px-4 py-3 md:px-5">
+                    <p className="break-words text-xs leading-relaxed text-gray-600">
+                        {descripcion}
+                    </p>
+                </div>
             )}
-        </div>
+
+        </article>
     );
 };
 

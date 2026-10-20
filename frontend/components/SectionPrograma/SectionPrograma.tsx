@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import CardPrograma from "./Card/Card";
+import FiltrosPrograma from "./FiltrosPrograma/FiltrosPrograma";
 
 interface ActividadPublica {
   id: number;
@@ -21,7 +22,8 @@ interface ActividadPublica {
 }
 
 export default function SectionPrograma() {
-  const [filtroSeleccionado, setFiltroSeleccionado] = useState("Todos");
+  const [filtroActivo, setFiltroActivo] = useState("Todos");
+  const [jornadaSeleccionada, setJornadaSeleccionada] = useState("Todas");
   const [actividades, setActividades] = useState<ActividadPublica[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,34 +56,15 @@ export default function SectionPrograma() {
     return Array.from(dates).sort();
   }, [actividades]);
 
-  // Filtrar según la opción elegida en el selector (Jornadas o Categorías)
+  // Filtrar por jornada (fecha) y categoría
   const actividadesFiltradas = useMemo(() => {
-    if (filtroSeleccionado === "Todos") {
-      return actividades;
-    }
-
-    // Si seleccionó una jornada por fecha
-    if (filtroSeleccionado.startsWith("jornada:")) {
-      const fecha = filtroSeleccionado.replace("jornada:", "");
-      return actividades.filter((a) => {
-        const f = a.fecha_actividad || (a.horario_inicio ? a.horario_inicio.slice(0, 10) : "");
-        return f === fecha;
-      });
-    }
-
-    // Si seleccionó una categoría (de las que antes estaban en los botones)
-    if (filtroSeleccionado.startsWith("cat:")) {
-      const term = filtroSeleccionado.replace("cat:", "").toLowerCase();
-      return actividades.filter((a) => {
-        const cat = (a.categoria || "").toLowerCase();
-        const tit = (a.title || "").toLowerCase();
-        const desc = (a.descripcion || "").toLowerCase();
-        return cat.includes(term) || term.includes(cat) || tit.includes(term) || desc.includes(term);
-      });
-    }
-
-    return actividades;
-  }, [actividades, filtroSeleccionado]);
+    return actividades.filter((a) => {
+      const f = a.fecha_actividad || (a.horario_inicio ? a.horario_inicio.slice(0, 10) : "");
+      const matchJornada = jornadaSeleccionada === "Todas" || f === jornadaSeleccionada;
+      const matchCategoria = filtroActivo === "Todos" || a.categoria.toLowerCase().includes(filtroActivo.toLowerCase()) || filtroActivo.toLowerCase().includes(a.categoria.toLowerCase());
+      return matchJornada && matchCategoria;
+    });
+  }, [actividades, jornadaSeleccionada, filtroActivo]);
 
   // Formato para mostrar duración estimada
   function calcularDuracion(inicio: string, fin: string) {
@@ -112,8 +95,6 @@ export default function SectionPrograma() {
     return `${h1} – ${h2}`;
   }
 
-  const esFiltroJornada = filtroSeleccionado.startsWith("jornada:");
-
   return (
     <section id="programa" className="scroll-mt-32 max-w-4xl mx-auto py-10 px-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-2">
@@ -125,58 +106,57 @@ export default function SectionPrograma() {
         </div>
       </div>
 
-      {/* Selector que sustituye totalmente a los botones e integra las opciones */}
-      <div className="mb-8 bg-slate-50 p-3.5 sm:p-5 rounded-2xl border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-        <label
-          htmlFor="selector-programa"
-          className="text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2"
-        >
-          <span className="text-lg">🎯</span> Filtrar Programa:
-        </label>
-        <div className="relative w-full sm:w-80">
-          <select
-            id="selector-programa"
-            aria-label="Filtrar actividades del programa por jornada o categoría"
-            value={filtroSeleccionado}
-            onChange={(e) => setFiltroSeleccionado(e.target.value)}
-            className="w-full h-9 appearance-none bg-white border border-gray-300 text-gray-800 text-[11px] sm:text-xs font-medium rounded-xl pl-3 pr-8 shadow-2xs hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-azul-oscuro focus:border-azul-oscuro cursor-pointer transition-all"
+      {/* Selector de Jornada / Día Multidía */}
+      {jornadasDisponibles.length > 0 && (
+        <div className="mb-6 bg-slate-50 p-3 rounded-2xl border border-gray-200 flex flex-wrap items-center gap-2">
+          <span className="mr-1 flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-gray-600">
+              <i className="bx bx-calendar text-base" aria-hidden="true"></i>
+              JORNADA:
+          </span>
+          <button
+            type="button"
+            onClick={() => setJornadaSeleccionada("Todas")}
+            className={`px-4 py-2 rounded-xl font-bold text-xs transition-all shadow-xs ${
+              jornadaSeleccionada === "Todas"
+                ? "bg-azul-oscuro text-white shadow-sm"
+                : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
+            }`}
           >
-            <option value="Todos" className="text-[11px]">✨ Todos (Mostrar todo)</option>
-
-            {jornadasDisponibles.length > 0 && (
-              <optgroup label="📅 Jornadas del Congreso">
-                {jornadasDisponibles.map((f, idx) => {
-                  const dateObj = new Date(f + "T00:00:00");
-                  const labelDia = isNaN(dateObj.getTime())
-                    ? f
-                    : dateObj.toLocaleDateString("es-AR", {
-                        weekday: "long",
-                        day: "2-digit",
-                        month: "long",
-                      });
-                  const labelFormateado = labelDia.charAt(0).toUpperCase() + labelDia.slice(1);
-                  return (
-                    <option key={`jornada:${f}`} value={`jornada:${f}`}>
-                      Día {idx + 1}: {labelFormateado}
-                    </option>
-                  );
-                })}
-              </optgroup>
-            )}
-
-            <optgroup label="🏷️ Categorías">
-              <option value="cat:Institucional">Institucional</option>
-              <option value="cat:Masterclass">Masterclass</option>
-              <option value="cat:Taller">Talleres / Actividades simultáneas</option>
-            </optgroup>
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-500">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
+            Todas las Jornadas
+          </button>
+          {jornadasDisponibles.map((f, idx) => {
+            const dateObj = new Date(f + "T00:00:00");
+            const labelDia = isNaN(dateObj.getTime())
+              ? f
+              : dateObj.toLocaleDateString("es-AR", {
+                  weekday: "short",
+                  day: "2-digit",
+                  month: "2-digit",
+                });
+            return (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setJornadaSeleccionada(f)}
+                className={`px-4 py-2 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 ${
+                  jornadaSeleccionada === f
+                    ? "bg-azul-oscuro text-white shadow-sm"
+                    : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <span className="opacity-80">Día {idx + 1}:</span>
+                <span className="capitalize">{labelDia}</span>
+              </button>
+            );
+          })}
         </div>
-      </div>
+      )}
+
+      {/* Barra de botones de filtro por categoría */}
+      <FiltrosPrograma
+        categoriaSeleccionada={filtroActivo}
+        onSelectCategoria={setFiltroActivo}
+      />
 
       {/* Listado dinámico de actividades */}
       <div>
@@ -186,7 +166,7 @@ export default function SectionPrograma() {
           </div>
         ) : actividadesFiltradas.length === 0 ? (
           <div className="text-center py-12 text-gray-400 text-sm border border-dashed rounded-xl">
-            No se encontraron actividades registradas para la opción seleccionada.
+            No se encontraron actividades registradas para esta jornada o categoría.
           </div>
         ) : (
           actividadesFiltradas.map((act) => {
@@ -200,9 +180,10 @@ export default function SectionPrograma() {
 
             return (
               <div key={act.id} className="relative">
-                {!esFiltroJornada && fechaStr && (
-                  <div className="text-xs font-bold uppercase tracking-wider text-blue-800 bg-blue-50/80 px-3 py-1 rounded-md inline-block mb-2">
-                    📅 {fechaStr}
+                {jornadaSeleccionada === "Todas" && fechaStr && (
+                  <div className="mb-3 inline-flex items-center gap-2 border-l-4 border-amarillo px-3 py-1 text-sm font-bold capitalize text-azul-oscuro">
+                      <i className="bx bx-calendar text-base" aria-hidden="true"></i>
+                      {fechaStr}
                   </div>
                 )}
                 <CardPrograma
