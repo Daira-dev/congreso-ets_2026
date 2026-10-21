@@ -41,38 +41,47 @@ sync_now() {
     
     echo -e "${CYAN}• Verificando repositorio en rama [${BOLD}$branch${RESET}${CYAN}]...${RESET}"
     
-    # 1. Traer novedades remotas sin pisar trabajo local
+    local has_local_changes=false
+    if [ -n "$(git status --porcelain)" ]; then
+        has_local_changes=true
+    fi
+
+    # 1. Si hay cambios locales, committear primero para preservar el trabajo
+    if [ "$has_local_changes" = true ]; then
+        echo "  • Cambios locales detectados. Creando commit local..."
+        git add .
+
+        local commit_message
+        if [ -n "$CUSTOM_MSG" ]; then
+            commit_message="$CUSTOM_MSG"
+        else
+            commit_message="auto(sync): guardado automatico en $branch [$(date +'%Y-%m-%d %H:%M:%S')]"
+        fi
+
+        git commit -m "$commit_message" 2>&1 | sed 's/^/    /'
+    fi
+
+    # 2. Traer novedades remotas con rebase
     if git remote get-url origin >/dev/null 2>&1; then
-        echo "  • Obteniendo actualizaciones remotas (git pull --rebase)..."
-        git pull --rebase origin "$branch" 2>&1 | sed 's/^/    /' || {
-            echo -e "  ${YELLOW}⚠ Advertencia: Conflicto o advertencia durante pull. Omitiendo push automático.${RESET}"
+        echo "  • Sincronizando con actualizaciones remotas (git pull --rebase)..."
+        if ! git pull --rebase origin "$branch" 2>&1 | sed 's/^/    /'; then
+            echo -e "  ${YELLOW}⚠ Advertencia: Conflicto durante rebase. Requiere revisión manual.${RESET}"
             return 1
-        }
+        fi
     fi
 
-    # 2. Comprobar si hay cambios locales
-    if [ -z "$(git status --porcelain)" ]; then
-        echo -e "  ${GREEN}✔ El árbol de trabajo está limpio. No hay cambios pendientes por subir.${RESET}"
-        return 0
-    fi
+    # 3. Empujar cambios si hubo commit o si hay commits locales pendientes
+    local unpushed_commits
+    unpushed_commits=$(git log "origin/$branch..HEAD" --oneline 2>/dev/null || echo "")
 
-    # 3. Preparar y subir cambios
-    echo "  • Cambios locales detectados. Preparando commit..."
-    git add .
-
-    local commit_message
-    if [ -n "$CUSTOM_MSG" ]; then
-        commit_message="$CUSTOM_MSG"
+    if [ -n "$unpushed_commits" ]; then
+        echo "  • Subiendo commits locales a GitHub (git push origin $branch)..."
+        git push origin "$branch" 2>&1 | sed 's/^/    /'
+        echo -e "  ${GREEN}✔ Cambios sincronizados exitosamente con GitHub.${RESET}"
     else
-        commit_message="auto(sync): guardado automatico en $branch [$(date +'%Y-%m-%d %H:%M:%S')]"
+        echo -e "  ${GREEN}✔ El repositorio ya se encuentra totalmente al día con GitHub.${RESET}"
     fi
 
-    git commit -m "$commit_message" | sed 's/^/    /'
-    
-    echo "  • Subiendo cambios a GitHub (git push origin $branch)..."
-    git push origin "$branch" 2>&1 | sed 's/^/    /'
-    
-    echo -e "  ${GREEN}✔ Cambios sincronizados exitosamente con GitHub.${RESET}"
     return 0
 }
 
