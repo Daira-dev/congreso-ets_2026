@@ -16,3 +16,9 @@ backend/.env
 
 # Backups locales
 backend/backups/
+
+# Logs y PIDs de procesos locales
+*.log
+*.pid
+.*.pid
+data_system.txt

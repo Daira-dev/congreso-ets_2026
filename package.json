@@ -5,6 +5,8 @@
   "description": "Workspace raíz del Congreso ETS 2026 (Frontend + Backend)",
   "scripts": {
     "git:sync": "bash scripts/git-sync.sh",
+    "install:all": "bash Instalar_Congreso.sh",
+    "uninstall": "bash Desinstalar_Congreso.sh",
     "start": "bash Iniciar_Congreso.sh",
     "stop": "bash Detener_Congreso.sh",
     "restart": "bash Reiniciar_Congreso.sh",
