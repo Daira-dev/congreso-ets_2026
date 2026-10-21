@@ -1,0 +1,3 @@
+#!/bin/bash
+# Hook pre-push gestionado por el proyecto Congreso ETS 2026 (Gauntlet v2)
+exec bash "$(git rev-parse --show-toplevel)/scripts/verificar-calidad-push.sh"

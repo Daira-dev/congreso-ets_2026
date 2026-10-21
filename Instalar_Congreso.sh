@@ -136,10 +136,15 @@ cd "$SCRIPT_DIR/frontend"
 npm install --no-audit --prefer-offline 2>/dev/null || npm install
 echo -e "  ${GREEN}✓ Dependencias de frontend instaladas con éxito.${RESET}"
 
-# 6. Asignar permisos de ejecución a los scripts
+# 6. Asignar permisos de ejecución e instalar Git Hooks de Calidad
 echo ""
-echo -e "${CYAN}[6/6] Configurando permisos de ejecución para scripts bash...${RESET}"
+echo -e "${CYAN}[6/6] Configurando permisos y ganchos de calidad Git (pre-push)...${RESET}"
 chmod +x "$SCRIPT_DIR/"*.sh "$SCRIPT_DIR/scripts/"*.sh 2>/dev/null || true
+if [ -d "$SCRIPT_DIR/.git" ] && [ -f "$SCRIPT_DIR/scripts/pre-push" ]; then
+    cp "$SCRIPT_DIR/scripts/pre-push" "$SCRIPT_DIR/.git/hooks/pre-push" 2>/dev/null || true
+    chmod +x "$SCRIPT_DIR/.git/hooks/pre-push" 2>/dev/null || true
+    echo -e "  ${GREEN}✓ Hook pre-push activado (bloqueo automático de código roto).${RESET}"
+fi
 echo -e "  ${GREEN}✓ Permisos aplicados a todos los scripts (*.sh).${RESET}"
 
 echo ""

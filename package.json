@@ -15,6 +15,8 @@
     "health:json": "bash Salud_Congreso.sh --json",
     "health:deep": "bash scripts/diagnostico-detallado.sh",
     "health:watch": "bash scripts/monitoreo-continuo.sh",
+    "verify": "bash scripts/verificar-calidad-push.sh",
+    "hook:install": "cp scripts/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push",
     "backend:dev": "cd backend && npm run dev",
     "frontend:dev": "cd frontend && npm run dev",
     "test:api": "cd backend && npm run test:api",
