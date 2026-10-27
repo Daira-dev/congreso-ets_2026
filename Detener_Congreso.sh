@@ -79,13 +79,15 @@ else
     echo -e "${GREEN}========================================================================${RESET}"
 fi
 
-# 4. Sincronización automática de cierre de sesión con GitHub
+# 4. Sincronización automática de cierre de sesión con GIT Local (nunca GitHub automático)
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "nestor-HERO")
-if [ -n "$(git status --porcelain 2>/dev/null)" ] && git remote get-url origin >/dev/null 2>&1; then
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
     echo ""
-    echo -e "${CYAN}• Respaldando automáticamente trabajo pendiente en GitHub ($CURRENT_BRANCH)...${RESET}"
+    echo -e "${CYAN}• Respaldando automáticamente trabajo pendiente en GIT Local ($CURRENT_BRANCH)...${RESET}"
     git add .
     git commit -m "auto(close): guardado al detener servicios [$(date +'%Y-%m-%d %H:%M:%S')]" 2>&1 | sed 's/^/    /' || true
-    git push origin "$CURRENT_BRANCH" 2>&1 | sed 's/^/    /' && echo -e "  ${GREEN}✔ Cambios sincronizados con GitHub.${RESET}" || echo -e "  ${YELLOW}⚠ No se pudo hacer push automático.${RESET}"
+fi
+if git remote get-url local >/dev/null 2>&1; then
+    git push local "$CURRENT_BRANCH" 2>&1 | sed 's/^/    /' && echo -e "  ${GREEN}✔ Cambios sincronizados con GIT Local.${RESET}" || echo -e "  ${YELLOW}⚠ No se pudo sincronizar con GIT Local.${RESET}"
 fi
 echo ""
