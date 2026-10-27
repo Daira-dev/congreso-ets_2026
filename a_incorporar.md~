@@ -1,0 +1,122 @@
+# Documento de Requerimientos Técnicos y Funcionales
+
+## Metadatos
+
+* **Tipo de documento:** Especificación funcional y técnica para desarrollo / Prompt de ejecución para IA.
+* **Objetivo:** Implementar mejoras de navegación en Backend, controles dinámicos y de contenido en el CMS Frontend, y gestión de activos multimedia en el módulo Materiales.
+* **Formato de salida esperado para tareas:** Código fuente, migraciones de base de datos, endpoints de API y vistas frontend asociadas.
+
+---
+
+## 1. Módulo: Backend - Pantalla Inicial / Dashboard
+
+### 1.1. Ordenamiento de Secciones
+* **Contexto:** Botonera principal de acceso rápido a módulos en la pantalla inicial del Backend.
+* **Requerimiento:** Ordenar alfabéticamente (A-Z) los botones de navegación correspondientes a las siguientes secciones:
+  1. Accesos
+  2. Actividades
+  3. Auditoría
+  4. Certificados
+  5. CMS Frontend
+  6. Configuración
+  7. Cron
+  8. Encuestas
+  9. Estadísticas
+  10. Eventos
+  11. Homologación
+  12. Identificaciones
+  13. Lista Negra
+  14. Manuales *(normalizar capitalización si aplica)*
+  15. Materiales
+  16. Materias
+  17. Operadores
+  18. Participantes
+  19. Ponentes
+  20. Recintos
+  21. Tablero
+* **Criterio de Aceptación:**
+  * La botonera renderiza los elementos ordenados lexicográficamente de forma insensible a mayúsculas/minúsculas.
+  * No se altera la ruta o permiso de ninguno de los accesos existentes.
+
+---
+
+## 2. Módulo: CMS Frontend
+
+### 2.1. Editor WYSIWYG para Sección HERO
+* **Requerimiento:** Integrar un editor visual WYSIWYG en el Hero de la página principal.
+* **Referencia técnica:** Utilizar la misma implementación y stack de editor existente en el módulo `Identificaciones`.
+* **Alcance editable:**
+  * Imagen o activo de fondo (background).
+  * Títulos, subtítulos y cuerpos de texto.
+  * Imágenes internas y componentes secundarios embebidos en el Hero.
+* **Criterio de Aceptación:**
+  * Los cambios guardados deben persistir en la base de datos y reflejarse inmediatamente en el frontend público.
+
+### 2.2. Visibilidad Dinámica de Secciones
+* **Requerimiento:** Sistema granular de visibilidad mediante checkboxes en el panel administrativo.
+* **Regla de negocio:** Afecta a todas las secciones intermedias del layout público (excluyendo estrictamente `NAV` / Navbar y `FOOTER`).
+* **Comportamiento:**
+  * Cada sección intermedia debe contar con un toggle o checkbox (`enabled: true/false`).
+  * Si una sección está deshabilitada, el DOM no la renderiza o se omite en la respuesta del API.
+
+### 2.3. CRUD de Carrousel (Slider)
+* **Requerimiento:** Módulo de administración para carrouseles multimedia.
+* **Capacidades funcionales:**
+  * **Soporte de medios:** Imágenes y videos.
+  * **Cantidad:** Adición, edición y eliminación de slides sin límite rígido.
+  * **Reordenamiento:** Capacidad de definir el orden de visualización (índice numérico o drag-and-drop).
+  * **Temporizador:** Configuración del tiempo de permanencia (duración/autoplay en segundos o milisegundos) de forma individual por elemento.
+  * **Slide predeterminado:** Selector para designar cuál es el slide inicial que se muestra al cargar la página.
+* **Criterio de Aceptación:**
+  * Endpoints listos para `GET`, `POST`, `PUT/PATCH` y `DELETE`.
+  * Validación del tipo de archivo y fallback en caso de slide no disponible.
+
+### 2.4. CRUD para Tarjetas de "Preguntas Frecuentes" (FAQ)
+* **Requerimiento:** Implementar un CRUD sencillo para la administración y gestión de las tarjetas de contenido de la página/sección de "Preguntas Frecuentes".
+* **Campos requeridos por tarjeta:**
+  * `id`: Identificador único.
+  * `pregunta`: Texto con la interrogante o título de la tarjeta.
+  * `respuesta`: Contenido explicativo o texto de respuesta (soporte para texto enriquecido/formato básico si aplica).
+  * `orden`: Valor numérico o posición para definir la secuencia de visualización.
+  * `estado`: Indicador de activo/inactivo (publicado/borrador).
+* **Operaciones funcionales:**
+  * Crear nueva tarjeta de pregunta frecuente.
+  * Listar todas las tarjetas existentes con indicador de estado y orden.
+  * Editar pregunta, respuesta, orden y estado de una tarjeta.
+  * Eliminar una tarjeta.
+* **Criterio de Aceptación:**
+  * Los cambios realizados en el panel administrativo impactan directamente en la vista pública de Preguntas Frecuentes.
+
+---
+
+## 3. Módulo: Materiales
+
+### 3.1. CRUDs de Imágenes por Categorías y Tarjetas
+* **Requerimiento:** Gestión de archivos de imagen a dos niveles:
+  1. Por categoría de material.
+  2. Dentro de cada tarjeta/ítem individual de material.
+* **Requisitos de Validación e Interfaz:**
+  * Mostrar en la interfaz de carga las dimensiones recomendadas (ancho x alto en píxeles) y la resolución esperada (DPI/formato).
+  * Validar tipos MIME permitidos en frontend y backend.
+
+### 3.2. Política de Almacenamiento y Persistencia
+* **Almacenamiento de archivos:** Guardar los archivos de imagen sin alteraciones de compresión destructiva (*"as they are"*) en el directorio ad-hoc:
+  ```
+  imagenes_de_materiales/
+  ```
+* **Persistencia en Base de Datos:**
+  * No almacenar blobs binarios en la tabla.
+  * Guardar exclusivamente la URL o path relativo accesible que apunte al archivo guardado en el servidor/storage.
+
+---
+
+## 4. Instrucciones para el Asistente de IA / Motor de Generación de Código
+
+Al procesar este documento para generar la solución:
+1. Respetar la arquitectura actual del proyecto (controladores, modelos y rutas existentes).
+2. Seguir el patrón de diseño ya implementado en el módulo `Identificaciones` para mantener consistencia de código.
+3. Asegurar que las migraciones de base de datos contemplen los nuevos campos y tablas requeridos:
+   * Estados de visibilidad de secciones.
+   * Configuración de tiempos y slides del carrousel.
+   * Entidad/tabla para tarjetas de `Preguntas Frecuentes` (FAQ).
+   * URLs de imágenes de categorías y tarjetas de materiales.
