@@ -1,7 +1,7 @@
 -- ============================================================================
 -- ARQUITECTURA DE BASE DE DATOS - CONGRESO ETS (MULTI-EVENTO Y TEMARIOS)
 -- ESPECIFICACIONES TÉCNICAS Y SCRIPTS DDL (POSTGRESQL 15+ / 16+)
--- NORMALIZACIÓN ESTRICTA EN TERCERA FORMA NORMAL (3FN)
+-- NORMALIZACIÓN ESTRICTA EN TERCERA FORMA NORMAL (3FN) - 27 TABLAS CANÓNICAS
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -10,36 +10,26 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- 1. TABLAS DE CATÁLOGOS Y DOMINIO MAESTRO (1FN, 2FN, 3FN)
 -- ----------------------------------------------------------------------------
 
--- Catálogo de Roles de Usuarios
+-- 1. Catálogo de Roles de Usuarios
 CREATE TABLE IF NOT EXISTS roles (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL UNIQUE,
     descripcion TEXT,
     jerarquia INT NOT NULL DEFAULT 1, -- 1: Asistente, 2: Expositor, 3: Verificador, 4: Admin, 5: Superadmin
+    permisos JSONB NULL,
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Catálogo de Estados de Inscripción
+-- 2. Catálogo de Estados de Inscripción
 CREATE TABLE IF NOT EXISTS estados_inscripcion (
     id SERIAL PRIMARY KEY,
-    codigo VARCHAR(30) NOT NULL UNIQUE, -- 'CONFIRMADO', 'LISTA_ESPERA', 'BAJA_AUTOMATICA', 'CANCELADO'
+    codigo VARCHAR(30) NOT NULL UNIQUE, -- 'CONFIRMADO', 'LISTA_ESPERA', 'SANCIONADO', 'BAJA_AUTOMATICA', 'CANCELADO'
     nombre VARCHAR(50) NOT NULL,
     permite_ingreso BOOLEAN NOT NULL DEFAULT FALSE,
     descripcion TEXT
 );
 
--- Catálogo de Puntos de Acceso Físicos (Normalización de ubicaciones en 3FN)
-CREATE TABLE IF NOT EXISTS puntos_acceso (
-    id SERIAL PRIMARY KEY,
-    evento_id INT REFERENCES eventos(id) ON DELETE CASCADE,
-    nombre VARCHAR(100) NOT NULL,
-    ubicacion_fisica VARCHAR(150) NOT NULL,
-    tipo_punto VARCHAR(30) NOT NULL DEFAULT 'PUESTO_ACCESO', -- 'PUESTO_ACCESO', 'SALA_CONFERENCIA', 'AULA_TALLER', 'ESPACIO_NETWORKING'
-    activo BOOLEAN NOT NULL DEFAULT TRUE,
-    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Catálogo de Tipos de Acreditación (Normalización en 3FN)
+-- 3. Catálogo de Tipos de Acreditación (Normalización en 3FN)
 CREATE TABLE IF NOT EXISTS tipos_acreditacion (
     id SERIAL PRIMARY KEY,
     codigo VARCHAR(50) NOT NULL UNIQUE, -- 'ACCESO_GENERAL', 'ACTIVIDAD_AULA', 'TALLER', 'MASTERCLASS'
@@ -47,7 +37,16 @@ CREATE TABLE IF NOT EXISTS tipos_acreditacion (
     requiere_actividad BOOLEAN NOT NULL DEFAULT FALSE
 );
 
--- Catálogo de Eventos Institucionales / Ediciones Anuales en el Tiempo
+-- 4. Catálogo de Categorías Temáticas
+CREATE TABLE IF NOT EXISTS categorias_tematicas (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    descripcion TEXT,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. Catálogo de Eventos Institucionales / Ediciones Anuales en el Tiempo
 CREATE TABLE IF NOT EXISTS eventos (
     id SERIAL PRIMARY KEY,
     codigo VARCHAR(50) NOT NULL UNIQUE,
@@ -62,28 +61,44 @@ CREATE TABLE IF NOT EXISTS eventos (
     lugar_nombre VARCHAR(150),
     direccion VARCHAR(200),
     ciudad VARCHAR(100),
+    sede_nombre VARCHAR(150),
+    sede_direccion VARCHAR(200),
+    sede_mapa_url TEXT,
     cupo_maximo INT NOT NULL DEFAULT 400,
     estado VARCHAR(30) NOT NULL DEFAULT 'PUBLICADO', -- 'EN_PLANIFICACION', 'PUBLICADO', 'EN_CURSO', 'FINALIZADO', 'ARCHIVADO'
     activo BOOLEAN NOT NULL DEFAULT TRUE,
-    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Catálogo de Actividades / Talleres / Aulas (Normalización de aforos específicos)
-CREATE TABLE IF NOT EXISTS actividades (
+-- 6. Catálogo de Puntos de Acceso Físicos (Normalización de ubicaciones en 3FN)
+CREATE TABLE IF NOT EXISTS puntos_acceso (
     id SERIAL PRIMARY KEY,
-    evento_id INT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    evento_id INT REFERENCES eventos(id) ON DELETE CASCADE,
+    nombre VARCHAR(100) NOT NULL,
+    ubicacion_fisica VARCHAR(150) NOT NULL,
+    tipo_punto VARCHAR(30) NOT NULL DEFAULT 'PUESTO_ACCESO', -- 'PUESTO_ACCESO', 'SALA_CONFERENCIA', 'AULA_TALLER', 'ESPACIO_NETWORKING'
+    capacidad_maxima INT NOT NULL DEFAULT 50,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 7. Catálogo Maestro de Actividades / Materias Institucionales
+CREATE TABLE IF NOT EXISTS catalogo_actividades (
+    id SERIAL PRIMARY KEY,
+    codigo VARCHAR(50) NOT NULL UNIQUE,
     nombre VARCHAR(150) NOT NULL,
     descripcion TEXT,
-    tipo_acreditacion_id INT NOT NULL REFERENCES tipos_acreditacion(id) ON DELETE RESTRICT,
-    punto_acceso_id INT NOT NULL REFERENCES puntos_acceso(id) ON DELETE RESTRICT,
-    cupo_maximo INT NOT NULL DEFAULT 50,
-    horario_inicio TIMESTAMP WITH TIME ZONE NOT NULL,
-    horario_fin TIMESTAMP WITH TIME ZONE NOT NULL,
-    disertante_nombre VARCHAR(150),
-    activo BOOLEAN NOT NULL DEFAULT TRUE
+    tipo_acreditacion_id INT REFERENCES tipos_acreditacion(id) ON DELETE SET NULL,
+    categoria_tematica_id INT REFERENCES categorias_tematicas(id) ON DELETE SET NULL,
+    horas_catedra INT NOT NULL DEFAULT 2,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Catálogo de Operadores de Acreditación
+-- 8. Catálogo de Operadores de Acreditación
 CREATE TABLE IF NOT EXISTS operadores (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -92,14 +107,17 @@ CREATE TABLE IF NOT EXISTS operadores (
     punto_acceso_default_id INT NOT NULL REFERENCES puntos_acceso(id) ON DELETE RESTRICT,
     rol_id INT NOT NULL REFERENCES roles(id) DEFAULT 5,
     password_hash VARCHAR(255) NULL,
+    permisos JSONB NULL,
     activo BOOLEAN NOT NULL DEFAULT TRUE,
-    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- ----------------------------------------------------------------------------
 -- 2. TABLA PRINCIPAL DE USUARIOS E IDENTIDADES (MULTI-EVENTO 3FN)
 -- ----------------------------------------------------------------------------
 
+-- 9. Usuarios e Identidades
 CREATE TABLE IF NOT EXISTS usuarios (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     dni_pasaporte VARCHAR(50) NOT NULL,
@@ -117,7 +135,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     CONSTRAINT uq_usuario_dni_evento UNIQUE (dni_pasaporte, evento_id)
 );
 
--- Relación N:N para Asignación de Roles Adicionales
+-- 10. Relación N:N para Asignación de Roles Adicionales
 CREATE TABLE IF NOT EXISTS usuario_roles_adicionales (
     usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     rol_id INT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
@@ -125,10 +143,39 @@ CREATE TABLE IF NOT EXISTS usuario_roles_adicionales (
     PRIMARY KEY (usuario_id, rol_id)
 );
 
+-- 11. Catálogo de Actividades / Talleres / Aulas (Normalización de aforos específicos)
+CREATE TABLE IF NOT EXISTS actividades (
+    id SERIAL PRIMARY KEY,
+    evento_id INT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    catalogo_actividad_id INT NULL REFERENCES catalogo_actividades(id) ON DELETE SET NULL,
+    nombre VARCHAR(150) NOT NULL,
+    descripcion TEXT,
+    tipo_acreditacion_id INT NOT NULL REFERENCES tipos_acreditacion(id) ON DELETE RESTRICT,
+    punto_acceso_id INT NOT NULL REFERENCES puntos_acceso(id) ON DELETE RESTRICT,
+    cupo_maximo INT NOT NULL DEFAULT 50,
+    horario_inicio TIMESTAMP WITH TIME ZONE NOT NULL,
+    horario_fin TIMESTAMP WITH TIME ZONE NOT NULL,
+    disertante_nombre VARCHAR(150),
+    disertante_usuario_id UUID NULL REFERENCES usuarios(id) ON DELETE SET NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 12. Reservas e Inscripciones a Actividades Específicas
+CREATE TABLE IF NOT EXISTS actividad_inscripciones (
+    id SERIAL PRIMARY KEY,
+    actividad_id INT NOT NULL REFERENCES actividades(id) ON DELETE CASCADE,
+    usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    estado VARCHAR(30) NOT NULL DEFAULT 'CONFIRMADO',
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT uq_actividad_usuario UNIQUE (actividad_id, usuario_id)
+);
+
 -- ----------------------------------------------------------------------------
 -- 3. VALIDACIÓN DOCUMENTAL DE EXPOSITORES (HOMOLOGACIÓN DE PERGAMINOS)
 -- ----------------------------------------------------------------------------
 
+-- 13. Homologaciones de Expositores
 CREATE TABLE IF NOT EXISTS homologaciones_expositores (
     id SERIAL PRIMARY KEY,
     usuario_id UUID NOT NULL UNIQUE REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -148,6 +195,7 @@ CREATE TABLE IF NOT EXISTS homologaciones_expositores (
 -- 4. LISTA NEGRA (BLACKLIST)
 -- ----------------------------------------------------------------------------
 
+-- 14. Blacklist Disciplinaria
 CREATE TABLE IF NOT EXISTS blacklist (
     id SERIAL PRIMARY KEY,
     dni_pasaporte VARCHAR(50) NOT NULL UNIQUE,
@@ -161,6 +209,7 @@ CREATE TABLE IF NOT EXISTS blacklist (
 -- 5. RECONFIRMACIÓN INTERACTIVA (48 HORAS) Y TOKENS TEMPORALES
 -- ----------------------------------------------------------------------------
 
+-- 15. Confirmaciones de Asistencia
 CREATE TABLE IF NOT EXISTS confirmaciones_asistencia (
     id SERIAL PRIMARY KEY,
     usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -175,6 +224,7 @@ CREATE TABLE IF NOT EXISTS confirmaciones_asistencia (
 -- 6. ACREDITACIONES Y CONTROL DE ACCESOS EN SEDE (ANTI-PASSBACK COMPUESTO)
 -- ----------------------------------------------------------------------------
 
+-- 16. Acreditaciones
 CREATE TABLE IF NOT EXISTS acreditaciones (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -192,6 +242,7 @@ CREATE TABLE IF NOT EXISTS acreditaciones (
 -- 7. CERTIFICADOS OFICIALES Y VALIDACIÓN CRIPTOGRÁFICA
 -- ----------------------------------------------------------------------------
 
+-- 17. Certificados
 CREATE TABLE IF NOT EXISTS certificados (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     codigo_verificacion VARCHAR(50) NOT NULL UNIQUE,
@@ -206,17 +257,10 @@ CREATE TABLE IF NOT EXISTS certificados (
 );
 
 -- ----------------------------------------------------------------------------
--- 8. MÓDULO DE ENCUESTAS DINÁMICAS Y TEMARIOS (3FN)
+-- 8. MÓDULO DE ENCUESTAS DINÁMICAS, TEMARIOS Y MATERIALES (3FN)
 -- ----------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS categorias_tematicas (
-    id SERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL UNIQUE,
-    descripcion TEXT,
-    activo BOOLEAN NOT NULL DEFAULT TRUE,
-    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
+-- 18. Encuestas
 CREATE TABLE IF NOT EXISTS encuestas (
     id SERIAL PRIMARY KEY,
     evento_id INT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
@@ -230,6 +274,7 @@ CREATE TABLE IF NOT EXISTS encuestas (
     actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 19. Preguntas de Encuesta
 CREATE TABLE IF NOT EXISTS encuesta_preguntas (
     id SERIAL PRIMARY KEY,
     encuesta_id INT NOT NULL REFERENCES encuestas(id) ON DELETE CASCADE,
@@ -243,6 +288,7 @@ CREATE TABLE IF NOT EXISTS encuesta_preguntas (
     activo BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+-- 20. Opciones de Pregunta de Encuesta
 CREATE TABLE IF NOT EXISTS encuesta_opciones (
     id SERIAL PRIMARY KEY,
     pregunta_id INT NOT NULL REFERENCES encuesta_preguntas(id) ON DELETE CASCADE,
@@ -252,6 +298,7 @@ CREATE TABLE IF NOT EXISTS encuesta_opciones (
     valor_ponderacion NUMERIC(4,2) NOT NULL DEFAULT 1.00
 );
 
+-- 21. Cabeceras de Respuestas de Encuesta
 CREATE TABLE IF NOT EXISTS encuesta_respuestas (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     encuesta_id INT NOT NULL REFERENCES encuestas(id) ON DELETE CASCADE,
@@ -262,6 +309,7 @@ CREATE TABLE IF NOT EXISTS encuesta_respuestas (
     CONSTRAINT uq_encuesta_usuario UNIQUE (encuesta_id, usuario_id)
 );
 
+-- 22. Detalles de Respuestas de Encuesta
 CREATE TABLE IF NOT EXISTS encuesta_respuestas_detalles (
     id BIGSERIAL PRIMARY KEY,
     respuesta_id UUID NOT NULL REFERENCES encuesta_respuestas(id) ON DELETE CASCADE,
@@ -272,10 +320,30 @@ CREATE TABLE IF NOT EXISTS encuesta_respuestas_detalles (
     respuesta_texto TEXT NULL
 );
 
+-- 23. Materiales Pedagógicos y Recursos Multimediales
+CREATE TABLE IF NOT EXISTS materiales (
+    id SERIAL PRIMARY KEY,
+    evento_id INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    tipo VARCHAR(20) NOT NULL CHECK (
+        tipo IN ('novedad', 'documento', 'video', 'flyer', 'foto', 'recurso')
+    ),
+    titulo VARCHAR(200) NOT NULL,
+    descripcion TEXT,
+    fecha_publicacion DATE NOT NULL DEFAULT CURRENT_DATE,
+    url_imagen TEXT,
+    url_archivo TEXT,
+    url_video TEXT,
+    imagenes JSONB NOT NULL DEFAULT '[]'::jsonb,
+    publicado BOOLEAN NOT NULL DEFAULT FALSE,
+    creado_en TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
 -- ----------------------------------------------------------------------------
--- 9. CONFIGURACIÓN DEL SISTEMA, PUSH Y LOGS DE AUDITORÍA
+-- 9. CONFIGURACIÓN DEL SISTEMA, PUSH Y LOGS DE AUDITORÍA / JOURNALING
 -- ----------------------------------------------------------------------------
 
+-- 24. Configuraciones del Sistema
 CREATE TABLE IF NOT EXISTS configuraciones_sistema (
     clave VARCHAR(100) PRIMARY KEY,
     valor JSONB NOT NULL,
@@ -284,26 +352,35 @@ CREATE TABLE IF NOT EXISTS configuraciones_sistema (
     actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 25. Suscripciones Web Push
 CREATE TABLE IF NOT EXISTS suscripciones_push (
     id SERIAL PRIMARY KEY,
     usuario_id UUID NULL REFERENCES usuarios(id) ON DELETE SET NULL,
     endpoint TEXT NOT NULL UNIQUE,
     p256dh TEXT NOT NULL,
     auth TEXT NOT NULL,
-    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    user_agent TEXT NULL,
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 26. Bitácora Inmutable de Auditoría Forense (compatible con esquema canónico y extendido)
 CREATE TABLE IF NOT EXISTS logs_auditoria (
     id BIGSERIAL PRIMARY KEY,
-    evento VARCHAR(100) NOT NULL,
-    actor_usuario VARCHAR(100) NOT NULL,
+    evento VARCHAR(100) NOT NULL DEFAULT 'OPERACION_SISTEMA',
+    actor_usuario VARCHAR(100) NOT NULL DEFAULT 'SISTEMA',
     usuario_afectado_id UUID NULL REFERENCES usuarios(id) ON DELETE SET NULL,
+    tabla_afectada VARCHAR(100) NULL,
+    registro_id VARCHAR(100) NULL,
+    accion VARCHAR(50) NULL,
+    usuario_responsable VARCHAR(100) NULL,
+    datos_nuevos JSONB NULL,
     detalles JSONB NULL,
     ip_origen VARCHAR(45) NULL,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Módulo de Journaling y Diagnóstico HTTP en tiempo real
+-- 27. Módulo de Journaling y Diagnóstico HTTP en tiempo real
 CREATE TABLE IF NOT EXISTS logs_journaling (
     id BIGSERIAL PRIMARY KEY,
     nivel VARCHAR(10) NOT NULL, -- 'ERROR', 'WARN', 'INFO'
@@ -354,6 +431,9 @@ CREATE INDEX IF NOT EXISTS idx_encuesta_respuestas_detalles_resp ON encuesta_res
 CREATE INDEX IF NOT EXISTS idx_encuesta_respuestas_detalles_cat ON encuesta_respuestas_detalles(categoria_tematica_id);
 CREATE INDEX IF NOT EXISTS idx_encuesta_respuestas_detalles_preg ON encuesta_respuestas_detalles(pregunta_id);
 
+CREATE INDEX IF NOT EXISTS idx_materiales_evento ON materiales(evento_id);
+CREATE INDEX IF NOT EXISTS idx_materiales_publicados ON materiales(evento_id, publicado, fecha_publicacion DESC);
+
 -- ----------------------------------------------------------------------------
 -- 11. FUNCIÓN TRANSACCIONAL CON BLOQUEO PESIMISTA Y GESTIÓN MULTI-EVENTO (3FN)
 -- ----------------------------------------------------------------------------
@@ -377,6 +457,7 @@ DECLARE
     v_inserted_id UUID;
     v_id_confirmado INT;
     v_id_espera INT;
+    v_id_sancionado INT;
     v_id_cancelado INT;
     v_id_baja INT;
     v_en_blacklist BOOLEAN;
@@ -498,7 +579,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ----------------------------------------------------------------------------
--- 12. TRIGGER DE INTERCEPCIÓN PARA BLACKLIST (CON RESPETO A SUPERADMIN OVERRIDE)
+-- 12. TRIGGERS DE INTERCEPCIÓN Y NORMALIZACIÓN DE AUDITORÍA
 -- ----------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION trg_check_blacklist()
@@ -524,6 +605,39 @@ CREATE TRIGGER trigger_intercept_blacklist
 BEFORE INSERT ON usuarios
 FOR EACH ROW
 EXECUTE FUNCTION trg_check_blacklist();
+
+-- Trigger de normalización bidireccional para logs_auditoria
+CREATE OR REPLACE FUNCTION trg_normalize_logs_auditoria()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.evento IS NULL OR NEW.evento = 'OPERACION_SISTEMA' THEN
+        NEW.evento := COALESCE(
+            CASE WHEN NEW.tabla_afectada IS NOT NULL AND NEW.accion IS NOT NULL
+                 THEN UPPER(NEW.accion || '_' || NEW.tabla_afectada)
+                 ELSE NEW.accion
+            END,
+            NEW.evento,
+            'OPERACION_SISTEMA'
+        );
+    END IF;
+
+    IF NEW.actor_usuario IS NULL OR NEW.actor_usuario = 'SISTEMA' THEN
+        NEW.actor_usuario := COALESCE(NEW.usuario_responsable, NEW.actor_usuario, 'SISTEMA');
+    END IF;
+
+    IF NEW.detalles IS NULL AND NEW.datos_nuevos IS NOT NULL THEN
+        NEW.detalles := NEW.datos_nuevos;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_normalize_logs_auditoria ON logs_auditoria;
+CREATE TRIGGER trigger_normalize_logs_auditoria
+BEFORE INSERT ON logs_auditoria
+FOR EACH ROW
+EXECUTE FUNCTION trg_normalize_logs_auditoria();
 
 -- ----------------------------------------------------------------------------
 -- 13. PRIVILEGIOS DE APLICACIÓN

@@ -126,20 +126,66 @@ async function runPackagesTests() {
       `Status: ${resAccesos.status}`
     );
 
+    // Obtener dinámicamente una actividad válida para probar exportación de planilla de firmas
+    const resActList = await request({
+      hostname: '127.0.0.1',
+      port: PORT,
+      path: '/api/actividades',
+      method: 'GET',
+    });
+    const actividades = Array.isArray(resActList.body?.actividades) ? resActList.body.actividades : [];
+    let targetActId = actividades.length > 0 ? actividades[0].id : null;
+    let tempActCreated = false;
+
+    if (!targetActId) {
+      const resCreateAct = await request(
+        {
+          hostname: '127.0.0.1',
+          port: PORT,
+          path: '/api/admin/actividades',
+          method: 'POST',
+          headers: authHeaders,
+        },
+        {
+          evento_id: 1,
+          nombre: 'Actividad Temporal Test Firmas',
+          descripcion: 'Actividad temporal para validación de planilla CSV',
+          tipo_acreditacion_id: 2,
+          punto_acceso_id: 3,
+          cupo_maximo: 40,
+          horario_inicio: '2026-11-06T14:00:00.000Z',
+          horario_fin: '2026-11-06T15:30:00.000Z',
+          disertante_nombre: 'Disertante Test',
+        }
+      );
+      targetActId = resCreateAct.body?.actividad?.id || 1;
+      tempActCreated = Boolean(resCreateAct.body?.actividad?.id);
+    }
+
     const resFirmas = await request({
       hostname: '127.0.0.1',
       port: PORT,
-      path: '/api/admin/reportes/actividades/1/firmas.csv',
+      path: `/api/admin/reportes/actividades/${targetActId}/firmas.csv`,
       method: 'GET',
       headers: authHeaders,
     });
     assert(
-      'GET /api/admin/reportes/actividades/1/firmas.csv genera planilla con sala y horario',
+      `GET /api/admin/reportes/actividades/${targetActId}/firmas.csv genera planilla con sala y horario`,
       resFirmas.status === 200 &&
         typeof resFirmas.body === 'string' &&
         resFirmas.body.includes('PLANILLA DE FIRMAS Y ASISTENCIA'),
       `Status: ${resFirmas.status}`
     );
+
+    if (tempActCreated && targetActId) {
+      await request({
+        hostname: '127.0.0.1',
+        port: PORT,
+        path: `/api/admin/actividades/${targetActId}`,
+        method: 'DELETE',
+        headers: authHeaders,
+      });
+    }
 
     const resZip = await request({
       hostname: '127.0.0.1',

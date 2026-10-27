@@ -48,7 +48,7 @@ export async function runDatabaseRepair(customConnectionString?: string): Promis
     });
 
     // =========================================================================
-    // FASE 2: VERIFICACIÓN Y CREACIÓN DE TABLAS FALTANTES (26 TABLAS)
+    // FASE 2: VERIFICACIÓN Y CREACIÓN DE TABLAS FALTANTES (27 TABLAS)
     // =========================================================================
     const schemaSqlPath = path.join(__dirname, '../database/schema_3fn.sql');
     if (fs.existsSync(schemaSqlPath)) {
@@ -58,7 +58,7 @@ export async function runDatabaseRepair(customConnectionString?: string): Promis
         categoria: 'Esquema',
         elemento: 'Tablas y DDL Maestro (schema_3fn.sql)',
         estado: 'CORRECTO',
-        detalle: 'Estructura relacional canónica de 26 tablas aplicada y asegurada.',
+        detalle: 'Estructura relacional canónica de 27 tablas aplicada y asegurada.',
       });
     }
 
@@ -66,9 +66,15 @@ export async function runDatabaseRepair(customConnectionString?: string): Promis
     // FASE 3: AUDITORÍA Y AGREGADO DINÁMICO DE COLUMNAS FALTANTES
     // =========================================================================
     const columnasCriticas: { tabla: string; columna: string; ddl: string; defaultVal?: string }[] = [
+      // Roles
+      { tabla: 'roles', columna: 'permisos', ddl: 'JSONB NULL' },
       // Eventos
+      { tabla: 'eventos', columna: 'sede_nombre', ddl: 'VARCHAR(150) NULL' },
+      { tabla: 'eventos', columna: 'sede_direccion', ddl: 'VARCHAR(200) NULL' },
+      { tabla: 'eventos', columna: 'sede_mapa_url', ddl: 'TEXT NULL' },
       { tabla: 'eventos', columna: 'actualizado_en', ddl: 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()' },
       // Operadores
+      { tabla: 'operadores', columna: 'permisos', ddl: 'JSONB NULL' },
       { tabla: 'operadores', columna: 'actualizado_en', ddl: 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()' },
       // Puntos de acceso (recintos)
       { tabla: 'puntos_acceso', columna: 'capacidad_maxima', ddl: 'INT NOT NULL DEFAULT 50' },
@@ -111,52 +117,58 @@ export async function runDatabaseRepair(customConnectionString?: string): Promis
       }
     }
 
+    // Asegurar valores por defecto en logs_auditoria para inserciones de esquema extendido
+    await client.query(`
+      ALTER TABLE logs_auditoria ALTER COLUMN evento SET DEFAULT 'OPERACION_SISTEMA';
+      ALTER TABLE logs_auditoria ALTER COLUMN actor_usuario SET DEFAULT 'SISTEMA';
+    `);
+
     // =========================================================================
     // FASE 4: INTEGRIDAD DE REGISTROS MAESTROS BASE (SEED CONDICIONAL)
     // =========================================================================
     // 1. Roles
     await client.query(`
-      INSERT INTO roles (id, nombre, descripcion, jerarquia) VALUES
-        (1, 'Asistente General', 'Asistencia abierta a conferencias y áreas comunes', 1),
-        (2, 'Estudiante IFTS', 'Estudiante regular de Institutos de Formación Técnica Superior', 1),
-        (3, 'Docente / Directivo IFTS', 'Personal académico o directivo de institutos técnicos', 2),
-        (4, 'Disertante / Expositor', 'Orador invitado o panelista temático', 2),
-        (5, 'Operador de Puerta', 'Control de acreditaciones con escáner QR en puntos de acceso', 3),
-        (6, 'Verificador de Mesa', 'Mesa de entradas, resolución de contingencias y reasignaciones', 3),
-        (7, 'Administrador DETS', 'Gestión integral académica, aforos, certificados y encuestas', 4),
-        (8, 'Superadmin', 'Administrador total con facultades de sobrecupo y override', 5)
-      ON CONFLICT (id) DO UPDATE 
-      SET nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion, jerarquia = EXCLUDED.jerarquia;
+      INSERT INTO roles (nombre, descripcion, jerarquia) VALUES
+        ('Estudiante', 'Estudiante de Nivel Técnico Superior o afín', 1),
+        ('Docente', 'Personal académico / Docente', 1),
+        ('Expositor', 'Disertante o Tallerista con requerimiento de homologación', 2),
+        ('Autoridad', 'Autoridad Institucional / Ministerial / Invitado Especial', 2),
+        ('Operador', 'Personal de acreditación en puertas y aulas', 3),
+        ('Verificador', 'Funcionario habilitado para homologar pergaminos de expositores', 4),
+        ('Administrador', 'Personal directivo DETS para control y gestión', 4),
+        ('Superadmin', 'Administrador total con facultades de sobrecupo y override', 5)
+      ON CONFLICT (nombre) DO UPDATE 
+      SET descripcion = EXCLUDED.descripcion, jerarquia = EXCLUDED.jerarquia;
     `);
 
     // 2. Estados de inscripción
     await client.query(`
-      INSERT INTO estados_inscripcion (id, codigo, nombre, permite_ingreso, descripcion) VALUES
-        (1, 'CONFIRMADO', 'Confirmado', TRUE, 'Inscripción activa con cupo asegurado y identificacion habilitada'),
-        (2, 'LISTA_ESPERA', 'Lista de Espera', FALSE, 'Sin cupo inmediato por capacidad de aforo completada (FIFO)'),
-        (3, 'SANCIONADO', 'Sancionado', FALSE, 'Restricción disciplinaria activa por inclusión en Lista Negra / Blacklist'),
-        (4, 'BAJA_AUTOMATICA', 'Baja Automática 48hs', FALSE, 'No confirmó asistencia en la ventana de 24hs tras el aviso de 48hs'),
-        (5, 'CANCELADO', 'Cancelado', FALSE, 'Baja voluntaria o revocada manualmente')
-      ON CONFLICT (id) DO UPDATE 
-      SET codigo = EXCLUDED.codigo, nombre = EXCLUDED.nombre, permite_ingreso = EXCLUDED.permite_ingreso, descripcion = EXCLUDED.descripcion;
+      INSERT INTO estados_inscripcion (codigo, nombre, permite_ingreso, descripcion) VALUES
+        ('CONFIRMADO', 'Confirmado', TRUE, 'Inscripción activa con cupo asegurado y credencial habilitada'),
+        ('LISTA_ESPERA', 'Lista de Espera', FALSE, 'Sin cupo inmediato por capacidad de aforo completada (FIFO)'),
+        ('SANCIONADO', 'Sancionado', FALSE, 'Restricción disciplinaria activa por inclusión en Lista Negra / Blacklist'),
+        ('BAJA_AUTOMATICA', 'Baja Automática 48hs', FALSE, 'No confirmó asistencia en la ventana de 24hs tras el aviso de 48hs'),
+        ('CANCELADO', 'Cancelado', FALSE, 'Baja voluntaria o revocada manualmente')
+      ON CONFLICT (codigo) DO UPDATE 
+      SET nombre = EXCLUDED.nombre, permite_ingreso = EXCLUDED.permite_ingreso, descripcion = EXCLUDED.descripcion;
     `);
 
     // 3. Evento principal garantizado
     await client.query(`
-      INSERT INTO eventos (id, codigo, nombre, descripcion, anio, fecha_inicio, fecha_fin, activo) VALUES
-        (1, 'ETS_2026', '1er Congreso de Educación Técnica Superior 2026', 'Edición inaugural en Auditorio Polo Saavedra', 2026, '2026-11-06', '2026-11-06', TRUE)
-      ON CONFLICT (id) DO UPDATE
+      INSERT INTO eventos (codigo, nombre, descripcion, anio, fecha_inicio, fecha_fin, activo) VALUES
+        ('ETS_2026', '1er Congreso de Educación Técnica Superior 2026', 'Edición inaugural en Auditorio Polo Saavedra', 2026, '2026-11-06', '2026-11-06', TRUE)
+      ON CONFLICT (codigo) DO UPDATE
       SET nombre = EXCLUDED.nombre, anio = EXCLUDED.anio;
     `);
 
     // 4. Tipos de acreditación
     await client.query(`
-      INSERT INTO tipos_acreditacion (id, codigo, descripcion, requiere_actividad) VALUES
-        (1, 'ACCESO_GENERAL', 'Ingreso al predio del Auditorio Polo Saavedra', FALSE),
-        (2, 'ACTIVIDAD_AULA', 'Ingreso a conferencia o panel en aula temática', TRUE),
-        (3, 'TALLER', 'Participación en taller práctico con cupo limitado', TRUE),
-        (4, 'MASTERCLASS', 'Clase magistral con expositor principal', TRUE)
-      ON CONFLICT (id) DO UPDATE 
+      INSERT INTO tipos_acreditacion (codigo, descripcion, requiere_actividad) VALUES
+        ('ACCESO_GENERAL', 'Ingreso al predio del Auditorio Polo Saavedra', FALSE),
+        ('ACTIVIDAD_AULA', 'Ingreso a conferencia o panel en aula temática', TRUE),
+        ('TALLER', 'Participación en taller práctico con cupo limitado', TRUE),
+        ('MASTERCLASS', 'Clase magistral con expositor principal', TRUE)
+      ON CONFLICT (codigo) DO UPDATE 
       SET descripcion = EXCLUDED.descripcion, requiere_actividad = EXCLUDED.requiere_actividad;
     `);
 
@@ -364,6 +376,7 @@ export async function runDatabaseRepair(customConnectionString?: string): Promis
       { tabla: 'encuesta_preguntas', seq: 'encuesta_preguntas_id_seq' },
       { tabla: 'encuesta_opciones', seq: 'encuesta_opciones_id_seq' },
       { tabla: 'encuesta_respuestas_detalles', seq: 'encuesta_respuestas_detalles_id_seq' },
+      { tabla: 'materiales', seq: 'materiales_id_seq' },
       { tabla: 'suscripciones_push', seq: 'suscripciones_push_id_seq' },
       { tabla: 'logs_auditoria', seq: 'logs_auditoria_id_seq' },
       { tabla: 'logs_journaling', seq: 'logs_journaling_id_seq' },

@@ -2,11 +2,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Card from "./Card";
-import imgCard1 from "@/assets/ICONOS CARD/card1.svg";
-import imgCard2 from "@/assets/ICONOS CARD/card2.svg";
-import imgCard3 from "@/assets/ICONOS CARD/card3.svg";
-import imgCard4 from "@/assets/ICONOS CARD/card4.svg";
-import imgCard5 from "@/assets/ICONOS CARD/card5.svg";
+import imgCard1 from "@/assets/IFTS_27/iconos_card/icono=aulaabierta.svg";
+import imgCard2 from "@/assets/IFTS_27/iconos_card/icono=muestrapermanente.svg";
+import imgCard3 from "@/assets/IFTS_27/iconos_card/icono=presentacionacademica.svg";
+import imgCard4 from "@/assets/IFTS_27/iconos_card/icono=proyectos.svg";
+import imgCard5 from "@/assets/IFTS_27/iconos_card/icono=talentos.svg";
+import miscelaneaBarraBlanca from "@/assets/IFTS_27/hero/Miscelanea barra blanca.svg";
+import miscelaneaPuntos from "@/assets/IFTS_27/hero/Miscelanea puntos.svg";
 import Link from "next/link";
 import Image from "next/image";
 import miscelanea_azul from "@/assets/IFTS_27/hero/Miscelanea barra azul.svg" ;
@@ -172,6 +174,33 @@ const CardsInfo = () => {
             {/* CONTENEDOR DE ACTIVIDADES */}
             <div className="relative w-full">
 
+                {/* ENCABEZADO DECORATIVO (Noelia-Cards) */}
+                <div className="w-full relative" style={{ backgroundColor: 'var(--color-blanco)' }}>
+                    {/* 1. Fondo azul superior */}
+                    <div className="relative w-full pt-3 md:pt-4 overflow-hidden" style={{ backgroundColor: 'var(--color-azul-claro)' }}>
+                        <div className="w-1/2 md:w-1/3 flex items-end">
+                            <img
+                                src={miscelaneaBarraBlanca.src || miscelaneaBarraBlanca}
+                                alt=""
+                                className="w-full h-auto block align-bottom pointer-events-none object-contain"
+                            />
+                        </div>
+                    </div>
+
+                    {/* 2. Franja de puntos continuos */}
+                    <div className="relative z-10 w-full pt-3 pb-2 overflow-hidden -mt-[1px]" style={{ backgroundColor: 'var(--color-blanco)' }}>
+                        <div className="flex w-full items-center justify-start gap-0 overflow-hidden">
+                            {Array.from({ length: 45 }).map((_, i) => (
+                                <img
+                                    key={i}
+                                    src={miscelaneaPuntos.src || miscelaneaPuntos}
+                                    alt=""
+                                    className="h-3 md:h-3.5 shrink-0 block object-contain pointer-events-none"
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
                 
                 <div className="max-w-6xl w-full mx-auto px-4 pt-16 pb-4">
                     <h2 className="text-3xl md:text-4xl font-bold text-[#1D3343] text-left">
