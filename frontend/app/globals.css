@@ -272,6 +272,54 @@ body:not(.admin-root) section#congreso p {
   color: var(--frontend-sobre-text, #334155);
 }
 
+/* Programa */
+body:not(.admin-root) section#programa-wrapper {
+  background-color: var(--frontend-programa-bg, #1c3342) !important;
+}
+
+/* Título de la sección: "Programa del Congreso" */
+body:not(.admin-root) section#programa-wrapper h2 {
+  color: #FFFFFF !important;
+}
+
+/* Etiquetas de fecha (la barra amarilla con el día) */
+body:not(.admin-root) section#programa-wrapper .border-amarillo {
+  color: #FFFFFF !important;
+}
+
+/* Títulos de cada actividad, dentro de las tarjetas */
+body:not(.admin-root) section#programa-wrapper article h3 {
+  color: #035b80 !important;
+}
+
+body:not(.admin-root) section#programa-wrapper #programa > div:first-child p {
+  color: #FFFFFF !important;
+}
+
+/* Etiquetas: "Estado:" y "Sala:" */
+body:not(.admin-root) section#programa-wrapper article .programa-etiqueta {
+  color: #1D3343 !important;
+  font-size: 14px !important;
+}
+
+/* Valores: "Vigente", nombre del aula */
+body:not(.admin-root) section#programa-wrapper article .programa-valor {
+  color: #1D3343 !important;
+}
+
+/* Etiqueta de categoría */
+body:not(.admin-root) section#programa-wrapper article .programa-categoria {
+  background-color: #FFFFFF !important;
+  border-color: #035b80 !important;
+  color: #1D3343 !important;
+  border-radius: 5px !important;  
+}
+
+/* Botones de filtro del programa */
+body:not(.admin-root) section#programa-wrapper #programa button {
+  border-radius: 15px !important;
+}
+
 /* 6. Tarjetas de Actividades y Módulos Formativos */
 body:not(.admin-root) div[class*="bg-[#FCFCFC]"],
 body:not(.admin-root) .card-custom {

@@ -27,6 +27,7 @@ import AdminEstadisticasDesglosadasView from '@/components/admin/AdminEstadistic
 import AdminManualesView from '@/components/admin/AdminManualesView';
 import AdminIdentificacionEditorView from '@/components/admin/AdminIdentificacionEditorView';
 import AdminFrontendCmsView from '@/components/admin/AdminFrontendCmsView';
+import AdminMaterialesView from '@/components/admin/AdminMaterialesView';
 import {
   BACKEND_THEMES,
   THEME_STORAGE_KEY,
@@ -40,6 +41,7 @@ type TabKey =
   | 'dashboard'
   | 'usuarios'
   | 'actividades'
+  | 'materiales'
   | 'puntos'
   | 'operadores'
   | 'catalogo'
@@ -359,6 +361,7 @@ export default function AdminDashboardPage() {
       icon: '📚',
       tabs: [
         { key: 'actividades', label: 'Actividades & Cronograma', shortLabel: 'Actividades', icon: '📅', desc: 'Charlas, talleres, recintos y horarios', minJerarquia: 4 },
+        { key: 'materiales', label: 'Gestión de Materiales', shortLabel: 'Materiales', icon: '📁', desc: 'Administración de documentos, videos, imágenes y recursos', minJerarquia: 3 },
         { key: 'presentadores', label: 'Presentadores & Ponentes', shortLabel: 'Ponentes', icon: '🎤', desc: 'Gestión independiente de disertantes y ponencias', minJerarquia: 4 },
         { key: 'catalogo', label: 'Materias Canónicas', shortLabel: 'Materias', icon: '📋', desc: 'Áreas temáticas y créditos institucionales', minJerarquia: 4 },
         { key: 'homologaciones', label: 'Homologación de Ponentes', shortLabel: 'Homologación', icon: '🎖️', desc: 'Validación y dictamen de expositores', minJerarquia: 4 },
@@ -981,6 +984,7 @@ export default function AdminDashboardPage() {
                 {[
                   { key: 'usuarios', icon: '👥', title: 'Participantes', desc: 'Inscriptos, roles, estados y promociones', tag: `${resumen?.confirmados || 0} activos`, color: 'hover:border-blue-300' },
                   { key: 'actividades', icon: '📅', title: 'Actividades & Salas', desc: 'Charlas, talleres, oradores y cupos', tag: 'Cronograma', color: 'hover:border-indigo-300' },
+                  { key: 'materiales', icon: '📁', title: 'Gestión de Materiales', desc: 'Documentos, videos, imágenes y recursos', tag: 'Contenidos', color: 'hover:border-green-300' },
                   { key: 'acreditaciones', icon: '🎟️', title: 'Control de Accesos', desc: 'Auditoría en vivo de molinetes y scans', tag: 'Molinetes', color: 'hover:border-emerald-300' },
                   { key: 'certificados', icon: '🎓', title: 'Certificados Oficiales', desc: 'Emisión, validador QR y descarga ZIP', tag: 'Diplomas', color: 'hover:border-amber-300' },
                   { key: 'encuestas', icon: '📋', title: 'Encuestas & Calidad', desc: 'Gestión de encuestas, preguntas y métricas', tag: 'Evaluación', color: 'hover:border-purple-300' },
@@ -1132,79 +1136,84 @@ export default function AdminDashboardPage() {
           <AdminActividadesView catalogos={catalogos} onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 4. CRUD PUNTOS DE ACCESO */}
+        {/*4. CRUD DE MATERIALES */}
+        {activeTab === 'materiales' && (
+          <AdminMaterialesView />
+        )}
+
+        {/* 5. CRUD PUNTOS DE ACCESO */}
         {activeTab === 'puntos' && (
           <AdminPuntosAccesoView onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 5. CRUD OPERADORES */}
+        {/* 6. CRUD OPERADORES */}
         {activeTab === 'operadores' && (
           <AdminOperadoresView catalogos={catalogos} onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 6. CRUD CATÁLOGO DE MATERIAS */}
+        {/* 7. CRUD CATÁLOGO DE MATERIAS */}
         {activeTab === 'catalogo' && (
           <AdminCatalogoMateriasView onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 7. CRUD BLACKLIST */}
+        {/* 8. CRUD BLACKLIST */}
         {activeTab === 'blacklist' && (
           <AdminBlacklistView onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 8. AUDITORÍA DE ACREDITACIONES EN VIVO */}
+        {/* 9. AUDITORÍA DE ACREDITACIONES EN VIVO */}
         {activeTab === 'acreditaciones' && (
           <AdminAcreditacionesView catalogos={catalogos} onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 9. CERTIFICADOS EMITIDOS */}
+        {/* 10. CERTIFICADOS EMITIDOS */}
         {activeTab === 'certificados' && (
           <AdminCertificadosView onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 9.B ENCUESTAS DE CALIDAD Y SATISFACCIÓN */}
+        {/* 11. ENCUESTAS DE CALIDAD Y SATISFACCIÓN */}
         {activeTab === 'encuestas' && <AdminEncuestasView />}
 
-        {/* 10. HOMOLOGACIONES DE PONENTES */}
+        {/* 12. HOMOLOGACIONES DE PONENTES */}
         {activeTab === 'homologaciones' && (
           <AdminHomologacionesView onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 11. EDICIONES Y EVENTOS */}
+        {/* 13. EDICIONES Y EVENTOS */}
         {activeTab === 'eventos' && (
           <AdminEventosView onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 12. CONFIGURACIÓN DEL SISTEMA */}
+        {/* 14. CONFIGURACIÓN DEL SISTEMA */}
         {activeTab === 'configuracion' && (
           <AdminConfiguracionView onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 13. AUDITORÍA FORENSE INMUTABLE */}
+        {/* 15. AUDITORÍA FORENSE INMUTABLE */}
         {activeTab === 'auditoria' && <AdminAuditoriaView />}
 
-        {/* 14. CRON JOBS */}
+        {/* 16. CRON JOBS */}
         {activeTab === 'cron' && (
           <AdminCronView onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 15. ESTADÍSTICAS ANALÍTICAS DESGLOSADAS (5 EJES) */}
+        {/* 17. ESTADÍSTICAS ANALÍTICAS DESGLOSADAS (5 EJES) */}
         {activeTab === 'estadisticas_5ejes' && <AdminEstadisticasDesglosadasView />}
 
-        {/* 16. GESTIÓN INDEPENDIENTE DE PRESENTADORES */}
+        {/* 18. GESTIÓN INDEPENDIENTE DE PRESENTADORES */}
         {activeTab === 'presentadores' && (
           <AdminPresentadoresView catalogos={catalogos} onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 17. MANUALES OFICIALES DEL SISTEMA Y DESCARGA PDF */}
+        {/* 19. MANUALES OFICIALES DEL SISTEMA Y DESCARGA PDF */}
         {activeTab === 'manuales' && <AdminManualesView />}
 
-        {/* 18. EDITOR WYSIWYG IDENTIFICACIONES */}
+        {/* 20. EDITOR WYSIWYG IDENTIFICACIONES */}
         {activeTab === 'identificacion_editor' && (
           <AdminIdentificacionEditorView onNotice={(msg) => setActionNotice(msg)} />
         )}
 
-        {/* 19. CMS FRONTEND (TARJETAS Y MODALIDADES) */}
+        {/* 21. CMS FRONTEND (TARJETAS Y MODALIDADES) */}
         {activeTab === 'frontend_cms' && (
           <AdminFrontendCmsView onNotice={(msg) => setActionNotice(msg)} />
         )}

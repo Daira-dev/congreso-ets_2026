@@ -148,7 +148,7 @@ export const FRONTEND_THEMES: FrontendTheme[] = [
       '--frontend-card-text': '#4B5563',
       '--frontend-card-link': '#035C80',
 
-      '--frontend-programa-bg': '#FFFFFF',
+      '--frontend-programa-bg': '#035b80',
       '--frontend-filter-active-bg': '#1D3343',
       '--frontend-filter-active-text': '#FFFFFF',
       '--frontend-filter-inactive-bg': '#FFFFFF',

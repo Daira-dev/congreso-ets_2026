@@ -34,11 +34,11 @@ if ! (echo > /dev/tcp/127.0.0.1/5433) 2>/dev/null && ! (echo > /dev/tcp/127.0.0.
     fi
 fi
 
-# 0.1 Sincronizar novedades de GitHub al iniciar
+# 0.1 Sincronizar novedades de GitHub al iniciar (no interactivo)
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "nestor-HERO")
 if git remote get-url origin >/dev/null 2>&1; then
     echo "  • Sincronizando actualizaciones desde GitHub ($CURRENT_BRANCH)..."
-    git pull --rebase origin "$CURRENT_BRANCH" 2>&1 | sed 's/^/    /' || true
+    GIT_TERMINAL_PROMPT=0 timeout 5s git pull --rebase origin "$CURRENT_BRANCH" 2>&1 | sed 's/^/    /' || echo "    [Info] Sincronización omitida (sin credenciales interactivas o sin conexión remota)."
 fi
 
 # Verificar si ya está en ejecución

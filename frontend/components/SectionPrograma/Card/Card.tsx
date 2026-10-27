@@ -36,14 +36,14 @@ const CardPrograma = ({
                     {/* Horario */}
                     <div className="w-max text-left leading-none">
                         <p className="text-lg font-bold text-azul-oscuro">
-                            {horaInicio}
+                            {horario}
                         </p>
 
-                        {horaFin && (
+                        {/* {horaFin && (
                             <p className="text-lg font-bold text-azul-oscuro">
                                 {horaFin}
                             </p>
-                        )}
+                        )} */}
 
                         <p className="mt-0.5 text-xs leading-none text-gray-500">
                             {duracion}
@@ -51,11 +51,11 @@ const CardPrograma = ({
                     </div>
 
                     {/* Separador */}
-                    <div className="h-full min-h-[65px] border-l border-gray-300"></div>
+                    <div className="h-full min-h-[65px] border-l border-black-300"></div>
 
                     {/* Información */}
                     <div className="min-w-0">
-                        <span className="inline-block max-w-full break-words rounded-full border border-gray-300 bg-gray-100 px-2.5 py-1 text-xs leading-tight">
+                        <span className="programa-categoria inline-block max-w-full break-words rounded-full border border-gray-300 bg-gray-100 px-2.5 py-1 text-xs leading-tight">
                             {categoria}
                         </span>
 
@@ -71,19 +71,19 @@ const CardPrograma = ({
                     {/* Estado + Sala */}
                     <div className="min-w-0 text-sm">
                         <p>
-                            <span className="text-xs text-gray-500">
+                            <span className="programa-etiqueta text-xs text-gray-500">
                                 Estado:
                             </span>{" "}
-                            <span className="font-semibold">
+                            <span className="programa-valor font-semibold">
                                 {estado}
                             </span>
                         </p>
 
                         <p className="mt-2 break-words">
-                            <span className="text-xs text-gray-500">
+                            <span className="programa-etiqueta text-xs text-gray-500">
                                 Sala:
                             </span>{" "}
-                            <span className="font-semibold">
+                            <span className="programa-valor font-semibold">
                                 {sala}
                             </span>
                         </p>
@@ -106,7 +106,7 @@ const CardPrograma = ({
                             </p>
                         </div>
 
-                        <p className="shrink-0 text-xs font-semibold leading-tight">
+                        <p className="programa-valor shrink-0 text-xs font-semibold leading-tight">
                             {estado}
                         </p>
                     </div>
@@ -114,7 +114,7 @@ const CardPrograma = ({
                     {/* Información */}
                     <div className="mt-1 min-w-0">
 
-                        <span className="inline-block max-w-full break-words rounded-full border border-gray-300 bg-gray-100 px-2.5 py-1 text-xs leading-tight">
+                        <span className="programa-categoria inline-block max-w-full break-words rounded-full border border-gray-300 bg-gray-100 px-2.5 py-1 text-xs leading-tight">
                             {categoria}
                         </span>
 
@@ -126,8 +126,8 @@ const CardPrograma = ({
                             {expositor}
                         </p>
 
-                        <p className="mt-2 break-words text-xs text-gray-600">
-                            <span className="font-semibold text-gray-700">
+                        <p className="programa-valor mt-2 break-words text-xs text-gray-600">
+                            <span className="programa-etiqueta font-semibold text-gray-700">
                                 Sala:
                             </span>{" "}
                             {sala}
@@ -138,7 +138,7 @@ const CardPrograma = ({
 
             {/* Descripción */}
             {descripcion && (
-                <div className="border-t border-gray-200 px-4 py-3 md:px-5">
+                <div className="border-t border-black-200 mx-4 py-3 md:px-5">
                     <p className="break-words text-xs leading-relaxed text-gray-600">
                         {descripcion}
                     </p>

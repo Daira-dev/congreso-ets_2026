@@ -10,7 +10,7 @@ const links = [
     { href: "/#congreso", label: "El Congreso", section: "congreso" },
     { href: "/#programa", label: "Programa", section: "programa" },
     { href: "/participa", label: "Participa" },
-    { href: "/contacto", label: "Contacto" },
+    { href: "/contacto", label: "Preguntas Frecuentes" },
     { href: "/materiales", label: "Materiales" },
 ];
 

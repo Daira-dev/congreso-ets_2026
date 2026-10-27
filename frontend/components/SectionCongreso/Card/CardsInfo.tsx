@@ -8,7 +8,9 @@ import imgCard3 from "@/assets/ICONOS CARD/card3.svg";
 import imgCard4 from "@/assets/ICONOS CARD/card4.svg";
 import imgCard5 from "@/assets/ICONOS CARD/card5.svg";
 import Link from "next/link";
-
+import Image from "next/image";
+import miscelanea_azul from "@/assets/IFTS_27/hero/Miscelanea barra azul.svg" ;
+import miscelanea_oscura from "@/assets/IFTS_27/hero/Miscelanea barra oscura.svg";
 
 const CardsInfo = () => {
     const [evento, setEvento] = useState<any>(null);
@@ -166,139 +168,180 @@ const CardsInfo = () => {
     };
 
     return (
-        <section className="flex flex-col items-center w-full pb-10 overflow-hidden bg-white">
-            <div className="max-w-6xl w-full mx-auto px-4 pt-16 pb-4">
-                <h2 className="text-3xl md:text-4xl font-bold text-[#1D3343] text-left">
-                    Actividades
-                </h2>
-                <p className="text-gray-600 text-base mt-2 text-left"> Conocé las diferentes modalidades de participación y presentación previstas para el congreso.</p>
-            </div>
+        <section className="relative flex flex-col items-center w-full pb-10 bg-white">
+            {/* CONTENEDOR DE ACTIVIDADES */}
+            <div className="relative w-full">
 
-            {/* SECCION DE CARDS Y CARRUSEL */}
-            <div className="max-w-6xl w-full mx-auto px-4 pb-16">
                 
-                {/* Contenedor del Carrusel */}
-                <div 
-                    ref={carouselRef}
-                    onMouseDown={handleMouseDown}
-                    onMouseLeave={handleMouseLeave}
-                    onMouseUp={handleMouseUp}
-                    onMouseMove={handleMouseMove}
-                    onScroll={handleScroll}
-                    className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-6 pt-4 pb-8 [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing select-none"
-                    style={{ scrollbarWidth: 'none' }}
-                >
-                    {cardsData.map((card, index) => (
-                        <div 
-                            key={index} 
-                            className="w-[290px] sm:w-[330px] shrink-0 snap-center flex flex-col"
-                        >
-                            <Card 
-                                cardImg={card.image} 
-                                title={card.title} 
-                                description={card.description}
-                                pdfUrl={card.pdfUrl}
-                                badge={card.badge}
-                            />
-                        </div>
-                    ))}
+                <div className="max-w-6xl w-full mx-auto px-4 pt-16 pb-4">
+                    <h2 className="text-3xl md:text-4xl font-bold text-[#1D3343] text-left">
+                        Actividades
+                    </h2>
+                    <p className="text-gray-600 text-base mt-2 text-left"> Conocé las diferentes modalidades de participación y presentación previstas para el congreso.</p>
                 </div>
 
-                {/* PUNTOS */}
-                <div className="flex justify-center items-center gap-2 sm:gap-3 mt-2">
-                    {cardsData.map((_, index) => (
-                        <button
-                            key={index}
-                            onClick={() => scrollToCard(index)}
-                            className={`transition-all duration-300 rounded-full ${
-                                activeIndex === index 
-                                    ? "w-8 sm:w-10 h-2.5 sm:h-3 bg-[#1D3343]" // Azul Oscuro para el activo
-                                    : "w-2.5 sm:w-3 h-2.5 sm:h-3 bg-gray-300 hover:bg-[#035C80]" // Azul Claro en hover
-                            }`}
-                            aria-label={`Ir a la tarjeta ${index + 1}`}
-                        />
-                    ))}
+                {/* SECCION DE CARDS Y CARRUSEL */}
+                <div className="relative max-w-6xl w-full mx-auto px-4 pb-16">
+                    
+                    {/* Contenedor del Carrusel */}
+                    <div 
+                        ref={carouselRef}
+                        onMouseDown={handleMouseDown}
+                        onMouseLeave={handleMouseLeave}
+                        onMouseUp={handleMouseUp}
+                        onMouseMove={handleMouseMove}
+                        onScroll={handleScroll}
+                        className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-6 pt-4 pb-8 [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing select-none"
+                        style={{ scrollbarWidth: 'none' }}
+                    >
+                        {cardsData.map((card, index) => (
+                            <div 
+                                key={index} 
+                                className="w-[290px] sm:w-[330px] shrink-0 snap-center flex flex-col"
+                            >
+                                <Card 
+                                    cardImg={card.image} 
+                                    title={card.title} 
+                                    description={card.description}
+                                    pdfUrl={card.pdfUrl}
+                                    badge={card.badge}
+                                />
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* PUNTOS */}
+                    <div className="flex justify-center items-center gap-2 sm:gap-3 mt-2">
+                        {cardsData.map((_, index) => (
+                            <button
+                                key={index}
+                                onClick={() => scrollToCard(index)}
+                                className={`transition-all duration-300 rounded-full ${
+                                    activeIndex === index 
+                                        ? "w-8 sm:w-10 h-2.5 sm:h-3 bg-[#1D3343]" // Azul Oscuro para el activo
+                                        : "w-2.5 sm:w-3 h-2.5 sm:h-3 bg-gray-300 hover:bg-[#035C80]" // Azul Claro en hover
+                                }`}
+                                aria-label={`Ir a la tarjeta ${index + 1}`}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                {/* MISCELANEA BARRA OSCURA */}
+                <div className="absolute pointer-events-none bottom-[-25px] md:bottom-[-15px] left-[-0.5px] z-20 w-[min(720px,90vw)] translate-y-1/2">
+                    <Image
+                        src={miscelanea_oscura}
+                        alt=""
+                        aria-hidden={true}
+                        width={720}
+                        height={200}
+                        className="block h-auto w-full"
+                    />
                 </div>
             </div>
+            
 
             {/* SECCION DE INFORMACION Y MAPA */}
-            <div className="w-full bg-[#FCFCFC] border-t border-gray-200 flex flex-col md:flex-row justify-between items-stretch min-h-[220px] mt-8">
-                
-                {/* info izquierda */}
-                <div className="flex flex-col md:flex-row items-center justify-center flex-1 py-10 px-8 gap-8 md:gap-12">
-                    
-                    {/* Fecha */}
-                    <div className="flex items-start gap-4">
-                        <div className="mt-1 text-[#035C80]">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M19 4H18V2H16V4H8V2H6V4H5C3.89 4 3.01 4.9 3.01 6L3 20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V10H19V20ZM19 8H5V6H19V8Z"/>
-                            </svg>
+            <div className="relative mt-8 min-h-[460px] w-full overflow-hidden bg-[#1c3342]">
+
+                <div className="relative z-10 grid min-h-[460px] grid-cols-1 items-center gap-10 px-6 py-12 sm:px-10 md:grid-cols-[1.05fr_0.95fr] md:gap-8 md:px-8 md:py-16 lg:px-14 xl:px-16">
+
+                    {/* INFO IZQUIERDA */}
+                    <div className="flex flex-col items-start justify-center gap-8 sm:flex-row sm:gap-6 md:gap-5 lg:gap-8">
+
+                        {/* FECHA */}
+                        <div className="flex items-start gap-4">
+                            <div className="w-10 shrink-0 text-white">
+                                <svg className="w-full h-auto" width="40" height="40" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19 4H18V2H16V4H8V2H6V4H5C3.89 4 3.01 4.9 3.01 6L3 20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V10H19V20ZM19 8H5V6H19V8Z"/>
+                                </svg>
+                            </div>
+                            <div className="min-w-[130px]">
+                                <h4 className="text-[17px] font-bold text-white">Fecha</h4>
+                                <p className="mt-1 text-sm leading-snug text-white">
+                                    {evento && evento.fecha_inicio ? (
+                                        <>
+                                            {formatearFecha(evento.fecha_inicio)}
+                                            {evento.fecha_fin && evento.fecha_fin !== evento.fecha_inicio && (
+                                                <>
+                                                    <br />
+                                                    al {formatearFecha(evento.fecha_fin)}
+                                                </>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>Viernes 6 de<br />noviembre 2026</>
+                                    )}
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <h4 className="font-bold text-[#1D3343] text-[17px]">Fecha</h4>
-                            <p className="text-gray-700 text-sm mt-1 leading-snug">
-                                {evento && evento.fecha_inicio ? (
-                                    <>
-                                        {formatearFecha(evento.fecha_inicio)}
-                                        {evento.fecha_fin && evento.fecha_fin !== evento.fecha_inicio ? <><br/>al {formatearFecha(evento.fecha_fin)}</> : ''}
-                                    </>
-                                ) : (
-                                    <>Viernes 6 de<br/>noviembre 2026</>
-                                )}
-                            </p>
+
+                        {/* DIVISORES */}
+                        <div className="hidden h-24 w-px shrink-0 bg-white/60 sm:block" />
+                        {/* <div className="block md:hidden w-1/2 h-px bg-gray-300"></div> */}
+
+                        {/* UBICACIÓN */}
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 shrink-0 text-white">
+                                <svg className="w-full h-auto fill-none stroke-white" strokeWidth="1.5" viewBox="0 0 24 24" stroke="white" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z"/>
+                                </svg>
+                            </div>
+                            <div className="min-w-0">
+                                <h4 className="text-[17px] font-bold text-white">
+                                    {evento?.sede_nombre || "Auditorio Polo Saavedra"}
+                                </h4>
+                                <p className="mt-1 text-sm leading-snug text-white">
+                                    {evento?.sede_direccion ? (
+                                        evento.sede_direccion.split(",").map((line: string, i: number) => (
+                                            <span key={i}>
+                                                {line.trim()}
+                                                {i === 0 && <br />}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <>Crisólogo Larralde 5085<br />Buenos Aires</>
+                                    )}
+                                </p>
+                            </div>
                         </div>
                     </div>
-                    
-                    {/* Divisores */}
-                    <div className="hidden md:block w-px h-16 bg-gray-300"></div>
-                    <div className="block md:hidden w-1/2 h-px bg-gray-300"></div>
 
-                    {/* Ubiicación */}
-                    <div className="flex items-start gap-4">
-                        <div className="mt-1 text-[#035C80]">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z"/>
-                            </svg>
+                    {/* MAPA Y BOTÓN DERECHOS*/}
+                    <div className="mx-auto flex w-full max-w-[590px] flex-col items-center gap-6 md:ml-auto">
+                        <div className="relative h-[280px] w-full overflow-hidden rounded-xl bg-gray-200 sm:h-[300px] md:h-[290px] lg:h-[320px]">
+                            <iframe
+                                src={evento?.sede_mapa_url || "https://maps.google.com/maps?q=Cris%C3%B3logo+Larralde+5085,+Buenos+Aires&t=&z=15&ie=UTF8&iwloc=&output=embed"}
+                                title="Ubicación del evento"
+                                className="absolute inset-0 h-full w-full border-0"
+                                allowFullScreen
+                                loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
+                            />
                         </div>
-                        <div>
-                            <h4 className="font-bold text-[#1D3343] text-[17px]">{evento?.sede_nombre || "Auditorio Polo Saavedra"}</h4>
-                            <p className="text-gray-700 text-sm mt-1 leading-snug">
-                                {evento?.sede_direccion ? (
-                                    evento.sede_direccion.split(',').map((line: string, i: number) => (
-                                        <span key={i}>{line.trim()}{i === 0 && <br/>}</span>
-                                    ))
-                                ) : (
-                                    <>Crisólogo Larralde 5085<br/>Buenos Aires</>
-                                )}
-                            </p>
-                        </div>
+
+                        <Link
+                            href={evento?.sede_mapa_url || "https://maps.google.com/?q=Crisólogo+Larralde+5085,+Ciudad+Autónoma+de+Buenos+Aires"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-3 rounded-full bg-[#FFCD02] px-5 py-2 text-sm font-medium text-black transition-colors hover:bg-[#f5bd00] no-underline"
+                        >
+                            Cómo llegar <span aria-hidden="true">→</span>
+                        </Link>
                     </div>
                 </div>
 
-                {/* Mapa Derecha */}
-                <div className="flex-1 relative min-h-[300px] md:min-h-full bg-gray-200">
-                    
-                    <iframe 
-                        src={evento?.sede_mapa_url || "https://maps.google.com/maps?q=Cris%C3%B3logo+Larralde+5085,+Buenos+Aires&t=&z=15&ie=UTF8&iwloc=&output=embed"} 
-                        className="absolute inset-0 w-full h-full border-0"
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                    ></iframe>
-                    
-                    {/* boton */}
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#1D3343]/40 to-transparent pointer-events-none"></div>
-
-                    <Link 
-                        href={evento?.sede_mapa_url || "https://maps.google.com/?q=Crisólogo+Larralde+5085,+Ciudad+Autónoma+de+Buenos+Aires"}
-                        className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10"
-                    >
-                        <button className="bg-[#FCFCFC] px-6 py-2 rounded text-[#1D3343] text-sm font-bold shadow-[0_4px_12px_rgb(0,0,0,0.25)] flex items-center gap-2 hover:bg-[#FFCD02] hover:scale-105 transition-all cursor-pointer">
-                            Cómo llegar &rarr;
-                        </button>
-                    </Link>
+                {/* MISCELÁNEA BARRA AZUL */}
+                <div className="pointer-events-none absolute bottom-0 left-0 z-10 w-[min(720px,90vw)]">
+                    <Image
+                        src={miscelanea_azul}
+                        alt=""
+                        aria-hidden={true}
+                        width={720}
+                        height={200}
+                        className="block h-auto w-full"
+                    />
                 </div>
-
             </div>
         </section>
     );
