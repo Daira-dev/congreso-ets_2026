@@ -1,0 +1,1413 @@
+# Meeting Transcription
+
+  Meeting started: 28/10/2026, 6:44:31 p.m.
+  Duration: 146 minutes
+  Participants: Daira Barreto, Damian Luna, Jesús Ignacio García, Juan Yotti, Luis Ojeda, Maria Del Carmen Acri, Nestor Pineiro, Noelia Fuentes, Oriana Marazzita
+
+  [View original transcript](https://app.tactiq.io/api/2/u/m/r/OjXEGo2X8kYNDXD6CF6d?o=txt)
+
+    ## Detailed summary
+
+## Overview
+Se acordó focalizar la entrega prioritaria para el 6/11 (versión mínima: Front hardcodeado con un video editable) y planificar una entrega completa y segura para el 25/11; se definieron tareas inmediatas: clonar el Front actual, dejar solo las rutas/elementos requeridos, y decidir si el acceso de edición será por un mini-back o por un mecanismo con JSON/clave. Se discutieron además los riesgos de seguridad detectados en la auditoría y la necesidad de repartir tareas para terminar testing y correcciones.
+
+## Objetivos principales acordados
+- Entregar una versión mínima (Front hardcodeado) antes del 6 de noviembre con:
+  - Inicio, giro/información institucional, presentación de dispositivos/actividades, contacto institucional y un espacio para subir/editar el video de apertura (editable).
+  - Elementos no requeridos (programa, cómo llegar, inscribite, participar, etc.) ocultos/eliminados o mostrados como “Próximamente”.
+  - Evitar base de datos pública en esta entrega para reducir riesgos y acelerar entrega.
+- Entrega intermedia y segura (con seguridad aplicada y más funcionalidades) fijada para el 4/11 o 11/11 como opción; entrega completa y estable con edición de más secciones y micro-credenciales propuesta para el 25/11.
+- Tomar decisión definitiva después de la reunión de María con el ministerio (mañana) sobre si implementar acceso editable vía JSON/clave o un mini-Back real.
+
+## Problemas de seguridad y técnicas detectadas
+- Archivo con credenciales expuestas en el repositorio (docker/archivos compartidos) — hallazgo crítico que requiere parcheo.
+- Discrepancias entre el informe de auditoría del ministerio y el testing propio de Luis: diferencias en número y severidad de vulnerabilidades (ellos: 8 bloqueantes vs Luis: 7; diferencias en críticos/altos/medios).
+- Posible uso de IA para generar parte del código/documentación (comentado como causa de fallos o descuidos).
+- Riesgos de exponer datos si se deja JSON o archivo accesible sin controles; se propusieron mitigaciones temporales: URL/ botón de acceso “oculto”, bloqueo por intentos, hash/clave en JSON, o un mini-back con entrada protegida.
+- Recomendación tácita: no tocar docker/credenciales sin coordinar y planificar tests de seguridad exhaustivos antes de publicar.
+
+## Decisiones técnicas y de arquitectura
+- Estrategia propuesta por consenso:
+  - Clonar el Front actual y construir un “Front capado” (sitio estático) que muestre solo lo solicitado y con un micro-mecanismo para cambiar el video institucional (JSON + clave o mini-back mínimo).
+  - Mantener el repositorio principal para desarrollo continuo; trabajar sobre el clon para no romper el proyecto base.
+  - Hardcodear (jarcodear) la mayoría de contenidos en la entrega mínima para evitar introducir nuevos endpoints inseguros.
+  - Para materiales/novedades: usar tarjetas con miniatura; al hacer clic abre nueva pestaña o modal que muestre contenido (video vía enlace oficial/YouTube preferiblemente).
+  - Guardado de medios: recomendación técnica de guardar archivos en carpetas en servidor y almacenar en la “base de datos” (o JSON) sólo la URL/ruta y metadatos (evitar almacenar binarios en DB).
+- Autenticación mínima propuesta:
+  - Acceso por URL “secreta” (p. ej. /admin/XYZ-long-string) o botón oculto que solicita clave; la clave comparada con hash guardado en JSON/archivo protegido.
+  - Alternativa: micro-CRUD restringido (mini-back) con un único super-admin para cambiar video y contenidos mínimos.
+
+## Tareas inmediatas y asignaciones (acciones concretas)
+- Luis:
+  - Preparar y compartir en Drive el reporte HTML del cruce entre brief, desarrollo y testing (archivo ya en proceso).
+  - Revisar documentación e imágenes disponibles en Drive para el carrusel; confirmar si hay imágenes proporcionadas por el ministerio.
+  - Ayudar a Néstor con el mini-Back para la edición del video si se opta por esa vía.
+  - Enviar minuta de la reunión ~15–20 minutos después (mencionó que la preparará).
+- Néstor:
+  - Clonar el Front actual y generar el “Front capado” estático (incluir opción para carrusel con imágenes fijas y un micro-mecanismo para cambiar video).
+  - Preparar el mecanismo JSON/pequeño control de acceso (hash/clave) y probar subida/edit del video (puede generar JSON local con rutas).
+  - Extraer/aislar docker o cualquier configuración con credenciales sensibles y documentar qué queda expuesto.
+- Daira:
+  - Continuar desarrollando la gestión de materiales (cards) y coordinar cómo estructurar formularios por tipo de contenido (foto, video, documento).
+  - Aclarar y documentar la base de datos/estructura de almacenamiento (rutas, nombres de archivo, carpetas).
+- Noelia, Juan, Damián, Jesús:
+  - Confirmar en sus ramas el último commit subido y coordinar sincronización del git (quedó detectado que algunas ramas no se actualizaron).
+  - Apoyar testing funcional / verificación de front y back en las tareas asignadas: cards, preguntas frecuentes, formularios mínimos.
+- Maria:
+  - Reunión con el ministerio mañana (decisiva) para confirmar si aceptan la versión hardcodeada + mecanismo JSON/clave o exigen edición real desde back.
+  - Comunicar decisión al equipo y confirmar si el ministerio provee imágenes para el carrusel y datos de contacto.
+- Equipo en general:
+  - No tocar git ni ramas principales hasta la confirmación de María a las 14:00 del día siguiente; coordinar para repartir testing y desarrollo posterior.
+  - Repartir tareas de testing una vez que el Front capado esté disponible para desplegar pruebas.
+
+## Contenidos funcionales acordados para la entrega mínima
+- Deben estar visibles y/o editables según lo acordado:
+  - Giro / información institucional (hardcodeado).
+  - Presentación de los cinco dispositivos/actividades (mostrar, pero sin edición en la primera entrega).
+  - Contacto institucional (pendiente que ministerio suministre datos).
+  - Espacio para video institucional de apertura (editable por mecanismo convenido).
+  - Carrusel: imágenes estáticas (si no hay imágenes provistas, jarcodear 2–3 imágenes de placeholder); visualizar miniaturas.
+  - Quitar/ocultar del menú: programa, cómo llegar, inscribite, participa (o dejarlos como “Próximamente”).
+  - Preguntas frecuentes: idealmente editables; si no alcanza el tiempo, dejarlas hardcodeadas y planificar edición en próximas entregas.
+  - FAQs, materiales y novedades: cards con miniatura; al clic abrir contenido en nueva pestaña/modal.
+  - Micro-credenciales: excluidas de la entrega mínima (quedan para entregas siguientes).
+
+## Cronograma propuesto (fechas concretas mencionadas)
+- Antes del 6/11: Entrega mínima (Front hardcodeado + video editable).
+- 4/11 o 11/11: fecha tentativa para una versión con seguridades aplicadas (discusión entre el equipo; 4/11 era objetivo agresivo; 11/11 alternativa).
+- 25/11: Entrega completa y estable (incluyendo micro-credenciales, mayor edición desde back y seguridad reforzada). El equipo propone apuntar al 25/11 como fecha final para todo lo pendiente.
+- Próximo hito: reunión de María con el ministerio mañana (confirmación sobre JSON vs mini-Back, y provisión de imágenes/datos).
+
+## Riesgos, dependencias y puntos pendientes
+- Dependencias:
+  - Confirmación del ministerio sobre aceptación de la opción hardcodeada + JSON/clave y provisión de imágenes para el carrusel y datos de contacto.
+  - Subida/actualización de ramas por parte de Daira / Damián (máquina rota) y sincronización git.
+- Riesgos:
+  - Exposición de credenciales en docker/repositorio que requiere eliminación/parche inmediato si se decide seguir con Back.
+  - Plazo corto para aplicar parches de seguridad completos; podría requerir ~más tiempo y testing intensivo.
+  - Falta de imágenes o contenidos oficiales que obliguen a improvisar placeholders.
+- Pendientes por resolver:
+  - Decisión final (después de la reunión de María) sobre método de edición (JSON con clave vs mini-Back autenticado).
+  - Revisión y parcheo del archivo/ docker que contiene credenciales.
+  - División detallada de tareas de testing y asignación de responsables.
+  - Confirmación de la lista final de endpoints a bloquear/comentar en la entrega mínima.
+
+## Próximos pasos inmediatos (resumen de acción)
+1. María: confirmar en la reunión ministerial si aceptan la solución hardcodeada + mecanismo JSON/clave y recolectar imágenes/contacto; comunicar resultado al equipo antes de las 14:00 del día siguiente.
+2. Néstor: clonar Front y preparar Front capado estático; implementar micro-mecanismo para editar video (JSON/hash o mini-Back según decisión).
+3. Luis: generar y compartir el informe/HTML del cruce brief vs desarrollo vs testing; revisar Drive por imágenes; apoyar con el mini-Back si se elige esa vía.
+4. Daira: pulir la gestión de materiales (cards), documentar la estructura de almacenamiento y formularios por tipo de contenido.
+5. Equipo: no tocar ramas principales hasta confirmación; preparar pruebas y testing una vez disponible el Front capado.
+6. Todos: repartir testing y desarrollo para acelerar entrega y apuntar a la fecha objetivo (entrega mínima antes del 6/11; entrega completa el 25/11).
+
+## Notas finales / acuerdos de comunicación
+- No tocar git ni publicar cambios masivos antes de la confirmación de María.
+- María enviará un mail con la decisión ministerial y la ruta a seguir; Luis compartirá minuta breve y el reporte HTML.
+- Próxima reunión/seguimiento: luego de la reunión de María con el ministerio; se propuso continuar con revisiones mañana y mantener comunicación por mail/Drive.
+
+  
+
+  
+    ## Highlights
+
+    > 00:33 Luis Ojeda: documento que vimos juntos los otros días a la mañana en la devolución del
+> 04:40 Luis Ojeda: OK Bueno Igual yo bajé solamente lo que hay en el mail nuevo que creó en github, dayra Bajé las ramas la única que no estaba actualizada es la tuya la
+> 08:04 Nestor Pineiro: Creo que el último fue Damián sábado de la mañana, puede ser.
+> 08:16 Nestor Pineiro: Si no me acuerdo fue el viernes por la noche o sábado a la mañana.
+> 08:35 Luis Ojeda: Yo me bajé todo lo que hay hasta ahora en el hasta esta mañana.
+> 09:00 Maria Del Carmen Acri: De ayer al mediodía a hoy tocaste algo en git o ayer a la mañana nada bien
+> 10:33 Maria Del Carmen Acri: el Si vos Luis lo bajaste esta mañana si tenés la última versión con el backen
+> 10:46 Luis Ojeda: Exacto pero te hago una aclaración el maestro giro que aparece en github, es de
+> 11:18 Luis Ojeda: vieja al menos hasta esta mañana Claro porque yo la actualicé esta mañana y
+> 13:17 Luis Ojeda: Hasta hoy 6:30 a 7 de la mañana.
+> 20:53 Maria Del Carmen Acri: Y acá les cambio la ecuación un poco tampoco se las voy a cambiar tanto yo con Luis hablé a las 10 de la mañana. Sí, entre las 10 y las 11 Abre Don Luis
+> 23:26 Maria Del Carmen Acri: Porque ellos la deben estar viendo como estática de hecho Mañana vuelvo a
+> 24:52 Maria Del Carmen Acri: De lo que hay no hacer nada nuevo sino centrarme en los agujeros de seguridad no sé qué opinan ustedes. Cosa de que si mañana se terminan mañana se lo doy y se pasó pasado Pero
+> 33:36 Maria Del Carmen Acri: no recuerdo que me hayan pasado nada, va a saltar Cuando hable mañana.
+> 01:07:52 Maria Del Carmen Acri: más cosas. Rechazaron el que ellos se ocupen. de la seguridad No me parece ilógico Porque en eso de que me dijeron Bueno entonces Preséntame esto, pero la seguridad no podemos ocuparnos nosotros no me parece ilógico incluso lo habíamos hablado con Luis a la mañana, hay una de las fallas que es por el docker ellos no pueden meter mano en algo que no hicieron ellos el
+> 01:23:02 Nestor Pineiro: escúchame, si vos mañana Por ejemplo, yo mañana tengo el curso hasta las 10,
+> 01:23:13 Nestor Pineiro: liquidamos eso Mañana vos viendo como
+> 01:23:16 Luis Ojeda: Yo mañana tengo un día muy complicado, no puedo, puedo trabajar desde muy
+> 01:27:39 Maria Del Carmen Acri: Y mañana Averigua a ver si tenemos imágenes para ese carrusel, porque habían mandado imágenes, pero no sé si se pueden usar habían mandado.
+> 01:28:59 Luis Ojeda: eso no estoy seguro, pero puedo controlar mañana temprano y reviso toda la
+> 01:30:00 Maria Del Carmen Acri: a ver la duda de que tiene que ser editable o no tiene que voy a sacar mañana en la reunión, me voy a sacar la duda. reunión al igual que imágenes del Carrusel al igual que al
+> 01:30:13 Nestor Pineiro: Mañana tarde.
+> 01:30:23 Luis Ojeda: Sí, bien. bueno, Hagamos una cosa Yo en 15 20 minutos en cuanto esté descargada la edito a la a la minuta y la paso Para ir cerrando digo el ciclo esperamos las imágenes para el Carrusel de la reunión tuya con la gente del Ministerio del Congreso mañana.
+> 01:32:04 Daira Barreto: Pero si va tiene que editar el video y en todo caso, si mañana nos dicen que también tiene que estar editable la sección de congreso entre otras cosas.
+> 01:36:40 Maria Del Carmen Acri: Luis te quedó claro porque justo Me estoy contactando con Michelle por lo que te hable esta mañana lo del y así que me perdí un poco en lo que
+> 01:40:58 Maria Del Carmen Acri: Para vamos a hacer una cosa. Quédate con la idea de cómo va a estar hecho. Sí, quédate con esa idea por las dudas. Yo te pregunté algo mañana.
+> 01:41:40 Maria Del Carmen Acri: entregarlo. Está bien, no, pero no toquen nada esta mañana al mediodía que hable con ellos.
+> 01:42:29 Nestor Pineiro: en el peor de los en el peor de mañana la jarcodeamos dentro de la página.
+> 01:42:45 Luis Ojeda: provean de la de eso, así dejamos una página prácticamente estática con un con un pequeño registro de ingreso que ya nos dirán mañana si va a ser vía
+> 01:43:25 Maria Del Carmen Acri: Ok Ok algo que sea de nada cosa que mañana se sienten lo hacen honesto, mañana
+> 01:45:01 Luis Ojeda: Está bien Esto es con vistas a mañana a la reunión de mañana para que la
+> 01:52:38 Maria Del Carmen Acri: Es si me aceptan esto para mañana no necesito capa de seguridad porque no tengo
+> 01:56:44 Maria Del Carmen Acri: No me acepto en eso y quiere bloqueamos y ponemos seguridad, para qué fecha tiene que puede estar. Más allá de que mañana me pueden decir, no lo quiero para tal día.
+> 02:03:28 Maria Del Carmen Acri: hablamos con el profe Solo que están con palabras finas Sí pero en el mes de lunes, pues fue así el profe me dijo perfecto y yo dije Uy qué raro que me haya dicho perfecto. fueron como cuando He mandado ya otros mil visitas, Sí y de hecho se siguen mandando, si nadie les quita mérito a ustedes sí quiero que estén claro y es lo que se dejó en claro y mañana espero que me abordasen por no decir me estás pelotudeando,
+> 02:09:01 Luis Ojeda: Yo lo escribo mañana para ver.
+> 02:20:55 Daira Barreto: Mañana no, a ver qué definen.
+> 02:20:57 Maria Del Carmen Acri: Sí sí, sí, Hasta mañana al medio a tipo dos de la tarde no se toca nada. Hasta mañana Las dos de la tarde, porque todo esto está en el aire hasta que mañana no me reúna con ellos y me digan sí, no? Porque la reunión de mañana es para eso.
+> 02:22:13 Maria Del Carmen Acri: se unificó Sí hoy todo el mundo programa con Inteligencia artificial Lo importante es que pinche la menor cantidad posible. Y que sea lo más seguro posible. Sí, no es Inteligencia artificial sin inteligencia arti.
+> 02:23:39 Luis Ojeda: No, no, O sea lo que pueda aclarar oscurece Así que dejamos así enseguida no mañana temprano paso a la minuta de hoy a todos quieren todos en autos.
+> 02:24:00 Nestor Pineiro: Acabo de bajar el resumen de la Inteligencia artificial de la conversación, son
+> 02:25:13 Maria Del Carmen Acri: Por eso es que mañana espero que me dio me ilumine para que no diga lo que
+> 02:26:22 Luis Ojeda: Mañana arrancamos temprano pasando minutos y demás te damos tu aviso.
+> 02:26:40 Maria Del Carmen Acri: Es presten atención a los mails porque apenas tengo la devolución. Mañana
+
+  ## Transcript
+
+  00:00 Maria Del Carmen Acri: Qué feo es que te reten por trabajar es horrible.
+00:01 Luis Ojeda: Ahí está ahí pone. No no es Es imposible, no hablemos mal de Néstor porque creo que está hoy,
+00:07 Maria Del Carmen Acri: eso es horrible que
+00:12 Luis Ojeda: ahí estaba.
+00:14 Maria Del Carmen Acri: Es horrible de que encima que trabajaste, te digan eso es horrible. Es
+00:20 Luis Ojeda: No no es feo, es cierto, no Bueno lo que te contaba Entonces no solo crucé el
+00:20 Maria Del Carmen Acri: pero bueno.
+00:27 Luis Ojeda: briefing institucional técnico contra el software, sino también agarré ese
+00:31 Maria Del Carmen Acri: sí
+00:33 Luis Ojeda: documento que vimos juntos los otros días a la mañana en la devolución del
+00:38 Luis Ojeda: cua del ministerio y lo volví a cruzar. entonces de todos esos cruces a ojo que tampoco confíes 100% en la guía
+00:48 Nestor Pineiro: Hola, estoy transcribiendo esta llamada con mi extensión Tactiq AI. https://tactiq.io/r/transcribing
+00:49 Maria Del Carmen Acri: No importa.
+00:49 Luis Ojeda: empecé Hola Néstor tanto tiempo el que recién salimos de una reunión con Héctor con Jamie y César
+00:57 Maria Del Carmen Acri: está bien Ay Dios cómo Dale
+01:02 Luis Ojeda: Y bueno, entonces no confíe 100% en la guía y cuando el informe me hacía ruido entraba a verificar, hacía mis propios testeos Entonces le decía bueno, me hiciste esto en el en el Software que te encargué y está mal hecho porque esto está en tal lado. Está el otro entonces revisa de nuevo todo el backen y lo mandaba. Hasta que quedó más o menos que me conformaba y pasaría a mostrarte.
+01:35 Luis Ojeda: un segundo antes
+01:37 Maria Del Carmen Acri: Está casi todo hecho, o sea, para mí para mí la semana pasada que vos no
+01:40 Luis Ojeda: Está casi todo esto.
+01:44 Maria Del Carmen Acri: estabas en el empata todo el equipo que eso es mi teoría, me empezó a no decir
+01:47 Luis Ojeda: Sí, sí.
+01:49 Maria Del Carmen Acri: que esto que faltaba de todo yo dije me agarré un colapso el fin de semana la
+01:53 Luis Ojeda: claro
+01:55 Maria Del Carmen Acri: espalda, pues no, eso no está, no, eso no.
+01:59 Luis Ojeda: claro
+02:03 Maria Del Carmen Acri: entendido que estaba de hecho se los dije, yo había entendido que
+02:06 Luis Ojeda: Bueno entonces
+02:09 Maria Del Carmen Acri: puedes.
+02:12 Nestor Pineiro: Sí, nadie escribe tanto detalle.
+02:13 Luis Ojeda: Yo necesitaba esto ver exactamente, qué? Sí, cumplíamos y que no cumplíamos
+02:20 Maria Del Carmen Acri: Para mí la auditoría le hicieron con una ya perdone, no, yo Porque se
+02:20 Luis Ojeda: también para hacerle una auditoría a ellos, porque yo que sé si no hay un Luis Ojeda haciendo auditoría del otro lado y hace pavadas, entonces digo nada. Hagamos cruzado obviamente. Yo creo que también la hicieron con allá por el lenguaje, que están usando.
+02:41 Maria Del Carmen Acri: contradice, o sea.
+02:43 Luis Ojeda: Y hay cosas contradictorias Sí por ejemplo, esto estos datos a mí me sirven un
+02:45 Maria Del Carmen Acri: Para mí.
+02:49 Luis Ojeda: montón donde dice, hay que corregir qué es lo que se pedía en el brief Y qué es lo que se desarrolló en el proyecto Entonces verifico, si realmente es así
+02:59 Maria Del Carmen Acri: Hay que cambiarlo.
+03:01 Luis Ojeda: acá la guía se equivocó. Bueno Y esta es la primera parte hasta ahí venimos bien. Está lo que tiene cumplido lo que no está cumpli. agradecemos, no vamos a decir a quién todos los Plus no pedidos y que están desarrollados. y
+03:21 Maria Del Carmen Acri: Encima que hace este reto somos malos Somos malos.
+03:26 Luis Ojeda: Somos lo peor Pero no importa.
+03:27 Nestor Pineiro: Ya llaman así ya van a llegar con el caballo cansado.
+03:31 Maria Del Carmen Acri: Y me van a decir Néstor por favor, acepto, sí sí.
+03:31 Luis Ojeda: Este acá están. Mira, mira, esto hermosos adicionales excelente técnico entendés, cómo me acordé de Néstor y toda su ascendencia. No digo descendencia bueno y acá lo crucé contra el testing de ellos y ahí bueno, todo me da el rojo, por supuesto porque bueno, el testing dice otra cosa.
+03:59 Maria Del Carmen Acri: José está, está confirmado o no?
+04:02 Luis Ojeda: Sí hay cosas que están confirmados como bloqueantes está confirmadas. alta o media.
+04:09 Nestor Pineiro: Creo que ya están corregidas.
+04:11 Luis Ojeda: La Bueno ves a eso iba, qué corregiste ya? No me hagas enojar. Te dejo en los auriculares, voy a tu casa.
+04:18 Nestor Pineiro: bloqueos
+04:19 Maria Del Carmen Acri: no
+04:21 Nestor Pineiro: No, porque cuando pasé Cuando cuando pase a la a géminis, cuatro lo abrí y me
+04:22 Luis Ojeda: Y te pateó la puerta.
+04:23 Maria Del Carmen Acri: Nos vemos en la esquina.
+04:33 Nestor Pineiro: dice Che Acá hay cosas que están mal. Digo bueno corregirlo.
+04:40 Luis Ojeda: OK Bueno Igual yo bajé solamente lo que hay en el mail nuevo que creó en github, dayra Bajé las ramas la única que no estaba actualizada es la tuya la
+04:54 Luis Ojeda: que decía Néstor no sé cuánto la que los tengo Néstor giro.
+04:57 Maria Del Carmen Acri: claro, es que Néstor
+05:01 Luis Ojeda: esa y me
+05:04 Nestor Pineiro: Yo lo tengo todo.
+05:04 Luis Ojeda: Me bajé el de daira de Damián de Jesús de Noelia y de Juan y lo crucé con el
+05:04 Maria Del Carmen Acri: bueno
+05:09 Luis Ojeda: mío para ver los cambios en el Front para poder empezar a verificar, que esto no me tire una una burrada.
+05:15 Nestor Pineiro: Todo los cambios que tienen los chicos.
+05:18 Maria Del Carmen Acri: A ver, ayer Néstor me escribió 12:30, o sea fue después que hablamos nosotros
+05:23 Luis Ojeda: algo
+05:24 Maria Del Carmen Acri: Luis yo sumé todos los cambios a mi versión local del Congreso y funcionan Okay Qué cambios fueron los que sumaste.
+05:33 Luis Ojeda: para la noche con tormentas aisladas
+05:40 Maria Del Carmen Acri: O sea, lo que fueron haciendo los chicos de from, vos los fumaste ahí está.
+05:43 Nestor Pineiro: Yo lo bajé a mi máquina.
+05:47 Luis Ojeda: acepto a Noelia y a Juan
+05:50 Maria Del Carmen Acri: Y pusiste ahora me pongo a hacer los cambios en el A qué te referías con esos cambios?
+05:57 Nestor Pineiro: Bueno, iba a hacer, pero acá el Señor me frenó, me puso luz roja y Barrera baja Entonces no toque nada.
+06:07 Maria Del Carmen Acri: Peor que yo que te pongo la perimetral, sí, ojo, eh? Ojo.
+06:07 Luis Ojeda: y bueno Claro, era conveniente que yo te frene, no que te patene.
+06:18 Maria Del Carmen Acri: Ahora me pongo a hacer cambios en el baqueme, eso no lo hiciste.
+06:18 Luis Ojeda: claro
+06:23 Nestor Pineiro: no
+06:24 Maria Del Carmen Acri: Okay Qué cambios ibas a hacer
+06:29 Nestor Pineiro: los que pidieron
+06:29 Maria Del Carmen Acri: las correcciones las correcciones
+06:34 Nestor Pineiro: sí
+06:35 Maria Del Carmen Acri: De la auditoría, okay.
+06:37 Nestor Pineiro: Sí, va a ser.
+06:39 Luis Ojeda: la fax
+06:40 Nestor Pineiro: Iba a ser este los las tarjetas y todo lo que estaba para esconder escondible. hacer editable el giro hacer editable las los materiales Sí y me faltaba otro que me faltaba otro.
+07:01 Luis Ojeda: Que la fax tenían que ser editables también te acuerdas que te avisé. Pasa que me puse a leer todo.
+07:17 Nestor Pineiro: certificados no estaban tomando los datos del Congreso estaban con los viejos en vez de leer la lo que estaba en En la en la ficha del congreso.
+07:29 Maria Del Carmen Acri: Ok Stop
+07:33 Luis Ojeda: sí
+07:33 Maria Del Carmen Acri: Ahí vuelvo a saludarlos, porque en realidad ya lo hablé chico Buenas tardes, Noelia Buenas tardes, Juan ya hablamos de la clase, pregunta ustedes hicieron
+07:43 Noelia Fuentes: tanto tiempo
+07:45 Maria Del Carmen Acri: algo entre ayer y haya que hayan actualizado el git.
+07:52 Noelia Fuentes: Yo el último que actualice del gif fue lo que había subido de los cambios del Front pero ya esto fue que habrá sido la semana pasada, pero en estos días No
+07:59 Maria Del Carmen Acri: la semana pasada
+08:01 Noelia Fuentes: no vuelve a tocar nada.
+08:02 Maria Del Carmen Acri: No, tocaste nada, entonces la versión Ok O sea que todo lo que vos bajaste a tu
+08:04 Nestor Pineiro: Creo que el último fue Damián sábado de la mañana, puede ser.
+08:04 Juan Yotti: Sí yo lo mismo. Damián creo Creo que sí, no, no me acuerdo bien, pero sí, en el fin de semana creo que
+08:16 Nestor Pineiro: Si no me acuerdo fue el viernes por la noche o sábado a la mañana.
+08:16 Juan Yotti: Estuvo tocando.
+08:23 Maria Del Carmen Acri: máquina, es lo que tiene y que ya después nadie tocó en git.
+08:26 Nestor Pineiro: Nadie tocó nada más.
+08:28 Maria Del Carmen Acri: Bien, hay que esperar a daira, que confirme esto igual se ve en el git.
+08:35 Luis Ojeda: Yo me bajé todo lo que hay hasta ahora en el hasta esta mañana.
+08:41 Noelia Fuentes: el último
+08:41 Luis Ojeda: Para poder hacer eso que te mostré.
+08:43 Oriana Marazzita: buenas tardes!
+08:45 Maria Del Carmen Acri: Ok Oriana buenas tardes Cómo estás
+08:54 Oriana Marazzita: Cómo están ustedes.
+08:54 Maria Del Carmen Acri: Qué bien pregunta.
+08:56 Luis Ojeda: Muy bien.
+09:00 Maria Del Carmen Acri: De ayer al mediodía a hoy tocaste algo en git o ayer a la mañana nada bien
+09:07 Oriana Marazzita: No, nada.
+09:09 Maria Del Carmen Acri: entonces sea Luis que Néstor no sabemos Aparentemente están trabajando con la misma versión es correcto.
+09:20 Luis Ojeda: En teoría tendría que ser la misma Sí es lo que está en el git, nada más.
+09:22 Nestor Pineiro: Sí sí, lo que dice lo que no sé este. Si daira llegó, porque ahora se le había roto la máquina. Si dayra llegó a subir algo de lo que estaba haciendo cuando se rompió la máquina, eso no lo sé.
+09:40 Luis Ojeda: Ella dijo que lo solucionó a lo de su máquina y ya te confirmo Ay se me acaba de colgar.
+09:47 Nestor Pineiro: Porque ahí lo vuelvo a actualizar y listo no hay problema.
+09:51 Maria Del Carmen Acri: Bien es porque a raíz de que vos me habías comentado de la máquina Le conseguimos una máquina daira, pero ella el lunes respondió que ya lo había solucionado hoy.
+10:04 Nestor Pineiro: Pero no sé, no sé si subió lo que hizo.
+10:06 Maria Del Carmen Acri: Claro hoy
+10:06 Luis Ojeda: Lo último que hizo fue hace dos días. Esa es la penúltima en subir.
+10:13 Maria Del Carmen Acri: O sea, el lunes.
+10:15 Luis Ojeda: a ver Vemos si están todas Branch solo veo la de Néstor de ayer daira de hace dos días Damián hace cinco Jesús Noelia y Juan de la semana pasada. eso en las últimas actualizaciones en las en las
+10:33 Maria Del Carmen Acri: el Si vos Luis lo bajaste esta mañana si tenés la última versión con el backen
+10:43 Luis Ojeda: Branch tengo la última
+10:44 Maria Del Carmen Acri: y con todo.
+10:46 Luis Ojeda: Exacto pero te hago una aclaración el maestro giro que aparece en github, es de
+10:47 Maria Del Carmen Acri: y Néstor me
+10:57 Luis Ojeda: Néstor está desactualizado acá en el gif porque está con las imágenes de anteriores te acordás que el giro tenía la imagen con la vieja entonces
+11:08 Maria Del Carmen Acri: vieja
+11:08 Nestor Pineiro: no, en mi máquina en mi máquina tengo una imagen nueva con un edificio y
+11:12 Luis Ojeda: Está bien, pero yo la yo la bajé de acá del git y la que está en el git.
+11:12 Nestor Pineiro: cosas.
+11:13 Maria Del Carmen Acri: Está bien.
+11:18 Luis Ojeda: vieja al menos hasta esta mañana Claro porque yo la actualicé esta mañana y
+11:20 Maria Del Carmen Acri: la que está en el
+11:26 Luis Ojeda: yo ya veo la imagen nueva pero eliminando la rama de Néstor Porque vi que uno de los chicos había subido el Front ya te digo quién. Juan Juan sí Entonces lo armé en mi máquina con el giro de Juan para verlo
+11:48 Maria Del Carmen Acri: giro de Juan
+11:51 Luis Ojeda: más actualizado.
+11:53 Maria Del Carmen Acri: Bien. Querés volver se tiene que sumar dayra o no?
+12:01 Luis Ojeda: Se tendría que esperar el escribo.
+12:03 Maria Del Carmen Acri: Había dicho que sí no, no, no la esperamos, no hay problema Yo como los chicos todos dijeron, sí, nos vamos a odiar.
+12:10 Luis Ojeda: En diez minutos dijo dair avisó 1905 que en diez se suma, o sea que en cinco
+12:12 Maria Del Carmen Acri: listo
+12:19 Luis Ojeda: más o menos la tenemos acá.
+12:22 Maria Del Carmen Acri: Nos lo esperamos. La esperamos.
+12:24 Luis Ojeda: bueno
+12:25 Maria Del Carmen Acri: O salvo que quieras ir contando lo que hiciste.
+12:29 Luis Ojeda: Ah Bueno les cuento lo que fui haciendo Obviamente con ia y por cuestiones de tiempo porque era todo para hoy Ahí les voy a compartir. Más que nada igual le hice control manual de todo esto que se ve no. porque No confío en del todo en esto. Hice algo así. ahí se ve, no Lo que hice primero es agarrar el documento el brief técnico institucional del Congreso y lo crucé, claro, el primero lo crucé con el desarrollo hasta hoy.
+13:09 Maria Del Carmen Acri: el primero
+13:17 Luis Ojeda: Hasta hoy 6:30 a 7 de la mañana.
+13:22 Luis Ojeda: Lo crucé y una vez que tenía un reporte le pedí a la guía que me lo vaya haciendo en un html, una vez que lo tenía el reporte. Lo hice hice un cruce de este dictamen contra el de quad del de lo que hicieron la gente del ministerio. Entonces lo que obtuve es un reporte general que me dice. Contra el brief, digamos el RS inicial que nosotros obtuvimos contra lo que desarrollamos. Hasta ahora me dice que cumplimos y que no y que hay que corregir. Ya les voy a pasar a todos esto. Y sobre el final, Perdón ahí Creo que está queriendo ingresar alguien daira. Ahí está y sobre el final.
+14:26 Luis Ojeda: Sobre el informe este que me va dando que cumplimos que no En qué nos excedimos como editor visual de credencial e institucionales. Te ahogaste ves? Que tenemos unos Plus acá muy gran Plus muy superados que
+14:44 Maria Del Carmen Acri: sí
+14:47 Luis Ojeda: feliz me hizo ver que
+14:48 Maria Del Carmen Acri: Viene bien Por eso no? Por eso nos van a felicitar los los van.
+14:51 Luis Ojeda: decía ocho módulos
+14:55 Maria Del Carmen Acri: ustedes.
+14:56 Nestor Pineiro: Nos van a poner la cocarda.
+14:56 Luis Ojeda: puse
+14:58 Maria Del Carmen Acri: Eh sí.
+14:59 Luis Ojeda: Bueno Y después de todo ese informe le sumé que me cruce contra el dictamen del testing. Que hicieron ellos un dictamen entonces de ese cruce verifique si lo que ellos nos decían realmente era así. perdonó alguien quiere hablar o no alguien está esperando ingresar Damián Entonces qué es lo que obtuve ojo lo hice con ia, pero después revisé de que cada una de estos reportes sean reales había algunos que estaban mal porque se había por ejemplo se había limitado a leer el Front y son actividades del Back Entonces le pedí volver a revisar bueno Y así lo tuve como tres veces hasta que me dio este reporte final.
+15:57 Luis Ojeda: podría incluso hacerlo una cuarta vez como para que
+15:59 Maria Del Carmen Acri: Que no coincide con lo que ellos dijeron, porque ustedes revisan algo y ellos revisan otro algo.
+16:05 Luis Ojeda: Sí, la vulnerabilidades críticas, las bloqueantes coinciden las mías son
+16:08 Maria Del Carmen Acri: Ese es el tema.
+16:15 Luis Ojeda: siete las de ellos son ocho, tengo que ver cuál es la diferencia en esa.
+16:18 Maria Del Carmen Acri: están
+16:22 Luis Ojeda: La vulnerabilidades que yo encontré como altas y no no no Estoy compartiendo.
+16:30 Maria Del Carmen Acri: Te quedaste compartiendo toda la pantalla?
+16:31 Nestor Pineiro: No tenés Estás a medio camino.
+16:35 Luis Ojeda: Vuelvo a presentar Porque algo, pasó ahí? Se me cuelga habitualmente. Bueno ahí volví Ahora sí, por ejemplo, estas vulnerabilidades críticas que son las bloqueantes Ellos dicen que son ocho y de estas dicen que dan doce. Y según ellos y qué largo que se hizo Perdón Ellos tienen cuatro bloqueantes yo detecté siete. Y después hay otras de dos de funcionalidades altas y dos de media con lo que el reporte de ellos está No 100% claro, no es 100% preciso.
+17:27 Maria Del Carmen Acri: Ojo, porque ojo porque ellos están trabajando con la versión, una versión que no es la misma de ustedes.
+17:34 Luis Ojeda: Exacto pero bueno es el reporte que nos dieron
+17:39 Maria Del Carmen Acri: No, sí, sí sí, claramente.
+17:40 Luis Ojeda: Yo tomé tomé los 46 hallazgos de ellos los siete críticos y los doce altos. en el cruce no me dio tanto crítico ni tantos hábitos. A mí me dio cuatro críticos y cuatro medios y altos. Entonces ahí obviamente por cuestiones de tiempo no pude hacer más todo esto está hecho ahora, pero a nos lo quise hacer para que tengamos una idea Clara de dónde estamos parados, si es tan real para digamos para que no hagamos retrabajo inútil. Esa era la idea.
+18:20 Maria Del Carmen Acri: exactamente exactamente
+18:24 Luis Ojeda: bueno
+18:26 Maria Del Carmen Acri: Espérame dos segunditos. Ya estoy con ustedes.
+19:01 Maria Del Carmen Acri: Aquí estoy, perdón. No te estaría.
+19:13 Luis Ojeda: Perdón yo lo había muteado, entonces La idea es yo les paso esto lo subo al
+19:15 Maria Del Carmen Acri: Ahí está.
+19:20 Luis Ojeda: Drive si quieren es un hdtml, está todo en un monobloque y cosa que hagamos las pruebas necesarias nuestras para ver qué tocamos y que no y otra cosa, que es lo que hablamos con la profe, es que agarrar el Back y dividirlo ajustarlo primero a lo que realmente nos piden a lo que es el Front y dividirnos las tareas de tal a tal botón, uno de tal a tal. quieren para participar en la parte esa del back. La nota daida No me lo tienes que agradecer.
+20:13 Daira Barreto: Hay materiales peleándome con cómo hacerlo tengo un preguntas sobre materiales
+20:17 Luis Ojeda: bueno
+20:17 Maria Del Carmen Acri: Qué tal?
+20:18 Daira Barreto: que después porfa toquemos el tema.
+20:21 Maria Del Carmen Acri: Bien Qué tal dayra Buenas tardes, Damián buenas tardes
+20:23 Luis Ojeda: Precisamente mal Buenas tardes materiales, creo que lleva otro nombre.
+20:24 Daira Barreto: Buenas tardes.
+20:26 Nestor Pineiro: Hola
+20:30 Maria Del Carmen Acri: esperen un segundito antes de que entres, daira, estábamos preguntando vos tocaste algo más que todavía no hayas pullado en el
+20:40 Daira Barreto: Además de lo que pusié sí, estuve peleándome ahí un poco.
+20:47 Maria Del Carmen Acri: Bueno hay que tener en cuenta Eso el tema es el siguiente.
+20:47 Daira Barreto: con
+20:53 Maria Del Carmen Acri: Y acá les cambio la ecuación un poco tampoco se las voy a cambiar tanto yo con Luis hablé a las 10 de la mañana. Sí, entre las 10 y las 11 Abre Don Luis
+21:04 Maria Del Carmen Acri: pero después recibo a raíz de un baile que yo mando, o sea, un mail que se mandó a ministerio pidiendo, qué es lo que quieren en esas actividades se acuerdan que quedó de mi lado preguntar qué es lo que quieren en esas actividades que bueno a raíz de eso no sé si fue que les hizo clic que todavía ni siquiera habían definido eso les debe haber hecho clic. Y mandaron el mail que mandé a la tarde noche.
+21:39 Maria Del Carmen Acri: que si es posible si es posible prácticamente entregar el Front editable El que puedan subir ese video. Y después el resto Qué sucede desacoplar todo por ahí Es más trabajo que entregarlo Sí por qué con Luis habíamos hablado todos tenemos que poner mano porque están inamovibles en que el seis tiene que quedar visible y por eso esos que me bajan todas las funcionalidades, Dame solo el from, sí.
+22:16 Maria Del Carmen Acri: Porque efectivamente tienen compromisos asumidos y el seis tiene que quedar visible Y todavía hay que testearla y que entregarla que ellos la suban a algún lado y testearla porque el testeo todavía no está hecho por más allá de que hicieron el análisis de auditoría para ver si respetaron todo lo que tenían que respetar Sí pero todavía hay que testearla, puede que donde la suban pinche que es factible, entonces digo no lo podemos entregar ni al seis como le veamos propuesto, habíamos acordado ni mucho menos después como yo les puse en el en realidad, el mail, el lunes salió con lo más probable que tenga que extender los días. Le dijeron No la segunda versión que fue lo que les pasé ayer es solo from.
+23:11 Maria Del Carmen Acri: Y únicamente el enlace, o sea, el un crud para que se pueda subir el video prácticamente.
+23:18 Nestor Pineiro: Con el parte del Front viene del vaca.
+23:26 Maria Del Carmen Acri: Porque ellos la deben estar viendo como estática de hecho Mañana vuelvo a
+23:30 Nestor Pineiro: Por eso te digo cómo cómo desacoplaste el Front del Back y el Front
+23:32 Maria Del Carmen Acri: tener. bueno
+23:38 Nestor Pineiro: está editado desde el back?
+23:41 Maria Del Carmen Acri: Bueno, Esa fue la pregunta que hice es más complejo.
+23:46 Nestor Pineiro: Claro, es más complejo.
+23:47 Maria Del Carmen Acri: Es más complejo entonces a este punto Pues yo les iba a decir directamente y desacoplar por ahí es más difícil.
+23:58 Nestor Pineiro: Es más fácil hacer una captura de pantalla y ponerlo que hacer todo ese laburo infernal.
+24:06 Maria Del Carmen Acri: Sí porque es desacoplarlo también es trabajo. con lo cual Ustedes van por no desacoplarlo y me parece perfecto. Entonces nos tenemos que centrar en el análisis, que eso Luis y ver que sí se deja para que no haya agujeros de seguridad. Y centrarme en los agujeros de seguridad, ni siquiera en los materiales, Porque si ustedes ven la lista de los que les pedí. No está incluido, o sea, ese desacople no está incluido en los materiales si está incluido que se vea.
+24:52 Maria Del Carmen Acri: De lo que hay no hacer nada nuevo sino centrarme en los agujeros de seguridad no sé qué opinan ustedes. Cosa de que si mañana se terminan mañana se lo doy y se pasó pasado Pero
+25:02 Luis Ojeda: sí
+25:07 Maria Del Carmen Acri: tiene que ser antes del seis por lo que estamos diciendo o por lo que les diciendo Ellos tienen Bueno entonces eso esas partes yo aunque sea comentadas.
+25:13 Luis Ojeda: Incluso hay funcionalidades con fallas que ellos no la vieron.
+25:25 Maria Del Carmen Acri: Para que no haya problema. comentadas y sin agujeros de seguridad Y se lo entrego como está hoy. No sé si se entiende.
+25:41 Luis Ojeda: Ahí ellos querían el vídeo ese que está al pie que hay un institucional de la ciudad. Eso quieren poder editarlo.
+25:51 Maria Del Carmen Acri: En realidad decidimos que sea ese, porque ese no va a quedar mal posicionado. Querían uno bien posicionado. Ese no va a quedar mal posicionado, si yo saco el O sea si ustedes sacan el programa el mapa y todo lo demás que hay que sacar
+26:07 Nestor Pineiro: Va a subir.
+26:08 Maria Del Carmen Acri: ese no queda mal posicionado. Con la opción de que después lo suban al que pasa al Carrusel no sé si es que se puede.
+26:21 Nestor Pineiro: Sí yo te digo yo estoy yo hice un Script para hacerlo todo fueron organizadas de manera que cada Cada sección sea tildable destildable para que se vea o no se vea. También un cargador para el video de abajo.
+26:48 Maria Del Carmen Acri: Bien.
+26:48 Nestor Pineiro: Y un editor para el Carrusel donde vos puedas definir Cuál es la primera imagen, Qué velocidad es alto y Por cuánto tiempo se queda cada imagen y poder subir o bajar el número de imágenes y digamos configurar todo el Carrusel lo
+27:08 Maria Del Carmen Acri: Bien.
+27:10 Nestor Pineiro: otro que voy a hacer es ordenar los botones que están arriba en el back.
+27:14 Maria Del Carmen Acri: Espera, Espera espera. obligatorio prácticamente hasta ahí es obligatorio. El resto del equipo Cómo ve la propuesta que les estoy planteando incluso Luis Sí porque estos no lo habíamos hablado va surgiendo a medida que va surgiendo
+27:36 Luis Ojeda: no
+27:38 Maria Del Carmen Acri: esto.
+27:42 Luis Ojeda: Yo lo veo medio complicada, podemos entregar hasta ahí Pero para mí hay algo más Lamentablemente se me cerró solo el servidor. Lo tenía abierto al sistema. Yo estuve revisando lo poco que pude y hay cosas que por ejemplo aparecen en el Front que no podemos dejarla vacías.
+28:10 Maria Del Carmen Acri: como
+28:10 Luis Ojeda: Si no le podemos Ahora estoy tratando de abrirlo para ahí está.
+28:13 Maria Del Carmen Acri: ser compartir pantalla
+28:16 Luis Ojeda: Ya te digo si es que todo lo tienen abierto. bueno
+28:23 Maria Del Carmen Acri: Es más fácil.
+28:37 Luis Ojeda: Acá estamos. por ejemplo esto Acá, yo no sé si hay algo más hecho, pero acá hay un Carrusel donde no tenemos nada. esto
+28:52 Maria Del Carmen Acri: Qué es lo que acaba de decir Néstor que está editable?
+28:55 Luis Ojeda: Esta es la parte que hablaban ya está editable perfecto. Eso no sería problema esto creo Creo que Oriana había dicho de estos iconos ya están actualizados
+29:04 Maria Del Carmen Acri: Eso está bien.
+29:06 Nestor Pineiro: También eso eso va con los tildes con Los checkbox para que aparezcan o no O
+29:07 Luis Ojeda: esto.
+29:11 Nestor Pineiro: sea.
+29:12 Luis Ojeda: Perdón perdón, Yo estoy me actualicé solo porque yo estuve descolgado
+29:12 Maria Del Carmen Acri: no
+29:17 Luis Ojeda: perdónense por ahí o pregunta pavas. Esto lo dejamos como está.
+29:23 Maria Del Carmen Acri: Eso tiene que desaparecer todo eso desaparece.
+29:24 Nestor Pineiro: No eso desaparece y lo demás abajo también.
+29:24 Daira Barreto: esta
+29:28 Luis Ojeda: Ah entonces solo para que quede grabado en el en la transcripción desaparece el cómo llegar?
+29:36 Nestor Pineiro: Sí aparte todo el bloque.
+29:36 Maria Del Carmen Acri: exactamente fecha
+29:37 Daira Barreto: el programa también
+29:39 Luis Ojeda: Pero el programa también vos Es que yo Estuve tratando de editar esto esto que
+29:41 Nestor Pineiro: también
+29:41 Maria Del Carmen Acri: programa y mapa
+29:45 Luis Ojeda: está acá bien, que no sé si es parte de lo que hace mi navegador, pero traté de editarlo y desde el Back me da falla, no me permite grabar corregir esta a con la virgulilla.
+30:01 Nestor Pineiro: Sí, no, ese es que el Windows está haciendo eso.
+30:05 Luis Ojeda: Yo calculo que sí, pero pero quise hacer quise editarlo y el Back no me dejó
+30:05 Daira Barreto: Si es por el tema de utf.
+30:07 Nestor Pineiro: sí
+30:12 Luis Ojeda: Pero bueno, si esto el programa se va no hay problema.
+30:14 Maria Del Carmen Acri: El programa desaparece porque te ayudo porque vos no estabas.
+30:18 Luis Ojeda: exacto
+30:19 Maria Del Carmen Acri: El congreso se suspende como espacio para realizarse en el 2026 por esto del papá sí, los chicos están complicadísimos no se hace con lo cual fecha no tiene por qué mostrarse.
+30:37 Luis Ojeda: Bien.
+30:37 Maria Del Carmen Acri: Lo otro que tampoco se sabe porque va a ser dependiendo de las dimensiones y va a ser dependiendo de que la universidad les autorice en el día que sí se establezca, dónde se va a hacer entonces?
+30:53 Luis Ojeda: Perfecto bien, o sea que todo es provisorio.
+30:57 Maria Del Carmen Acri: Hay incluso ahí que dice universidad de eso también tiene que desaparecer.
+31:03 Luis Ojeda: Universidad de la ciudad
+31:05 Maria Del Carmen Acri: Eso también porque no se sabe dónde va se va a hacer.
+31:08 Nestor Pineiro: Bueno, eso va a ser editable, así que le ponen lo que quieran.
+31:10 Luis Ojeda: editable
+31:12 Maria Del Carmen Acri: El inscribite también desaparece porque por el momento no va el botón
+31:16 Luis Ojeda: el botón perfecto
+31:18 Maria Del Carmen Acri: desaparece también.
+31:19 Luis Ojeda: Y yo lo estuve probando hoy para ver si pegaba en la base de datos más que nada bueno.
+31:25 Nestor Pineiro: Sí, te pide te pide el dni.
+31:28 Luis Ojeda: Sí sí lo vi y O sea que el tema de los ajustes de las credenciales de cómo se muestra tampoco hay que tocarlo porque al no estar inscribirte no vamos a entrar
+31:38 Maria Del Carmen Acri: no, en esta Exactamente no en esta Por eso digo todo, eso se puede comentar por
+31:40 Luis Ojeda: acá.
+31:46 Maria Del Carmen Acri: ahora cosa que
+31:48 Luis Ojeda: Porque yo traté de borrar, por ejemplo este en vivo traté de Borrar mi dni, y
+31:49 Maria Del Carmen Acri: no
+31:54 Luis Ojeda: no me dejó, no me deja guardar. Entonces digo Bueno lo dejamos así por ahora.
+31:58 Nestor Pineiro: Bueno ahora debería dejarte
+32:01 Luis Ojeda: Okay bien
+32:02 Nestor Pineiro: Ahora debería dejarte.
+32:05 Luis Ojeda: Okay entonces sigo bajando esto ya está editable y queda.
+32:06 Maria Del Carmen Acri: Seguí bajando y vamos viendo, qué más?
+32:13 Luis Ojeda: Las cartas quedan como están?
+32:15 Noelia Fuentes: Perdón veo la transmisión en pausa, no se está.
+32:17 Luis Ojeda: Perdón perdón, es que hace estupidez.
+32:18 Maria Del Carmen Acri: Sí yo también. Te estamos viendo el la parte de arriba nada más somos un montón.
+32:25 Luis Ojeda: Disculpe, no lo no lo vi, no? Ya está compartiendo.
+32:35 Maria Del Carmen Acri: Tenemos que usar la cuenta del instituto esas son los emoji, emoji no son que
+32:37 Luis Ojeda: La iconografía que ellos mandaron.
+32:42 Maria Del Carmen Acri: habían mandado, no?
+32:45 Noelia Fuentes: Si los chicos no.
+32:45 Maria Del Carmen Acri: Okay Okay eso quedó así tal cual porque eso sí tiene que
+32:50 Luis Ojeda: Este saber más yo vi una observación de lo que se mostraba acá adentro queda esto como está.
+33:00 Maria Del Carmen Acri: Eso queda porque es para que la gente sepa Qué puede llegar a ser en cada uno de los espacios Esto va a estar habilitado para todos los ifts.
+33:06 Luis Ojeda: perfecto
+33:11 Maria Del Carmen Acri: Chicos, quiero gente que venga inscríbanse en la que quieran.
+33:16 Luis Ojeda: Sí, perfecto, bien, entonces las cards quedan como están.
+33:21 Maria Del Carmen Acri: Perdón yo no les había pasado que también tiene que haber un espacio, no me pasaron eso va a haber Stand para que vayan Los secundarios también, pero no me
+33:31 Luis Ojeda: Qué cosa
+33:36 Maria Del Carmen Acri: no recuerdo que me hayan pasado nada, va a saltar Cuando hable mañana.
+33:41 Luis Ojeda: ok
+33:42 Maria Del Carmen Acri: Tengo reunión con ellos.
+33:43 Luis Ojeda: Después vi que programa no tenía No si estaba programa.
+33:47 Maria Del Carmen Acri: Programa está pero vuela porque justamente al no saber qué día se va a ser.
+33:51 Luis Ojeda: Lo eliminamos de del menú.
+33:57 Maria Del Carmen Acri: Que no se vea del menú también oculto.
+34:00 Luis Ojeda: perfecto
+34:01 Daira Barreto: lo mismo con participar
+34:04 Luis Ojeda: Participa también se tiene que eliminar perfecto.
+34:07 Noelia Fuentes: En participar no, no quedaba tipo el como en la primera entrega que era como bueno próximamente. tipo que estaba el espacio pero queda como con ese cartel de Bueno cuando haya
+34:14 Maria Del Carmen Acri: por
+34:18 Noelia Fuentes: info se habilita
+34:19 Maria Del Carmen Acri: pero
+34:21 Luis Ojeda: Ah esto decir reemplazar esta parte
+34:22 Noelia Fuentes: Esa esa pestaña, yo al menos ser entendido Yo como la primer primera entrega de
+34:26 Daira Barreto: Como estaba antes.
+34:28 Noelia Fuentes: todas que era como bueno está el espacio reservado, pero de hecho creo que habían escrito un mensaje en uno de los
+34:35 Maria Del Carmen Acri: Sí, es verdad.
+34:36 Luis Ojeda: un Próximamente o algo por el estilo
+34:39 Daira Barreto: Sí, podríamos dejarlo como está al principio.
+34:42 Maria Del Carmen Acri: Sí sí, podríamos dejar en programas y no borran y vuelven a poner porque ahí hay que sacarlo y eso se les va a correr en programas se puede
+34:51 Luis Ojeda: sí
+34:51 Nestor Pineiro: No yo pensaba yo pensaba hacer este las letras transparentes o blancas que quede
+34:55 Maria Del Carmen Acri: también
+34:57 Luis Ojeda: Para que quede Pero no, no te va a quedar mucho espacio suelto ahí vacío.
+34:57 Maria Del Carmen Acri: también
+34:58 Nestor Pineiro: todo posicionado donde está.
+35:00 Maria Del Carmen Acri: Okay.
+35:04 Nestor Pineiro: Y bueno, escúchame.
+35:05 Maria Del Carmen Acri: el programa nada más porque participar queda participar
+35:06 Daira Barreto: se adapta se Ada
+35:11 Luis Ojeda: Bueno, participa es una página aparte, acá la vamos a modificar para que quede
+35:11 Maria Del Carmen Acri: Es solo programa te va a quedar vacío.
+35:19 Luis Ojeda: como al inicio como próximamente.
+35:23 Maria Del Carmen Acri: claro
+35:24 Luis Ojeda: Bien, la fax estaba con que tenían que ser evitables. ya está editable Néstor
+35:34 Maria Del Carmen Acri: Por el momento quedarán.
+35:34 Nestor Pineiro: no está en el está en el en las este en
+35:41 Maria Del Carmen Acri: Por el momento yo lo entregaré así porque editable lo dejaron ustedes Eh no
+35:44 Luis Ojeda: así como
+35:46 Noelia Fuentes: quizás Del yo quizás.
+35:48 Maria Del Carmen Acri: pidieron editable.
+35:48 Luis Ojeda: Sí sí, Bueno
+35:50 Noelia Fuentes: de quizás de
+35:51 Nestor Pineiro: notable todo
+35:53 Maria Del Carmen Acri: Pero espera Espera espera él no es que no Noelia algo.
+35:56 Nestor Pineiro: No es editable eso todavía.
+35:57 Noelia Fuentes: que No decía de lo de las preguntas frecuentes, quizás no lo no lo entregaría editable ahora, pero sí, volaría él cuando se realiza y él donde se realiza porque eso sí va, tiene la información vieja.
+36:13 Luis Ojeda: el que es y el Cuándo es las dos primeras, una primera segunda y tercera sería
+36:16 Noelia Fuentes: El cuándo? Y el dónde la segunda y la tercera?
+36:21 Luis Ojeda: porque
+36:22 Maria Del Carmen Acri: no, que es edad que es queda cuando donde
+36:22 Noelia Fuentes: No, El que se está bien.
+36:24 Luis Ojeda: Lo dejamos.
+36:27 Noelia Fuentes: cuando los las volaría por ahora
+36:27 Luis Ojeda: Cuando sacamos donde sacamos.
+36:30 Nestor Pineiro: entonces, editable y check box Que aparezca o no aparezca
+36:35 Maria Del Carmen Acri: para Néstor para Pidieron que eso sea editable.
+36:42 Nestor Pineiro: No sé sí.
+36:43 Luis Ojeda: Sí sí estoy.
+36:43 Noelia Fuentes: tengo recuerdo que
+36:44 Daira Barreto: Eduardo
+36:45 Luis Ojeda: Déjame que lo vea en la auditoría. Fecha del Congreso y domicilio del sede hay que corregir bueno, eso ya sabemos. Dispositivos acceso al circuito de carga agenda interactiva ya está aveme Dinámico de novedades.
+37:14 Maria Del Carmen Acri: Vos estás calculando ahí el primer Bridge pero lo estás poniendo la devolución de cuando se entregó, me parece.
+37:24 Luis Ojeda: No, no, no tenés razón, no lo hice sobre la primera devolución No todavía falta cruzar con eso si querés.
+37:32 Maria Del Carmen Acri: Esa también la tendrías que cruzar porque ahí es donde debe saltar que las preguntas frecuentes deben ser editables, pero más de lo mismo yo las dejaría en estos momentos jarcodeadas y en la próxima. Antes que finalice noviembre le mando el club.
+37:49 Luis Ojeda: la le clavamos el
+37:52 Daira Barreto: Perdón en el documento maestro de contenido web que ellos nos enviaron preguntas frecuentes. Dice primera base editorial debe poder actualizarse desde administración.
+38:10 Luis Ojeda: Sí es así.
+38:12 Nestor Pineiro: entonces editable
+38:14 Luis Ojeda: la fax tienen que ser editables, pero no sé si
+38:15 Daira Barreto: tiene que ser editable, no sé si a esta altura no, pero
+38:17 Maria Del Carmen Acri: Perdón estás hablando de la devolución o estás? pidieron?
+38:25 Daira Barreto: Cuando lo pidieron fue más bien.
+38:27 Luis Ojeda: Ah bien, Por eso a mí me salta como que eso tenemos que hacer.
+38:32 Daira Barreto: Claro, es el primer documento que nos mandaron.
+38:32 Nestor Pineiro: Dónde dónde están los parques la imagen
+38:34 Luis Ojeda: El que dice institucional y técnico.
+38:35 Maria Del Carmen Acri: ok No entendí Néstor Néstor no enten
+38:38 Luis Ojeda: perdón
+38:42 Nestor Pineiro: Donde están los parches azules va imagen.
+38:47 Maria Del Carmen Acri: Espera espera porque hoy estamos en Materiales volvamos con las preguntas frecuentes Así definimos que es lo que se tiene que hacer. Lo van a hacer editable ahora lo quieren dejar estático ahora.
+39:03 Daira Barreto: No creo que sea tan complicado hacerlo editable Igualmente porque solamente
+39:05 Nestor Pineiro: No es complicado.
+39:07 Daira Barreto: texto. Pero obviamente todo lleva tiempo, no, pero si nos repartimos bien las tareas
+39:13 Maria Del Carmen Acri: el tema que
+39:14 Daira Barreto: por ahí llegamos si no quedará estático, pero tenemos que sacar las preguntas.
+39:21 Maria Del Carmen Acri: Si las que dijo No no creo que había dicho. Estás haciendo lista por la casualidad, no? Porque estás grabando, verdad Luis Perfecto, mira que estás muteado.
+39:38 Luis Ojeda: Perdón no estoy muy enchufado, está estoy transcribiendo. Tengo un nuevo plan
+39:39 Maria Del Carmen Acri: No, tranqui, tranqui.
+39:47 Luis Ojeda: de Jimmy night, que mi mejor asistente Así que no hay problema con eso.
+39:50 Maria Del Carmen Acri: Perfecto entonces preguntas frecuentes se intenta en esta primera entrega antes del 6 dejarla irritable.
+40:00 Luis Ojeda: Si no queda jarcorear.
+40:03 Maria Del Carmen Acri: exactamente
+40:04 Luis Ojeda: Okay.
+40:05 Nestor Pineiro: Yo ya lo tengo en el escrito es más con un con un club de manera que no solamente se pueda editar lo que dice, sino agregar y sacar.
+40:19 Maria Del Carmen Acri: perfecto
+40:20 Daira Barreto: Así perfecto.
+40:21 Luis Ojeda: Perfecto, eso es materiales, tenía que tener otro nombre, me dijiste María no.
+40:28 Maria Del Carmen Acri: Eso es lo que me estaban diciendo el viernes que materiales no va como materiales.
+40:33 Luis Ojeda: Sería bueno saber cómo
+40:34 Daira Barreto: Cómo iría
+40:35 Maria Del Carmen Acri: No eso es lo que saltó el viernes de que no son materiales.
+40:41 Daira Barreto: Pero es lo que ellos pusieron.
+40:44 Luis Ojeda: Bien.
+40:44 Maria Del Carmen Acri: No, no, pero saltó en la reunión con ustedes, eh? Si estaban puesto como materiales es como materiales O me estoy confundiendo con algo de adentro.
+40:52 Daira Barreto: Puede ser que se confunda con lo de actividades.
+40:57 Maria Del Carmen Acri: de adentro
+40:59 Oriana Marazzita: Confundir porque en el club hay un espacio que es materias y está cortado y
+41:02 Maria Del Carmen Acri: Ahí está, era eso, okay.
+41:04 Oriana Marazzita: parece materiales.
+41:05 Daira Barreto: Pero no tiene nada que ver un el uno con el otro yo cree en mi rama, no lo puse al lado de actividades.
+41:13 Luis Ojeda: a
+41:15 Daira Barreto: No sé si alguien se bajó la mi rama No creo, no?
+41:18 Luis Ojeda: Yo la bajé.
+41:19 Maria Del Carmen Acri: sí
+41:20 Daira Barreto: Va, está la gestión de materiales. Está muy básica y tengo un montón de dudas de Cómo administrar bien eso.
+41:27 Maria Del Carmen Acri: Luis
+41:32 Daira Barreto: No sé si puedes.
+41:32 Luis Ojeda: Tendríamos que verla de dónde está en el Back no no creo haberlo aprobado,
+41:36 Maria Del Carmen Acri: bueno
+41:38 Daira Barreto: Ahí no sé sí ahí.
+41:39 Luis Ojeda: sí lo probé.
+41:40 Maria Del Carmen Acri: Vuelvo a materiales del lado de afuera.
+41:43 Daira Barreto: Sí eso tiene que estar.
+41:46 Maria Del Carmen Acri: En teoría para esta primera entrega antes del 6, no me lo están pidiendo.
+41:54 Daira Barreto: sí
+41:54 Maria Del Carmen Acri: O yo Leí mal, el mail que les mandé ayer casi última hora.
+42:00 Luis Ojeda: Yo lo único que entendí Es que tenía que llamarse de otra manera pero esto tiene para editar pero te mentiría si te digo que lo probé todavía no llegué a testearlo si está Okay a esta parte.
+42:14 Daira Barreto: Está muy muy básico, está igualmente.
+42:18 Nestor Pineiro: Bueno, está, está editable Digamos si si vos querés cambiar este podés.
+42:18 Luis Ojeda: Está bien pastor.
+42:25 Daira Barreto: Sí, pasa que solamente te crea la carta ahí tenía como muchísimas dudas porque yo según entendí ellos querían publicarlo novedades documentos videos, fotos flyers y recursos Eso es todo lo que nos pusieron en el primer documento que nos mandaron que era de especificación. cada tipo de contenido Va a tener un formato distinto Entonces no, no sé bien, cómo reflejar eso Si hacer una tabla de cada uno o cómo hacerlo bien editable porque por ahora lo
+43:06 Nestor Pineiro: que sean tarjetas y que se afilen si las tarjetas son distintas
+43:06 Daira Barreto: único que te crea es la carta.
+43:10 Nestor Pineiro: paciencia.
+43:12 Maria Del Carmen Acri: Perdón, a ver si yo me perdí en la explicación el viernes no quedamos que eso es el material que van haciendo en el momento y lo quieren subir. O yo me perdí Luis tenés la página modelo.
+43:35 Luis Ojeda: No la anterior.
+43:37 Maria Del Carmen Acri: Sí, la modelo que nos habían dejado, sino la voy a buscar yo.
+43:42 Luis Ojeda: La busco, Aguántame paro, así no se me pone lento nada más. Que llega primero.
+43:53 Maria Del Carmen Acri: Voy, voy yo no te preocupes.
+43:58 Luis Ojeda: Congreso test congreso ts, 20 y 26 no sé si ahí la tengo que pasa que voy Armando carpetas según los avances para tener una un posible. No, al menos la tenés listo compartir voz.
+44:22 Maria Del Carmen Acri: Ya lo encontré ya lo encontré. a ver Esta era la página modelo y en algún lugar aparecen videos, que eso era lo que se pedía en el primero y yo entendí que ese materiales iba eso el viernes, pero por ahí entre esto por ahí entendí mal yo. Porque incluso con respecto a las tarjetas. En las tarjetas que les dije que es lo nuevo que piden la nueva funcionalidad ahí sí va. O yo no me estoy acordando. Quizás no me lo estoy acor.
+45:22 Maria Del Carmen Acri: ahí sí va el esto de que sea un paper que por ahí es una imagen que por es un video son distintas cosas.
+45:31 Daira Barreto: Yo lo hice basándome en este documento maestro que nos habían pasado que era donde más nos especificaron que querían en cada sección, dice la sección, debe admitir publicación y actualización de contenidos sin intervención de código como mínimo debe poder incorporar videos institucionales y placas fotografías documentos y materiales descargables novedades del Congreso y recursos vinculados con el programa y los dispositivos de participación cada nueva debería poder contar con un título fecha texto breve como hasta ahora vínculo de archivos asociado los videos podrán integrarse preferentemente mediante enlaces oficiales. Yo lo interpreté. Bueno como lo como lo hice.
+46:19 Maria Del Carmen Acri: Sí, no, como lo estás leyendo, está está bien lo que hiciste. Que entiendo que eso mismo es por cada actividad después O sea va a ser replicar eso para cada actividad.
+46:33 Daira Barreto: Yo calculo que sí, Por eso yo cuando empezamos a hablarlo de actividades me estaba pensando si no sería lo mismo que incorporarlo con materiales pero bueno como no teníamos el club hecho. No sé cómo podríamos hacer con respecto a eso, pero si no lo quieren para
+46:51 Maria Del Carmen Acri: Ok bien
+46:52 Daira Barreto: esta entrega bueno.
+46:54 Maria Del Carmen Acri: volvé a compartir Luis por favor Y compartir lo que hizo dairo.
+47:04 Nestor Pineiro: Ahora todo ese material no sería Interesante mostrarlo como enlaces o botones que abran afuera de la de la página porque si no. Te va después jeringar el resto.
+47:19 Maria Del Carmen Acri: Y no se pueden poner tarjetas o contenedores dimensionados y después es pregunta. si es una imagen va se va a adaptar a ese contenedor y si es un
+47:35 Nestor Pineiro: únicamente que en el clic o sagas que se abra una segunda oreja y
+47:42 Daira Barreto: Claro, actualmente solo si vos presionas ver te debería aparecer el contenido dentro de Novedades no.
+47:48 Nestor Pineiro: Claro, ahí tendrían que estar todos los enlaces, a lo que vos quieras, Mostrar y después cuando y cuando vos pinches el enlace, ahí se descargará o abrirá
+47:53 Daira Barreto: Pero ellos
+48:00 Nestor Pineiro: una una pestaña nueva.
+48:00 Maria Del Carmen Acri: Pero eso lo eso lo querían eso lo Quería que se viera ahí los videos de hecho la página ejemplo vean que se ven los distintos videos y poder subir y bajar esa información. No se entiendo que en eso azul, qué es lo que preguntó ante Néstor se debería ver ese video?
+48:33 Luis Ojeda: Nosotros hemos quedado en hacer perdón.
+48:34 Maria Del Carmen Acri: O al menos Sí dale
+48:37 Luis Ojeda: Que habíamos quedado en hacer que esto sea editable donde dice novedad o donde dice documento con una imagen o lo que fuera que que contenga siempre tiene que ser algo estático, claro.
+48:48 Maria Del Carmen Acri: estática
+48:50 Nestor Pineiro: Voy a estar repetido, está repetido en el menú al lado.
+48:54 Luis Ojeda: Sí sí, está repetido más esto es más que nada para simplificar el acceso.
+48:54 Maria Del Carmen Acri: no
+48:58 Daira Barreto: Es que eso era una imagen de portada, simplemente, o sea, donde dice novedades,
+48:58 Nestor Pineiro: Sí para ver cuál es
+49:01 Luis Ojeda: exacto
+49:02 Nestor Pineiro: es
+49:03 Daira Barreto: sería como una imagen de portada.
+49:05 Nestor Pineiro: Y ahí está haciendo reserva de espacio nada más.
+49:05 Luis Ojeda: exacto exacto
+49:09 Maria Del Carmen Acri: es es la miniatura nada más cuando voy a ver lo abriré en otro lado o mismo
+49:12 Luis Ojeda: la
+49:14 Maria Del Carmen Acri: desde la imagen Porque si es un video ahí mismo te tira que lo abras y lo veas en YouTube
+49:21 Luis Ojeda: Claro, es como cuando uno ve YouTube las miniatura del video.
+49:25 Maria Del Carmen Acri: Exacto eso es lo está bien y no se puede poner que siempre tome una dimensión daira, volviendo a tu pregunta que siempre sea una dimensión y sea foto sea lo que sea siempre es una dimensión.
+49:41 Daira Barreto: Que quede así solamente como carta.
+49:43 Maria Del Carmen Acri: claro
+49:45 Luis Ojeda: Acá dice no entendí esa parte.
+49:47 Maria Del Carmen Acri: Sí, sí, sí, sí ahí.
+49:49 Luis Ojeda: Si se puede hacer que se ajuste. A eso.
+49:55 Maria Del Carmen Acri: Yo por lo que preguntaba daira, que no sabía qué espacio darle ese espacio.
+50:03 Nestor Pineiro: Ahora poner un vídeo ahí me parece medio.
+50:07 Luis Ojeda: No, que eso sea el para el enlace del video, lo podés maximizar.
+50:17 Maria Del Carmen Acri: Es que cuando vos pones Sí perdón, Dale dale.
+50:17 Daira Barreto: pasa que Pasa que yo lo había entendido como que querían usarlo como un sitio de publicación Así exactamente como lo pidieron lo de actividades, no? O sea que ellos puedan publicarlos que sea si si quieren publiquen un flyer si quieren publicar y lo que yo pensaba era vos apretás y en resultados te aparece directamente el contenido según el tipo de contenido que sea Pero pero como son contenidos muy distintos entre sí, no, no sirve solamente tener la tabla de materiales.
+51:01 Daira Barreto: Para visualizarlo todos porque un flyer no se va a ver de la misma manera que se va a ver una novedad o un documento. No sé si me doy a entender.
+51:12 Maria Del Carmen Acri: Sí, te vas a entender, No sé el resto también puede opinar lo que yo estoy diciendo es hacer una primera imagen en ese espacio azul y cuando vas a ver que se vea completo.
+51:26 Luis Ojeda: esto
+51:27 Daira Barreto: Sí pero mi duda es Cómo manejar las tablas.
+51:27 Maria Del Carmen Acri: Ahí.
+51:32 Daira Barreto: Porque yo creo una novedad y lo único que estoy creando Ahora yo creo cualquier tipo de contenido, no Y lo único que creo ahora es la carta que lo puedo Añadir una imagen Sí y ponerle una descripción y fecha de publicación.
+51:47 Maria Del Carmen Acri: Vos te refieres a base de datos o sea cómo lo Ah no es acá la parte visual No
+51:50 Daira Barreto: A base de datos principalmente me refiero claro, no, no, mi problema es con con la base de datos después donde lo ubicamos. Bueno, eso es otra cosa pero
+52:00 Maria Del Carmen Acri: yo entendía que era la parte visual.
+52:01 Nestor Pineiro: No, pero la base de datos la base Data lo único. no guarda blogs. Bueno vas a guardar la imagen en la base de datos
+52:10 Daira Barreto: pero Ellos pero ellos quieren hacer tipo un sitio donde publicar y contenidos.
+52:21 Nestor Pineiro: Está bien, pero que guarden los contenidos en archivos y vos desde la base de datos para saber dónde está.
+52:30 Daira Barreto: Ay no termino de entender cómo funcionaría Por ejemplo si
+52:33 Nestor Pineiro: Vos tenés dos maneras, vos tenés dos. ejemplo pasar el archivo jpg a b64, con lo cual te hace un String que después el navegador lo transforma en la imagen original o más o menos original la otra es tener una carpeta donde vos guardas todas las imágenes y la base de datos le decís bueno, esta imagen está en tal lugar.
+53:05 Maria Del Carmen Acri: en la base de datos
+53:05 Nestor Pineiro: Este es un puntero una URL que le indica donde está la imagen claro.
+53:09 Maria Del Carmen Acri: En la base de datos, lo que guardas es el nombre del archivo y la URL donde encontrar ese archivo.
+53:17 Luis Ojeda: exacto
+53:19 Nestor Pineiro: No yo no conozco otra forma Si a él, no lo conozco.
+53:22 Maria Del Carmen Acri: No, daira nuevamente porque eso de que no lo cierto Es que se los para php es
+53:23 Luis Ojeda: tampoco
+53:37 Maria Del Carmen Acri: así sí ustedes dan en next y yo ahí.
+53:43 Luis Ojeda: No, pero es igual, es igual.
+53:43 Nestor Pineiro: vos podés vos podés en el en cualquier base de datos, puedes hasta en seculate, puedes guardar una imagen en
+53:52 Maria Del Carmen Acri: Yo codificada no.
+53:53 Nestor Pineiro: en la base de datos en la base de como una galleta en el Mate cocido.
+54:01 Maria Del Carmen Acri: No es sugerido.
+54:03 Nestor Pineiro: no
+54:03 Maria Del Carmen Acri: No es sugerido o lo guardas codificado en la base de datos Y eso pesa un montón y la base de datos la vas a hacer rechoncha o en la base de
+54:12 Daira Barreto: Claro entiendo eso en el sentido de agregar imágenes pero en caso de que sea
+54:15 Maria Del Carmen Acri: nombre del archivo y cuando mostrás.
+54:17 Nestor Pineiro: Imagínate un video en la base de datos imposible.
+54:20 Maria Del Carmen Acri: claro
+54:27 Daira Barreto: una novedad
+54:29 Maria Del Carmen Acri: que sea un PDF puedes hacer lo mismo vos le dejas el nombre del archivo Y
+54:33 Nestor Pineiro: claro
+54:36 Maria Del Carmen Acri: entonces unificas, criterio archivo o video o foto o imagen lo que sea vos dejás la URL en la base y haces una carpeta para video o guardas todo junto una carpeta para video uno para imágenes otro para PDF
+54:55 Luis Ojeda: Claro así están ordenados.
+54:57 Nestor Pineiro: Total, el motor del navegador este entiende un PDF no hay problema.
+55:02 Daira Barreto: Pero es que quizás yo entendí como que ellos querían tipo su por ejemplo en fotografía subir una serie de fotografías que tenga cada una su propio pie. foto.
+55:15 Nestor Pineiro: Y pueden subir este fotografía de cien mega lo único que no va a cargar en la base de datos.
+55:22 Maria Del Carmen Acri: Quieres que te lo muestre en php para que te quede el concepto?
+55:22 Luis Ojeda: claro dejo de compartir
+55:27 Daira Barreto: Cada vez que no termino de entender igual.
+55:29 Maria Del Carmen Acri: Mira espera, vamos a abrir todo lo que tengo que abrir. Porque a lo mejor viéndolo funcionante de que sí sí, mientras yo voy
+55:43 Luis Ojeda: Vengo en un minuto.
+55:46 Maria Del Carmen Acri: habilitando todo porque hoy no habilite nada ejecutar como administrador.
+55:58 Nestor Pineiro: mostrarle para que lo entienda, pero eso lo voy a hacer yo desde el
+56:02 Maria Del Carmen Acri: No si lo está haciendo ella cómo lo vas a hacer vos
+56:05 Nestor Pineiro: Sí él va a poner la carita, pero el que va a tener que hacer.
+56:08 Maria Del Carmen Acri: No lo está haciendo, no lo está. justamente Esa es la duda que tiene O me equivoco, no por ahí entendí mal.
+56:16 Nestor Pineiro: No, de mi parte pensaba hacerlo yo, pero bueno.
+56:24 Daira Barreto: Pero está bien, hacelo.
+56:28 Maria Del Carmen Acri: en Esto no llegamos Deja que otros pongan mano pero Néstor
+56:31 Nestor Pineiro: Y llegamos llegamos. Ahí vamos a hacer demasiado metiendo mano en lo mismo vamos a hacer.
+56:41 Maria Del Carmen Acri: nueva ventana
+56:46 Nestor Pineiro: es maya, ya lo tengo, ya lo tengo armado Eso lo único que
+56:50 Maria Del Carmen Acri: no me Néstor afloja con esa dependencia afloja, por favor te lo pido Dios mío, ahora te lo mando a Luis para que te frene.
+57:06 Nestor Pineiro: Para que me pegue.
+57:07 Maria Del Carmen Acri: Para que te frene dije, no, para que te pegues o violencia. a ver Creo que estamos en condiciones de que comparta, ahí lo estás viendo, ya te amplió Sí para que puedas ver mejor. html, no imagen a la base con esta parte Yo cargo el archivo. Recibo la imagen por acá, pero que saque todos los cartelitos la trato. Y mediante ciertas instrucciones yo le digo que esa base que esa foto esa imagen o un PDF lo que sea la guarde acá.
+58:24 Maria Del Carmen Acri: en la base Sí, me guarde el nombre. Me guarde Qué tipo de archivo es y la foto en Sí yo se la dejo que me la guarde listo la guardo cuando voy a leer. Me traigo la base, me traigo la sentencia y cuando la muestro tengo que mostrar en una imagen que tengo que decodificarla porque me la guardo codificada. Sí y me lo va a mostrar la garra de la base de datos. Yo ahora te muestro que es esa base de datos que tiene.
+59:04 Maria Del Carmen Acri: Y la muestra? la otra forma es Crear una carpeta imagen adentro de tu proyecto y la imagen video o lo que sea lo guardas acá en esta carpeta Entonces cuando vos la guardas. Lo único que vas a guardar. Es el nombre en este caso va a ser la ruta el nombre de la imagen. Sí cuando la traes cuando la vas a leer, fíjate que yo no Acá no tengo contenido, tengo el nombre nada más.
+59:49 Maria Del Carmen Acri: cuando la vas a leer te traes Y lo único que necesitas es el nombre que le pusiste la ruta para irla a buscar. Entonces vas a mostrar, le decís que vaya a buscarla a esta carpeta, qué es lo que va a ir a buscar a esa carpeta que en realidad podés poner toda la ruta dentro de lo que te traes. el nombre de la imagen
+01:00:17 Daira Barreto: Perdón mi duda es como que viene después de eso, o sea, yo no, no tengo problema en Cómo guardar la imagen o un archivo en caso de necesitar imagen o archivo yo lo que estaba intentando definir es como construir. Cómo cómo va el administrador el que hace la publicación de un material Cómo va a construir esa publicación. O sea, yo creo que ellos quieren tipo combinar. No sé de textos imágenes videos documentos no es que solamente quieren publicar una foto y listo. No sé si me voy a entender, pero no.
+01:01:10 Daira Barreto: lo hacemos más sencillo pero
+01:01:13 Maria Del Carmen Acri: son Creo que te estoy entendiendo. Le vas a dejar campo para todo va a ir a guardar y tenés que validar. Si es una imagen que vaya para un lado que vaya si es un video. otro.
+01:01:31 Noelia Fuentes: ya vuelvo
+01:01:36 Maria Del Carmen Acri: Acá, esto es cuando sí lo guardo adentro de la base de datos Está acá guardado. Acá no la guarde en la base de datos lo guardé en la carpeta. Eso es lo que va a suceder en la base, vos vas a tener la ruta en mi caso es solamente el nombre del archivo porque la ruta la fijo del otro lado y todas estas que acá no aparecen nada porque estoy usando el mismo archivo Sí para todo porque lo uso para las clases.
+01:02:12 Maria Del Carmen Acri: Acá no se guardó la imagen en la base, sino que se guardó el nombre nada más y cuando va a buscar agarra Esto va la carpeta img porque eso es lo que yo le dije anda a buscar la ley mg y donde encuentres este archivo mostrarlo. yo te voy a exportar esto para que veas que es este archivo este blog que que guarda. Ya lo tenía descargado abrir con visual mismo. Esto que empieza acá. Que empieza ahí abajo de la 42 y sigue, es la imagen. Eso es lo que te guarda.
+01:03:13 Nestor Pineiro: Esa es la base 64 y la codificación base 64 que este en base.
+01:03:18 Maria Del Carmen Acri: estos En esto es si lo quieres guardar, si vos me preguntas Cómo haría cómo haces el formulario para que ellos vayan cargando porque entiendo que esa es tu pregunta.
+01:03:37 Daira Barreto: En realidad Vamos como más allá, pero bueno, no me doy a entender, no importa si yo tenía pensado hacer para cada tipo de contenido un formulario específico, por ejemplo, en imagen si selecciona foto te va te va a dar para que pongas el pin de la foto. Lo mismo con video el video y así Eso está está hecho así. Yo más que eso es cómo se visualiza.
+01:04:11 Daira Barreto: Y cómo hacer en la base de datos para que se diferencian Pero pero bueno, si no lo hago así sencillo o que lo hagan esto?
+01:04:22 Maria Del Carmen Acri: Néstor no me desanimes a la gente
+01:04:26 Nestor Pineiro: Desanimo, yo le expliqué Cómo era nada más.
+01:04:28 Maria Del Carmen Acri: Acá es el que dijiste que lo hacías vos todo esto sigue siendo la primera imagen. No sé Ahí recién Acá empieza la segunda.
+01:04:42 Nestor Pineiro: Para cuándo Cuando vos haces el el mod para cargar una imagen en realidad lo que estás haciendo es decirle este archivo en este lugar y lo grabas en la base de datos. Pero no grabas el archivo grabas la dirección de dónde está?
+01:05:02 Maria Del Carmen Acri: Que como vos te armaste una carpetita. Va a estar jarcodeada el nombre de esa dirección ellos ni se enteraron sobre todo sobre todo si vos le hiciste un
+01:05:12 Nestor Pineiro: no
+01:05:16 Maria Del Carmen Acri: espacio para cada uno de los formularios. O sea, un formulario para cada una de las actividades que tienen que subir.
+01:05:24 Nestor Pineiro: Si vos vas a ver el formulario bueno con con next js más complicado, pero si si vos tuvieras la página con el html o vas a ver que tenés la sección o el o lo que sea y vas a tener la dirección apuntando al archivo. Después el navegador se encarga de encajarlo ahí.
+01:05:52 Maria Del Carmen Acri: Entonces hardcoreado vas a tener la URL siempre? Una que te hace todo una carpeta o dividir las carpetas y jarcodias a cada una de las carpetas? El nombre lo toma solo al menos en php lo toma solo el next no sé, se los digo. Creo que los oscurecimos porque se silenció.
+01:06:25 Nestor Pineiro: se suicido
+01:06:27 Maria Del Carmen Acri: Layla, no está bien, está bien pero no te desanimes porque Néstor dice que ya
+01:06:28 Daira Barreto: Pensando nomás, cómo hacerlo?
+01:06:33 Maria Del Carmen Acri: lo tengo vos hacelo. Sin esto ya confesó su secreto.
+01:06:41 Nestor Pineiro: sí
+01:06:42 Noelia Fuentes: volví
+01:06:44 Nestor Pineiro: Escúchame, son 980 megas de código te pensás que lo hubiera podido ser a mano.
+01:06:52 Maria Del Carmen Acri: Espero en un segundito que hay gente en la otra llamada. Así como entró salió. Pero será posible. Ah gracias, gracias Listo ya está. Cómo quedamos entonces?
+01:07:32 Luis Ojeda: Estaba por hacer la misma pregunta. Qué es lo que va a quedar? Presentamos Front y con el Back como está?
+01:07:44 Maria Del Carmen Acri: Pero tiene que ser corregido también la parte de seguridad y acá les agregó
+01:07:44 Luis Ojeda: solamente
+01:07:52 Maria Del Carmen Acri: más cosas. Rechazaron el que ellos se ocupen. de la seguridad No me parece ilógico Porque en eso de que me dijeron Bueno entonces Preséntame esto, pero la seguridad no podemos ocuparnos nosotros no me parece ilógico incluso lo habíamos hablado con Luis a la mañana, hay una de las fallas que es por el docker ellos no pueden meter mano en algo que no hicieron ellos el
+01:08:31 Maria Del Carmen Acri: O sea hay cosas que tienen razón con respecto al archivo. Que a ver, lo pasé por alto, hay un archivo que con las claves ya sabemos que lo van a sacar.
+01:08:45 Nestor Pineiro: Nosotros Nosotros le dimos el docker.
+01:08:48 Maria Del Carmen Acri: Si lo que me pasaste tiene algo de docker El que les pasaron había cosas de
+01:08:52 Luis Ojeda: Sí, estaba.
+01:08:54 Maria Del Carmen Acri: docker porque hasta yo las vi.
+01:08:57 Luis Ojeda: Pero el tema de la clave los comentarios, eso que hicieron de las credenciales
+01:08:57 Nestor Pineiro: Era para que todos pudieran acceder manera.
+01:09:01 Maria Del Carmen Acri: Es porque había un archivo ese archivo.
+01:09:02 Luis Ojeda: es una es una observación era no era para dejarla.
+01:09:09 Maria Del Carmen Acri: Pero por eso es que digo que eso estuvo hecho con Inteligencia artificial porque dos dedos de frente me doy cuenta de que eso es un archivo para porque está compartido con todo el mundo.
+01:09:18 Luis Ojeda: Así pero claro, si está el mismo, eh? Adentro con las credenciales para que la puedan ver sino cómo van a arrancar el super admin a editar.
+01:09:29 Maria Del Carmen Acri: Bueno Más allá de eso yo les había dicho el súper admin se tiene que creer solo eso, pero no nos vamos a poner ahora a hacer eso sí. Entrará con la clave que le pasemos, no en el mcdown, no ahí, sino por mail, Se los voy a pasar o por WhatsApp se las paso que no figura en ningún lado.
+01:09:56 Luis Ojeda: Le generaremos alguna clave muy segura larga.
+01:10:02 Maria Del Carmen Acri: Sí pero que ellos entren y puedan modificarla
+01:10:05 Luis Ojeda: Claro que la pueden que pueda editar el supervivencia Elite Así mismo
+01:10:07 Maria Del Carmen Acri: porque Exactamente esa que entendí que eso se podía hacer o al menos es lo que me
+01:10:11 Luis Ojeda: correcto
+01:10:15 Maria Del Carmen Acri: dijeron listo eso ya está hecho.
+01:10:15 Luis Ojeda: Sí, se puede hacer.
+01:10:17 Nestor Pineiro: S y le cambias la clave a todos los usuarios.
+01:10:21 Maria Del Carmen Acri: Está bien listo el tema es que el archivo que Néstor me pasó con todas las credenciales que doy adentro entonces en eso que quedó ahí adentro y ahí te
+01:10:29 Nestor Pineiro: claro
+01:10:34 Luis Ojeda: Salto como que fuera una falla.
+01:10:35 Maria Del Carmen Acri: das claro, exactamente y ahí te das cuenta que eso no tiene dos dedos de frente, el que está haciendo o lo hizo con una Inteligencia artificial, Sí o
+01:10:44 Luis Ojeda: claro
+01:10:46 Maria Del Carmen Acri: sea más Pauta que eso que te ha hecho con Inteligencia artificial, Olvídate Y encima el documento es el mismo que vos me mostrás ya está tomados un cuatro y vos sí me estás blanqueando que fue con una Inteligencia artificial y por eso no se pueden hacer cargo de corregir las fallas, sí.
+01:11:10 Nestor Pineiro: konobol
+01:11:12 Maria Del Carmen Acri: Okay no tienen tiempo, están tapadísimos ok.
+01:11:20 Luis Ojeda: Bueno qué vamos a Cómo vamos a partir de todo esto sí.
+01:11:26 Maria Del Carmen Acri: Yo necesito Claro que vayan definiendo ya dijimos que desacoplarlo es más complicado. Se puede comentar o dejar inoperativa inoperante lo que no me están pidiendo para el seis?
+01:11:43 Luis Ojeda: Bien, sería conveniente pasar.
+01:11:43 Nestor Pineiro: casi todo
+01:11:50 Maria Del Carmen Acri: sí lo único que va a quedar Noelia Dale
+01:11:58 Noelia Fuentes: De algo que pensé de cómo haría yo es probable que sea más laburo sí, pero si o sea yo entiendo que lo que piden para ya es básicamente la primera entrega, que nosotros hicimos tipo solo Front con el lavado de cara de los diseños del 27. Y un acceso mínimo a poder editar cosas.
+01:12:21 Maria Del Carmen Acri: sí
+01:12:21 Noelia Fuentes: No sería menos laburo agarrar Esa primera entrega. como es actualizar el Front y armarle nada más el el acceso este de editor de fondo Digamos como el proyecto que tenemos acá ahora Nosotros sí seguir desarrollandolo para una entrega como para entrega. necesitan ahora que encima lo necesitan para antes de ayer más o menos como agarrar de base esa Esa primera entrega y modificar a mis me parece que es un poco menos de laburo que andar ocultando cambiando comentando tipo el proyecto de ahora, pero no sé bien temas de edición desde el Back como se maneja
+01:13:05 Nestor Pineiro: No si vos digamos en lo que se presentó al principio no tenía edición desde el Back o sea
+01:13:12 Noelia Fuentes: sino por eso
+01:13:14 Nestor Pineiro: Que si lo que ellos quieren es nada más que la cara la cara del sitio ya está.
+01:13:19 Luis Ojeda: hacer un Back Nuevo Dice que se limite a lo que ellos
+01:13:23 Noelia Fuentes: Un no, si no, no un vaque enorme, pero sí un, o sea, un ingresar un miniback de
+01:13:28 Luis Ojeda: un Mini
+01:13:31 Noelia Fuentes: edición de de que sin los formularios sin las credenciales sin los certificados sin nada de todo eso.
+01:13:40 Daira Barreto: Podemos utilizar lo que tenemos ahora?
+01:13:41 Nestor Pineiro: no rehacer el barrio no me agarra ni a Palo para hacer un Back de nuevo por más que sea sencillo
+01:13:49 Daira Barreto: Pero podemos utilizar lo que tenemos ahora y eliminar las rutas que
+01:13:54 Luis Ojeda: Exacto o comentarla
+01:13:56 Nestor Pineiro: lo que lo que se me ocurre que por ahí puedo extraer el Front y hacer un Front cargo de algo listo si lo
+01:14:09 Maria Del Carmen Acri: Es que eso yo ya estaba.
+01:14:09 Luis Ojeda: No, no, solo la cara hay hay evitables que tienen que tener ahí.
+01:14:14 Daira Barreto: claro
+01:14:16 Luis Ojeda: Yo creo que la opinión nada más.
+01:14:20 Maria Del Carmen Acri: En lo único editable es lo único edita. entendí mal es el video.
+01:14:29 Noelia Fuentes: Para la entrega de ya tipo, ahora mismo después si necesitan las cosas editables que se pueda ver el programa que se pueda.
+01:14:36 Luis Ojeda: Y bueno, lo que tendríamos que hacer nosotros sería eliminar qué eliminamos A ver Perdón estoy acá.
+01:14:48 Maria Del Carmen Acri: Ustedes conocen más el programa que yo.
+01:14:51 Luis Ojeda: Eliminemos dejamos hasta actividades eliminamos el Cómo llegar y el programa.
+01:14:56 Maria Del Carmen Acri: compartí compartí compar
+01:15:02 Nestor Pineiro: Y romper es fácil.
+01:15:05 Luis Ojeda: Y después Tenemos que tener el el club para que ellos puedan reemplazar el video. Nada más. materiales que cómo quedaba lo tocamos hacemos esto que estábamos Cri Cri
+01:15:32 Nestor Pineiro: lo que se me lo que se me ocurre es hacer una un clon del proyecto actual y pegarle para que quede nada más que lo que quieren no tocar este que terminado. y hacer un un
+01:15:58 Luis Ojeda: Sí clonarlo completo para meterlo
+01:15:59 Nestor Pineiro: proyecto un proyecto capado manera de que muestre lo que quieren que listo y después seguir tranquilos trabajando con esto.
+01:16:11 Noelia Fuentes: Yo decía de agarrar de de base como esa primera entrega también por el tema de del de la seguridad y todo esto digo para no tener que andar Ajustando cuarenta y cinco cosas de fondo y que sea solo el este mini editor pero
+01:16:29 Nestor Pineiro: Lo que pasa que una vez que vos tenés un Front editado desde el Back es todo un problema separar Si lo hubieran dicho al principio bueno. Pero ahí no podés evitar desde el Back el Front y agarrar un cuchillo y cortarlo.
+01:16:48 Daira Barreto: podemos desde la barra, estoy hablando por la parte administrativa No si solamente quieren tener lo que es la página de inicio administrativa y bueno en todo caso materiales Entonces todos los demás clubs volarían podemos simplemente sacar esas rutas y dejarlas que sean necesarias para la entrega tipo participantes volaría accesoria quería solamente lo lo prioritario para la entrega
+01:17:20 Maria Del Carmen Acri: perdón A ver si yo entiendo mal la primera entrega. está en o sea No digo que vayamos por ahí, eh? Estoy pensando en voz alta la primera entrega. que no tenía al Back está en el Drive es el que se llama Frankenstein dice from primera entrega ets y se llama Frankenstein Entiendo que lo que está diciendo Noelia es levantar eso solamente a eso ponerle un Back y ahí ya no tengo que corregir nada de seguridad.
+01:18:16 Maria Del Carmen Acri: Porque solamente va a ser un Back o un from con un super admin que pueda cargar el video. Creo que eso es lo que está proponiendo.
+01:18:26 Noelia Fuentes: A ese eso es lo que diría yo el tema con ese primer Front que no está adaptado
+01:18:27 Luis Ojeda: Visualmente queda en el Front como tal.
+01:18:33 Noelia Fuentes: al al último pedido de diseño, pero el diseño Ya lo tenemos es copiar pegar las cosas. Digamos está la solapa si los colores.
+01:18:43 Luis Ojeda: perdón Pero creo que para el caso.
+01:18:46 Nestor Pineiro: Ya lo que voy es que ellos lo quieren ponerle que hacemos eso no me disgusta la idea, van a querer que esté editable el por ejemplo el giro.
+01:18:59 Maria Del Carmen Acri: Mira yo te digo lo que me ponen en el mail, qué es lo que les copié porque le los copié igual a ustedes, pero que lo vuelva a encontrar porque recién lo abrí, lo cerré acá. Si es posible y no es mucho trabajo, porque si es más trabajo hacerlo claramente, no?
+01:19:21 Nestor Pineiro: Todo es trabajo.
+01:19:23 Maria Del Carmen Acri: Dice en esta primera instancia, necesitamos contar con la presentación institucional del Congreso sea el giro la información general, que es el Congreso ets y no más la presentación de los cinco dispositivos las actividades. El contacto el contacto institucional y un espacio para incorporar el video de YouTube correspondiente a la apertura institucional del Congreso es este espacio del video es lo único que me está pidiendo editable.
+01:20:03 Luis Ojeda: Y el resto sería eliminar el botón de inicio escribiste eliminar la sede. Quedaría al giro como está eliminamos.
+01:20:19 Nestor Pineiro: no
+01:20:21 Luis Ojeda: Dejamos el que dice un espacio para compartir y construir porque eso está por
+01:20:25 Maria Del Carmen Acri: Ahora si es más fácil bloquear las rutas bloqueen las rutas.
+01:20:27 Luis Ojeda: ahora.
+01:20:32 Nestor Pineiro: A mí me parece más fácil terminar lo que falta.
+01:20:36 Maria Del Carmen Acri: Pero mira que le tenés que poner también la seguridad.
+01:20:37 Luis Ojeda: No es mucho, no llegamos, No hay forma de que lleguemos con el tiempo que ellos nos ponen. Si nos ponemos a terminar, nos vamos a enredar en algo los temas de seguridad no los vamos a solucionar así de fácil Acabo de leer el informe, por ejemplo, ellos se quejan de que el las los las credenciales se exponen en pero datos que corresponden
+01:21:09 Nestor Pineiro: son los documentos son los pudieran acceder, ahí están todas las claves, pero las claves están.
+01:21:19 Luis Ojeda: Ya entendimos.
+01:21:21 Nestor Pineiro: hackeadas Cómo cómo las ven.
+01:21:26 Luis Ojeda: eso Yo opino que podríamos clonar el Front y armar un Back mínimo ahí coincidiría en parte con Noelia Por qué clonar el Front porque tenemos cosas que ellos sí quieren de esto O sea primero ajustar el Front eliminando el programa eliminando inscribirte y la cede. Y una vez que tengamos el eliminar el cómo llegar. Y armarnos un mini Back donde podamos editar el video y nada más.
+01:22:16 Luis Ojeda: A partir de ahí, el resto ellos los pueden subir, dejamos sacamos programas sacamos participar. No sé qué vamos a hacer con materiales. Dejamos las preguntas frecuentes como están. Pero siempre tomando los recaudos como dicen Néstor clonar lo que tenemos para romper otra cosa. Pero ahí tenemos todavía. Tenemos muchos problemas los que nos vamos a enfrentar para el poco tiempo que hay seguir adelante con este tiempo no nos sirve. Tenemos que buscar una solución lo más práctica posible.
+01:23:02 Nestor Pineiro: escúchame, si vos mañana Por ejemplo, yo mañana tengo el curso hasta las 10,
+01:23:07 Nestor Pineiro: si vos después de la dieta venís podés venirte para mi casa o durante el día
+01:23:09 Luis Ojeda: no
+01:23:13 Nestor Pineiro: liquidamos eso Mañana vos viendo como
+01:23:16 Luis Ojeda: Yo mañana tengo un día muy complicado, no puedo, puedo trabajar desde muy
+01:23:22 Luis Ojeda: temprano en seguir viendo en los temas de seguridad, pero si vamos a cambiarlo, lo dejo para después ya no tiene sentido. Dejamos el Front dejamos un solo
+01:23:36 Maria Del Carmen Acri: a ver
+01:23:38 Luis Ojeda: usuario un súper admin y un club para el video y chao, se acabó eliminamos del programa El participar y no se materiales Si eso está estipulado para esta entrega.
+01:23:57 Nestor Pineiro: Si queda si queda sin materiales está como queda. Y cuál es el otro novedad?
+01:24:07 Maria Del Carmen Acri: A materiales también se le puede poner un próximamente.
+01:24:12 Nestor Pineiro: en
+01:24:12 Luis Ojeda: Material lo podemos cambiar y ponerle un Próximamente cambiar el contenido.
+01:24:16 Nestor Pineiro: la la
+01:24:19 Luis Ojeda: La fax esas quedan jarcoradas.
+01:24:23 Nestor Pineiro: Quedan quedan jarcodeadas Bueno yo agarro y extraigo, un hago una una extracción del Front hago un frunce separado. No, es que lo saco lo clono.
+01:24:36 Luis Ojeda: Lo clona sí. Y bueno, eso va a tener desde ahí un Back nuevo.
+01:24:40 Nestor Pineiro: Y ahí ustedes lo rompen como quieran.
+01:24:46 Luis Ojeda: Solamente para cambiar.
+01:24:48 Nestor Pineiro: va a tener un micro inclusive estaba pensando por ahí mi base de datos con un Jason
+01:24:53 Luis Ojeda: Exacto para solamente para que ellos puedan levantar un video que se les dé la gana ahí abajo el institucional dejamos el Twitter como está.
+01:25:03 Nestor Pineiro: sí
+01:25:06 Luis Ojeda: Digo y ya está. Y entregamos esto.
+01:25:11 Nestor Pineiro: Sí sí, el el que quede todo jarcodeado.
+01:25:14 Luis Ojeda: pronto
+01:25:21 Nestor Pineiro: Y le pongo una base de datos Jason y listo el pollo.
+01:25:22 Luis Ojeda: Eliminamos de la navar, programa.
+01:25:29 Nestor Pineiro: Eso lo puedo hacer, sí.
+01:25:35 Maria Del Carmen Acri: Déjalo en blanco como había dicho en esto.
+01:25:38 Luis Ojeda: lo dejamos en blanco materiales, lo cambiamos por Nada, No sé próximamente.
+01:25:48 Daira Barreto: Cuando no publicas ningún material igual te dice eso. Que no hay materiales publicados próximamente.
+01:25:56 Luis Ojeda: Ah claro, pasa que yo estoy viendo el Front que hay ahora y Bueno estoy. la lo que veíamos recién las las
+01:26:08 Maria Del Carmen Acri: Azules
+01:26:09 Daira Barreto: Sí, es cuestión de borrar, no más de la base de datos.
+01:26:09 Luis Ojeda: dejamos
+01:26:12 Maria Del Carmen Acri: El tema Néstor es el siguiente? Si vos vas a terminar el Back que no me cabe la menor duda que haya que terminarlo también tenés que emparchar todos los agujeros de seguridad.
+01:26:27 Luis Ojeda: Es que eso es lo que nos va a llevar a nosotros mucho tiempo. y las cantidades de pruebas que todavía Sí pero
+01:26:33 Nestor Pineiro: Y bueno, espero igual hagamos esto no hagamos esto tenemos.
+01:26:38 Luis Ojeda: Está bien, pero no con el apuro de tiempo.
+01:26:39 Maria Del Carmen Acri: Pero tenés Claro pero no tenés dos días tenés. bueno.
+01:26:46 Luis Ojeda: Está bien.
+01:26:46 Nestor Pineiro: Bueno entonces si vamos a hacer un un Front nuevo digamos un clon del Front de este y y parchado para que no para que no. Listo es una página?
+01:27:01 Luis Ojeda: común y Silvestre
+01:27:05 Nestor Pineiro: Silvestre
+01:27:06 Maria Del Carmen Acri: Estática es un sitio estático?
+01:27:08 Nestor Pineiro: Claro claro
+01:27:09 Luis Ojeda: Va a ser estática lo único que va a tener ni siquiera base dato va a tener para cambiar como decís, vos el editor del video cambiarlo sumarlo lo que quieran y ya está.
+01:27:20 Nestor Pineiro: Es más es más usted puede decirlo, puedo puedo hacer que ni siquiera exporte lo que no va a tener que ver que quede el video abajo este. el Carrusel preciso las imágenes para ponerle
+01:27:37 Luis Ojeda: qué le vamos a poner a Carrusel
+01:27:39 Maria Del Carmen Acri: Y mañana Averigua a ver si tenemos imágenes para ese carrusel, porque habían mandado imágenes, pero no sé si se pueden usar habían mandado.
+01:27:49 Maria Del Carmen Acri: ese carrusel, me parece.
+01:27:52 Luis Ojeda: No estoy seguro, pero puedo.
+01:27:52 Nestor Pineiro: Bueno, llegado el caso le pongo imagen una imagen dos imagen tres y que ellos peguen la imagen que ellos quieran.
+01:27:59 Maria Del Carmen Acri: A mí me parece.
+01:27:59 Luis Ojeda: Sí ya vas a tener que hacer un club para que ellos puedan pegar o subir la imagen ahí se hace, no agrandar el Back y no es donde queremos ir ahora, no, si
+01:28:06 Nestor Pineiro: bueno
+01:28:12 Noelia Fuentes: creo que las imágenes que
+01:28:12 Luis Ojeda: podemos conseguir las imágenes, eso lo hacemos en un ratito, no hay problema. Pero tenemos que saber que va ahí.
+01:28:25 Daira Barreto: editable para esta entrega
+01:28:29 Nestor Pineiro: El qué?
+01:28:29 Luis Ojeda: No sé para esta entrega y hay tanto apuros.
+01:28:32 Daira Barreto: Del congreso.
+01:28:35 Maria Del Carmen Acri: a ver, pero que
+01:28:38 Nestor Pineiro: El Carrusel está para hacer irritable, pero todavía no. Si me pararon eso.
+01:28:44 Luis Ojeda: Claro, por eso con imágenes estáticas que ellos nos autoricen o nos provean y listo lo dejamos puesto ahí y fijo.
+01:28:55 Maria Del Carmen Acri: Pregunta, no habían mandado las imágenes de ese carrusel.
+01:28:59 Luis Ojeda: eso no estoy seguro, pero puedo controlar mañana temprano y reviso toda la
+01:29:05 Luis Ojeda: documentación de nuevo si hay imágenes las comparto Al toque para que las levantemos del Drive
+01:29:12 Maria Del Carmen Acri: Sí igual están en el Drive si las mandaron están en el dri.
+01:29:15 Noelia Fuentes: entiendo que las imágenes que nos tocaban a nosotros estaba en la carpeta de
+01:29:16 Luis Ojeda: bueno
+01:29:16 Noelia Fuentes: en web, después todo lo demás tipo todos los que tenían que nos habían preguntado lo de la fecha y esas cosas, yo había entendido que era como para redes digamos, no sé posteos de Instagram y esas cosas no sé si teníamos imágenes como tal para nosotros para el Carrusel
+01:29:37 Luis Ojeda: no, no
+01:29:37 Maria Del Carmen Acri: a ver
+01:29:37 Juan Yotti: No creo que no, porque a mí me tocó hacer también la parte esa del corrupción Y no encontré nada Para eso encontré nada.
+01:29:47 Luis Ojeda: Yo no recuerdo haber visto nada para el carrocero, pero puedo revisar del mouse, si quieres, pero bueno, ahí Juan ya lo hizo. Y no están. por eso Si vos, te juntas con
+01:30:00 Maria Del Carmen Acri: a ver la duda de que tiene que ser editable o no tiene que voy a sacar mañana en la reunión, me voy a sacar la duda. reunión al igual que imágenes del Carrusel al igual que al
+01:30:13 Nestor Pineiro: Mañana tarde.
+01:30:19 Maria Del Carmen Acri: de contacto que dice que tienen que estar y yo todavía no recibí ningún dato de contacto.
+01:30:23 Luis Ojeda: Sí, bien. bueno, Hagamos una cosa Yo en 15 20 minutos en cuanto esté descargada la edito a la a la minuta y la paso Para ir cerrando digo el ciclo esperamos las imágenes para el Carrusel de la reunión tuya con la gente del Ministerio del Congreso mañana.
+01:30:51 Luis Ojeda: Néstor va clonando el Front y después si querés yo te ayudo con el tema del Back para editar los para que solamente tenga el tema de la edición de Del video, dejemos un solo super admin, no pongamos el punto md adentro del Software se lo mandamos Como Dice la profe de alguna forma. Yo no sé si eso va a ser evitable también. Porque ellos van a querer cambiarla la clave.
+01:31:30 Nestor Pineiro: El qué? Pero lo que le mandemos no va a tener.
+01:31:36 Luis Ojeda: El Back va a ser solamente para evitar el el video?
+01:31:39 Nestor Pineiro: Para cambiar la figurita nada más nos va a tener va que eso ni usuario va a
+01:31:43 Maria Del Carmen Acri: Sí, Y cómo accede.
+01:31:43 Luis Ojeda: Tiene razón.
+01:31:44 Nestor Pineiro: tener. No tiene sentido tener usuario para una cosa de esa.
+01:31:53 Maria Del Carmen Acri: Va a quedar visible para todo el mundo.
+01:31:53 Luis Ojeda: Claro, el punto es que va a quedar visible para todo el mundo lógico.
+01:31:57 Nestor Pineiro: Claro pero no tienes, no tienes necesidad de acceder? Si no va a haber nada atrás.
+01:32:02 Luis Ojeda: sí
+01:32:04 Daira Barreto: Pero si va tiene que editar el video y en todo caso, si mañana nos dicen que también tiene que estar editable la sección de congreso entre otras cosas.
+01:32:12 Nestor Pineiro: pero evitar el video editar el video subir o bajar un
+01:32:16 Daira Barreto: Pero no lo puede hacer cualquiera lo tiene que hacer un administrador.
+01:32:20 Luis Ojeda: claro
+01:32:21 Nestor Pineiro: Bueno pero escúchame no es lo mismo hacer un un micro Para subir o Bajar una imagen que hacer un Back para poner usuario y toda la mar en coche para que no lo uno lo pueda hacer.
+01:32:35 Luis Ojeda: si haces un micro crudo escucha ponete del lado de un usuario cualquiera que se tiene que
+01:32:44 Nestor Pineiro: no, no, escúchame, tenés que poner tenés que hacer el el
+01:32:45 Luis Ojeda: Que se tiene que que entra a ver Esto no puede tener acceso a ese micro, si yo sí va a tener que pasar por el botón de ingresar.
+01:33:01 Nestor Pineiro: que la que el usuario externo no tenga acceso entonces ahí pone las configuraciones vas a tener el club para subir la imágenes para cambiar el el Cómo se llama el Carrusel Y todo eso guardado en dónde, en un en un Jason o en la propia estructura de la página? Si no, no, escúchame, si no lo termino y listo.
+01:33:31 Maria Del Carmen Acri: No va a haber que volver a la versión anterior porque el el sí que va a tener que tener una base mínima para el usuario.
+01:33:42 Nestor Pineiro: Como para el usuario, qué usuario.
+01:33:44 Maria Del Carmen Acri: Para este que se tiene que el hogar.
+01:33:44 Luis Ojeda: Para la credencial.
+01:33:48 Nestor Pineiro: Pero quién se tiene que loguear si va a ser una página una página a
+01:33:51 Daira Barreto: el administrador
+01:33:53 Luis Ojeda: Tiene que entrar, tiene que haber un admin, Sí o sí tiene.
+01:34:00 Nestor Pineiro: pero una el que lo tiene que el que lo
+01:34:02 Maria Del Carmen Acri: entonces
+01:34:09 Nestor Pineiro: El usuario externo no va a poder hacer nada, nada más que mirar lo que dice. No entiendo para qué quieres.
+01:34:16 Daira Barreto: Pero ellos no quieren tocar código. Si no lo hacemos un usuario y un parque entre comillas, no pequeñito, no se va a poder editar lo que quieren editar, van a tenerlo desde el código.
+01:34:33 Nestor Pineiro: lo que lo que lo que tiene usuario lo que hago es ponerle una una clave al acceso a las a las configuraciones, pero usuario, para qué si sos vos Solo que lo hace. O sea, eso lo tienen que hacer del lado de adentro.
+01:34:57 Noelia Fuentes: Así que por ejemplo. Con esto de la clave es por ejemplo está el sitio y dice, no sé un botón que diga editar, pero cuando vos lo tocaste pido una contraseña, una cosa así.
+01:35:06 Nestor Pineiro: Claro claro
+01:35:08 Noelia Fuentes: Está bien, no tendría acceso cualquiera, pero no es un usuario como con el mail que la contraseña que puedes cambiar la contra.
+01:35:14 Nestor Pineiro: Claro, no tenés no tenés una base de datos atrás tenés. que la clave que pusiste sea la misma que la que tiene adentro nada más. Se puede hacer Sí lo que pasa que lleva tiempo?
+01:35:37 Maria Del Carmen Acri: Pero menos tiempo.
+01:35:39 Nestor Pineiro: mucho menos tiempo que hacer un
+01:35:41 Maria Del Carmen Acri: Que comentar todas las rutas y seguridad y darle la seguridad de de lo que el Back se va a usar, me equivoco.
+01:35:54 Nestor Pineiro: el el el el next trabaja por en points vos podés bloquearlos en queda todo muerto, no tenés acceso a nada que
+01:36:07 Maria Del Carmen Acri: Está bien, pero la parte de seguridad que pidieron como está bien la parte.
+01:36:07 Nestor Pineiro: bueno
+01:36:13 Maria Del Carmen Acri: certificado no vas a tener que hacer porque no va a estar, pero todo lo demás sí lo tenés que hacer de seguridad.
+01:36:19 Nestor Pineiro: Sí bueno
+01:36:22 Maria Del Carmen Acri: incluyendo lo del docker
+01:36:26 Nestor Pineiro: Sí, cuestión de de extraer totalmente el docker. Porque yo no tengo localizar porque tengo una base de datos y la uso con un montón de cosas.
+01:36:40 Maria Del Carmen Acri: Luis te quedó claro porque justo Me estoy contactando con Michelle por lo que te hable esta mañana lo del y así que me perdí un poco en lo que
+01:36:49 Luis Ojeda: los de
+01:36:52 Maria Del Carmen Acri: estaban diciendo sí lo de de los
+01:36:53 Luis Ojeda: Los yo la verdad a esta altura. Puede que no esté entendiendo Pero di siento con el punto de vista en Néstor pero aclaro puede que yo no lo esté entendiendo a su punto de vista estoy como
+01:37:09 Maria Del Carmen Acri: A ver, yo Esa es la parte que no escuché a ver Néstor vuelve a decirlo.
+01:37:10 Luis Ojeda: como
+01:37:16 Nestor Pineiro: yo
+01:37:17 Maria Del Carmen Acri: Cómo es que sí, cómo querés, solucionarlo.
+01:37:19 Nestor Pineiro: Aquí y que bueno clonarla clonar el fronten. Y después dejar, por ejemplo, donde dice ingresar. ponerle en Ese botón un acceso vía clave si la clave si la la que está en la base edad en el en el Jason entradas y te libera la página de configuración, si no, no es como el como el asunto de la alarma.
+01:37:52 Maria Del Carmen Acri: Ok pregunta ese Jason se puede leer desde algún lado o sea, Yo abro el navegador puedo leer es el Jason
+01:38:01 Luis Ojeda: Y sí lo vas a ver.
+01:38:03 Nestor Pineiro: En principio tendrías que Bajar descargar la página no no, porque lo pones afuera del este del acceso público.
+01:38:17 Maria Del Carmen Acri: Y cómo acceden ellos?
+01:38:17 Luis Ojeda: Cómo lo vas a poner afuera del acceso público?
+01:38:21 Maria Del Carmen Acri: Cómo acceden ellos
+01:38:22 Nestor Pineiro: El Jason Sí porque es el sistema que tiene que acceder no el usuario.
+01:38:29 Luis Ojeda: entiendo
+01:38:29 Maria Del Carmen Acri: Y por dónde accede el usuario el sistema?
+01:38:31 Luis Ojeda: por
+01:38:34 Maria Del Carmen Acri: Que no va a ser sistema, va a ser.
+01:38:37 Nestor Pineiro: Y la página?
+01:38:38 Maria Del Carmen Acri: Va a ser un usuario común el que acceda solo que es alguien de ministerio.
+01:38:47 Nestor Pineiro: no, el del ministerio va a entrar por por delante de la página va a poner la clave que corresponda se le puede poner una clave larga y un usuario inusual de X Este hackeado para que no se vea Aunque bajen, la Aunque descarguen la página no la van a poder tocar. Lo voy a vos entras en cualquier lugar en cualquier página y se pone guardar página y la guardas en tu máquina.
+01:39:18 Nestor Pineiro: Pero no, no ve la parte de atrás y esto es lo mismo, si lo van a poner un servidor, no lo van a usar este con el protocolo file van con el http. lo
+01:39:41 Maria Del Carmen Acri: no termino de
+01:39:42 Luis Ojeda: Yo entiendo lo que vos decís, pero yo no le entiendo la idea, Yo sigo pensando de que el usuario va a tener que estar la credencial va a tener. resguardada y evitable que básicamente es lo que nos está frenando hoy seguridad no importa que tenga mucho poquito nada el sistema Hoy después veremos los otros agujeros en seguridad.
+01:40:09 Maria Del Carmen Acri: Sí porque si vos le dejas por mucho que estés hallada, que no va a estar hackeada porque para usarla el Jason la podés dejar.
+01:40:22 Luis Ojeda: Sí y si le hace ingeniería inversa al Jason y ya está la levantas.
+01:40:28 Maria Del Carmen Acri: o sea por Fuerza bruta se rompe punto
+01:40:30 Luis Ojeda: Se rompe Sí y ni siquiera tan brutal.
+01:40:32 Maria Del Carmen Acri: por fuerza ruta
+01:40:34 Nestor Pineiro: bueno por Fuerza bruta Pero bueno podés poner podés limitar el número de
+01:40:36 Maria Del Carmen Acri: Bueno pero eso es lo que controla sistema
+01:40:40 Nestor Pineiro: accesos y en cinco no enganchó Chau Te pone esperar.
+01:40:46 Luis Ojeda: Está bien eso si lo hace un software de desencriptación Pero ellos van a querer.
+01:40:54 Maria Del Carmen Acri: Bueno vamos, vamos a estar
+01:40:55 Luis Ojeda: A ver, van a querer más seguridad.
+01:40:58 Maria Del Carmen Acri: Para vamos a hacer una cosa. Quédate con la idea de cómo va a estar hecho. Sí, quédate con esa idea por las dudas. Yo te pregunté algo mañana.
+01:41:11 Maria Del Carmen Acri: esa es una posibilidad la segunda posibilidad es Cortar todo lo que no nos están pidiendo dejarlo como está cortar todo. nos están pidiendo O sea que no esté en la urls, que no lo sentó en que estén y se y darle la seguridad que están pidiendo. Tenemos esas dos opciones hoy correcto para llegar a antes del seis a
+01:41:37 Nestor Pineiro: Sí bueno
+01:41:40 Maria Del Carmen Acri: entregarlo. Está bien, no, pero no toquen nada esta mañana al mediodía que hable con ellos.
+01:41:46 Nestor Pineiro: bueno
+01:41:47 Maria Del Carmen Acri: Y que yo les diga quieren ir con un Jason y ellos me digan sí o no. porque por ahí vamos por ese lado nos ponemos a trabajar y no es, es el lado me
+01:41:52 Luis Ojeda: perfecto
+01:41:58 Maria Del Carmen Acri: parece Quiero escuchar la versión de ustedes.
+01:42:01 Luis Ojeda: Sí sí, a mí también me parece que tenemos que esperar la devolución No olvides meterlo del carrusel para ver si vamos a tener que las imágenes. Porque no tener las imágenes no va a obligar a agrandar el mini Back va a terminar siendo otro backen paralelo y no tiene sentido, necesitamos las
+01:42:21 Maria Del Carmen Acri: No tienes en y ahí no tiene sentido, no sentido.
+01:42:26 Luis Ojeda: imágenes Claro claro, necesitamos las imágenes para que queden envases 64.
+01:42:29 Nestor Pineiro: en el peor de los en el peor de mañana la jarcodeamos dentro de la página.
+01:42:37 Maria Del Carmen Acri: No, eso no me cabe la menor duda.
+01:42:38 Luis Ojeda: Claro, claro es eso, pero bueno, Yo creo que lo mejor sería que ellos nos
+01:42:42 Maria Del Carmen Acri: Eso no me cabe la menor deuda.
+01:42:45 Luis Ojeda: provean de la de eso, así dejamos una página prácticamente estática con un con un pequeño registro de ingreso que ya nos dirán mañana si va a ser vía
+01:43:00 Luis Ojeda: Jason nos Tendremos que hacer alguna forma más segura.
+01:43:02 Nestor Pineiro: Como registro de ingreso.
+01:43:04 Luis Ojeda: las credenciales validación de credenciales
+01:43:07 Maria Del Carmen Acri: o lo dejas como esta o usas el Jason
+01:43:10 Luis Ojeda: Claro, exacto y con el editable para el video que puedan bajarlo y subir otro
+01:43:13 Nestor Pineiro: bueno
+01:43:18 Luis Ojeda: como que ellos quieran nada más tiene que ser un mini Back si no, no vale la pena.
+01:43:25 Maria Del Carmen Acri: Ok Ok algo que sea de nada cosa que mañana se sienten lo hacen honesto, mañana
+01:43:32 Maria Del Carmen Acri: se sienta lo hace y pasado se le da Listo ya está.
+01:43:35 Luis Ojeda: Voy una tarde ahí lo resolvemos en un rato.
+01:43:42 Nestor Pineiro: O genero un PDF y se lo mandas.
+01:43:44 Maria Del Carmen Acri: Sí también. el resto del grupo que no habló Estás de acuerdo Igual tenemos que esperar a que ellos nos digan si vamos por el Jason sí.
+01:44:02 Luis Ojeda: Sí sí, esperamos hasta después de la reunión tuya y bueno en base a eso.
+01:44:08 Maria Del Carmen Acri: A ver, Perdón le vas a dar. el from que el Front eran varios archivos, no era uno solo dentro de todos esos archivos va a estar el Jason el Jason solo es el que se tiene que bajar Pepe
+01:44:24 Luis Ojeda: claro
+01:44:25 Nestor Pineiro: no le vamos a mandar una clave para que la acceda ya grabado en el Jason
+01:44:29 Maria Del Carmen Acri: no es de sistema y ahí puede poner la clave y al sistema
+01:44:43 Luis Ojeda: Pero ellos tienen que poder editarla, sino no nos van a aceptar eso.
+01:44:48 Nestor Pineiro: Escúchame Ya me están poniendo nervioso.
+01:44:52 Luis Ojeda: No te pongas nervioso, no?
+01:44:53 Nestor Pineiro: Hay limitaciones por donde lo veas Entonces entremos por la parte más sencilla porque si no esto se va a poner feo.
+01:45:01 Luis Ojeda: Está bien Esto es con vistas a mañana a la reunión de mañana para que la
+01:45:02 Maria Del Carmen Acri: para
+01:45:06 Luis Ojeda: profe tenga las herramientas para pelear la más fácil para nosotros. después ponerte todo lo nervioso que quieras lo tenemos que hacer Igual
+01:45:13 Maria Del Carmen Acri: se lo van a bajar para No te esperamos la esquina con la esquina.
+01:45:20 Luis Ojeda: claro
+01:45:24 Maria Del Carmen Acri: esperá porque tengo que entender la idea ellos lo van a bajar en el servidor donde esté sea un Hosting sea el servidor de ellos que va a quedar visible Pepe que no es tan sistema que no estoy en acceso al servidor Cómo llega ese Jason
+01:45:43 Luis Ojeda: Esa fue mi pregunta.
+01:45:46 Nestor Pineiro: es que Pepe no tiene que tocar el Jason
+01:45:50 Luis Ojeda: Pero no quieren cambiar ellos no quieren que vos lo sepan.
+01:45:52 Maria Del Carmen Acri: para para para para no quiero que toque el Jason quiero que que vos le pongas con la clave que vos le pones va a Acceder al Jason para poder cambiar el video. Okay Pepe Cómo llega a ese archivo
+01:46:14 Nestor Pineiro: Bueno, con la clave que esté en el Jason se la damos.
+01:46:17 Maria Del Carmen Acri: No, no está, no me estás entendiendo. el Jason va a estar en el servidor yo le yo le voy a dar el paquete a sistemas
+01:46:23 Nestor Pineiro: el paquete si el tipo no
+01:46:29 Maria Del Carmen Acri: sistema me sube a Don't web todo con Jason incluido porque Jason es quien me
+01:46:32 Nestor Pineiro: sí
+01:46:36 Maria Del Carmen Acri: cambia el video Pepe que no está en el no está en el
+01:46:36 Nestor Pineiro: Aprovechamos el botón que está en ingresar el botoncito, el que tiene el verde
+01:46:43 Maria Del Carmen Acri: servidor cómo llega el Jason va a haber una URL aparte, va a haber un botón cómo llega el
+01:46:58 Nestor Pineiro: o el rojo cuando no está funcionando bien. Lo aprieta y le va a pedir una clave. El Jason ya tiene el el Hash y cuando apretás el botón.
+01:47:09 Maria Del Carmen Acri: ok
+01:47:13 Nestor Pineiro: el sistema el digamos la página verifica que cuando hachea lo que da es lo mismo que está en la base de datos, el mismo caso y se produce el
+01:47:25 Luis Ojeda: a ver lo que entiendo que es lo que
+01:47:28 Nestor Pineiro: mecanismo
+01:47:29 Maria Del Carmen Acri: Me acabas de nombrar base de datos y habíamos dicho que no teníamos base. datos.
+01:47:33 Nestor Pineiro: bueno
+01:47:34 Maria Del Carmen Acri: En el Jason en el Jason okay.
+01:47:38 Luis Ojeda: Va a ser entonces vía una URL aparte es como que tengo la huella de acceso y un
+01:47:42 Maria Del Carmen Acri: No, en el botón.
+01:47:45 Luis Ojeda: barra admin para acceder.
+01:47:47 Maria Del Carmen Acri: Ahí me gusta más. Ahí me gusta más.
+01:47:53 Nestor Pineiro: Escúchame Cuando vos aprietas, el botoncito, el botoncito va a ser un
+01:47:53 Luis Ojeda: Esto veía más fácil.
+01:47:58 Nestor Pineiro: que no hace lo mismo que hace ahora.
+01:48:02 Luis Ojeda: a ver
+01:48:03 Nestor Pineiro: En el mismo botón la misma cara el botón, pero cuando vos apretes te va a pedir una clave. Le das la clave, okay? compara con con el primero los y lo compara con el Hash que tiene grabado en
+01:48:15 Maria Del Carmen Acri: lo que tiene
+01:48:19 Nestor Pineiro: Jason y son iguales pasa.
+01:48:19 Maria Del Carmen Acri: Okay. bien, pregunta en lugar de ser el botón puede ser una URL que
+01:48:29 Nestor Pineiro: No poner botón.
+01:48:31 Luis Ojeda: Puedo puedo mostrar profe?
+01:48:32 Noelia Fuentes: Un poquito más protegida. No digo que estaría
+01:48:38 Nestor Pineiro: Es que el botón hoy tiene una URL que apuntar de acceso.
+01:48:42 Maria Del Carmen Acri: Espera espera que quiero no sé qué dijiste Ahí estaríamos.
+01:48:46 Noelia Fuentes: No digo que que no, que no esté el botón como visible para el usuario x, que si vos ponés tipo esto no sé congreso de ts. Punto Com barra admin que te diga
+01:48:53 Luis Ojeda: puedo
+01:48:58 Noelia Fuentes: como bueno ponemos una contraseña, te dejo pasar, pero si yo pongo congreso dts.com No yo no, yo no, yo no sepa como usuario común Cómo tratar de meterme
+01:49:05 Maria Del Carmen Acri: eso
+01:49:09 Noelia Fuentes: a tratar de sacar la contraseña o a tratar de Acceder al coso Quizás eso como
+01:49:15 Luis Ojeda: te puedo
+01:49:16 Maria Del Carmen Acri: protección
+01:49:16 Noelia Fuentes: que sea que vos puedas poner en la URL barra admin y te pida igual esta contraseña es una capita más.
+01:49:24 Nestor Pineiro: de seguridad, Déjame pensarlo pero
+01:49:25 Noelia Fuentes: de
+01:49:26 Luis Ojeda: Por eso Puedo mostrarte. Puedo mostrarte, cómo lo tengo solo para como ejemplo para graficarlo es es
+01:49:35 Maria Del Carmen Acri: Dale
+01:49:37 Luis Ojeda: cortito son 10 segundos es solo como ejemplo. Ven todo ahí, no?
+01:49:51 Nestor Pineiro: sí
+01:49:54 Luis Ojeda: Este Club la página del Congreso supongamos accede cualquiera no es cierto, acaba de entrar el administrador. hace esto Entra por acá.
+01:50:12 Maria Del Carmen Acri: Eso es lo que estamos diciendo.
+01:50:14 Luis Ojeda: exacto
+01:50:15 Maria Del Carmen Acri: tener una URL en lugar de un botón
+01:50:19 Nestor Pineiro: tranquilamente
+01:50:20 Luis Ojeda: Eso Y a partir de ahí entra donde quiere.
+01:50:24 Maria Del Carmen Acri: Yo voy a proponer el botón, eh? Pero estoy convencido que me van a decir que no.
+01:50:30 Luis Ojeda: identificar
+01:50:32 Nestor Pineiro: Está bien, está bien Podemos sacar el botón y acceder directamente Como si fuese un Point claro, le puede ser alguna cosa rara?
+01:50:41 Maria Del Carmen Acri: Porque nadie va a saber que hay por ahí algo dando vuelta aparte.
+01:50:51 Nestor Pineiro: y tres coma Catorce veinticinco
+01:50:53 Maria Del Carmen Acri: Exacto claro, ni siquiera pone una mina exactamente exactamente Tenemos que
+01:50:53 Noelia Fuentes: Sí que no sea. Sea barra acceso barra, Déjame entrar cosas.
+01:50:59 Maria Del Carmen Acri: tener mucha desgracia de que alguien se ponga a ver me ha pasado urls libres y que accedan a lugares donde no corresponde Tenemos que tener mucha desgracia, pero bueno Me parece que es una capa. extra
+01:51:15 Nestor Pineiro: un link usas un link que falla ahí
+01:51:19 Luis Ojeda: No le mandas un una cadena de número y esa sea la URL ya está.
+01:51:25 Nestor Pineiro: sí
+01:51:28 Luis Ojeda: Que la tenga que copiar cada vez que quieran entrar.
+01:51:28 Maria Del Carmen Acri: y Ahí y ahí también si querés lo seguís con después tres veces se te bloquea todo lo que vos quieras.
+01:51:37 Luis Ojeda: Y ahí sí.
+01:51:44 Maria Del Carmen Acri: Y esto es sin bases. Sin base de datos todo jarcodeado.
+01:51:51 Luis Ojeda: exacto
+01:51:52 Maria Del Carmen Acri: Bien, tengo que entender bien porque no tengo que explicárselos.
+01:51:58 Nestor Pineiro: Simba
+01:52:00 Maria Del Carmen Acri: Carrusel y contacto es lo que me tienen que dar todo lo demás va a estar hardcodeado por el momento. Si esto me lo acepta, me van a decir para cuando la próxima entrega, que la próxima entrega, será lo del primer brief. Lo primero que pidieron y que le mandamos y nos dijeron que estaba bien y pero con la capa de seguridad. Si esto me dicen que sí.
+01:52:32 Nestor Pineiro: bueno, Esto no precisa capa de seguridad Más allá del tema de la el tema
+01:52:38 Maria Del Carmen Acri: Es si me aceptan esto para mañana no necesito capa de seguridad porque no tengo
+01:52:43 Maria Del Carmen Acri: nada de base de datos, no hay nada de base.
+01:52:43 Nestor Pineiro: Creo que no hay nada atrás.
+01:52:48 Maria Del Carmen Acri: servidor expuesto. Y ya está. Qué sucede Se me dicen no lo quiero. Dinámico ese from lo quiero para antes del seis Dinámico es volver a lo que hablábamos antes bloquear todos los en Point y
+01:53:13 Nestor Pineiro: y terminar lo que está
+01:53:15 Luis Ojeda: A lo que ellos permiten.
+01:53:16 Maria Del Carmen Acri: darle la seguridad y darle la
+01:53:19 Luis Ojeda: Sí ahí no vamos a ver un poquito en aprietos.
+01:53:22 Maria Del Carmen Acri: Bien.
+01:53:23 Luis Ojeda: pero bueno Haremos lo que se pueda.
+01:53:27 Maria Del Carmen Acri: Esa es la segunda versión sí, bloquear en
+01:53:38 Nestor Pineiro: Decirle que pongan para el año que viene la la materia seguridad.
+01:53:44 Maria Del Carmen Acri: porque
+01:53:46 Nestor Pineiro: Porque no lo vimos.
+01:53:48 Maria Del Carmen Acri: Qué cosa no vieron de seguridad.
+01:53:52 Oriana Marazzita: si tienes Uno Ay perdón.
+01:53:54 Luis Ojeda: ciberseguridad
+01:53:54 Maria Del Carmen Acri: a sistemas tiene seguridad Sí porque sistemas tiene redes y
+01:53:57 Nestor Pineiro: a
+01:54:03 Luis Ojeda: Sí claro el sistema
+01:54:04 Oriana Marazzita: Sí sí, creo que se me cortó perdón, eh? Por interrumpir Me parece que sí
+01:54:04 Maria Del Carmen Acri: Es una materia.
+01:54:08 Oriana Marazzita: que sistemas tiene ciberseguridad o seguridad.
+01:54:09 Maria Del Carmen Acri: Sí, sí, sí sí sí.
+01:54:11 Luis Ojeda: Nosotros profe de redes nos va a dar una clase de ciberseguridad.
+01:54:15 Maria Del Carmen Acri: Es bueno yo les digo yo les di más o menos otra partecita con el bloquear que no me dejen pasar cualquier cosa desde el Front que me lo controlen también desde el desde el back.
+01:54:32 Nestor Pineiro: Y le puedes poner un próximo inverso? o sea, pero
+01:54:38 Maria Del Carmen Acri: Sí, sistemas antiguamente tenía las dos materias redes por un lado que tenías seis horas de clase y seguridad por otro que eran otras seis horas y en el plan nuevo la fusionaron a nueve horas las dos materias. Igual no se ve mucho más de lo que yo les cuento. No se ve mucho más.
+01:55:15 Luis Ojeda: En definitiva esperamos a tu reunión para
+01:55:19 Maria Del Carmen Acri: Sí, esperen me aceptan la primer versión que es es solo el Front y jarcodeado. Para cuándo podríamos estar entregando? Editable lo primero que nos pidieron.
+01:55:41 Luis Ojeda: Estoy bien.
+01:55:41 Nestor Pineiro: editable para el viernes
+01:55:44 Luis Ojeda: Cómo lo primero A qué nos referimos con los primeros?
+01:55:47 Maria Del Carmen Acri: Y con todo el from editable.
+01:55:54 Nestor Pineiro: Y hay que terminar esto.
+01:55:55 Luis Ojeda: Entregarlo entregarlo sin pasar por un testing completo. Nos va, nos deja mal parados, si algo falta.
+01:56:05 Maria Del Carmen Acri: No, no, no está bien, No está bien A ver, tenemos el testing, hay que hacerlo. Además hay que subirlo y tetearlo porque todavía no está testeado porque no está estable donde está en el rey güey, no está estable.
+01:56:22 Nestor Pineiro: Y aparte se debe terminar ahora.
+01:56:22 Maria Del Carmen Acri: Está bien, a ver, me aceptan el from hardcoreado, para qué fecha estaría vamos a poner poniendo fechas Eso sí te digo para el viernes y te creo que va a estar para el viernes, eso eso sí va a estar para el
+01:56:39 Luis Ojeda: sí
+01:56:44 Maria Del Carmen Acri: No me acepto en eso y quiere bloqueamos y ponemos seguridad, para qué fecha tiene que puede estar. Más allá de que mañana me pueden decir, no lo quiero para tal día.
+01:57:01 Luis Ojeda: Claro, es que entre el 30 y el seis o cinco o cuatro.
+01:57:06 Maria Del Carmen Acri: 4
+01:57:07 Luis Ojeda: No, no pongámosle que sea el miércoles cuatro igual.
+01:57:11 Maria Del Carmen Acri: Con toda la furia.
+01:57:14 Luis Ojeda: Si no, no, yo dudo que podamos tener algo.
+01:57:17 Nestor Pineiro: sí
+01:57:19 Maria Del Carmen Acri: seguro
+01:57:20 Luis Ojeda: profesional y seguro para
+01:57:22 Maria Del Carmen Acri: No profesional no va a estar, va a estar seguro.
+01:57:26 Luis Ojeda: Entre si nos dedicamos solamente a la seguridad sí.
+01:57:30 Maria Del Carmen Acri: para el cuatro
+01:57:32 Luis Ojeda: Tapamos los parches lo hacemos todo una pálida adelante.
+01:57:35 Maria Del Carmen Acri: bloqueo en Point claro bloqueo en Point Queda los cruz que ya están terminados y le aplicó seguridad.
+01:57:47 Luis Ojeda: Hasta ahí nomás.
+01:57:47 Maria Del Carmen Acri: Para para hasta ahí nomás por el hasta el cuatro. Bien. versión 1 Sin base y jarcodeado lo entregó el viernes. la segunda versión es con Sin bloquearlos en Point si no dejándolos activos y con la seguridad. Con lo que nos pidieron hasta la primer devolución.
+01:58:19 Luis Ojeda: sí
+01:58:21 Maria Del Carmen Acri: Sí, me saco del medio únicamente de lo que está hecho. las micro credenciales Todo lo demás tiene que estar editable, me saco del medio las credenciales nada
+01:58:36 Luis Ojeda: porque volamos el botón del Front
+01:58:38 Maria Del Carmen Acri: más.
+01:58:42 Nestor Pineiro: Las credenciales están hechas. lo único que hay que hacer es que en vez de tener los los campos de
+01:58:52 Luis Ojeda: el
+01:58:54 Nestor Pineiro: De fecha el lugar y eso en vez de estar jarcodeados que los lea directamente a la base de datos.
+01:59:01 Maria Del Carmen Acri: Está bien, pero yo estoy tratando de optimizar, está bien yo.
+01:59:02 Nestor Pineiro: Es relativamente sencillo.
+01:59:05 Maria Del Carmen Acri: de optimizar al máximo el tiempo. Entonces me quito la micro credencial que no estaba pedida. Y lo que sí se pidió en la primera entrega.
+01:59:16 Luis Ojeda: QR solo
+01:59:18 Maria Del Carmen Acri: QR Que se puedan poner los materiales, eso está pedido en la primera entrega. Y que esté editable en la parte del from.
+01:59:37 Nestor Pineiro: Sí sí, eso eso va a ser una de las primeras cosas que voy a resolver el plan de evitable.
+01:59:44 Maria Del Carmen Acri: Más más la seguridad eso para cuándo puede estar?
+01:59:48 Luis Ojeda: marzo abril según Perdón estoy cansado.
+01:59:57 Nestor Pineiro: Mira yo creo que antes pero ponerle para el cuatro.
+01:59:58 Luis Ojeda: No sé.
+02:00:05 Maria Del Carmen Acri: También para el 4.
+02:00:07 Luis Ojeda: no, no
+02:00:09 Maria Del Carmen Acri: Yo lo pondría. Para el 11.
+02:00:13 Nestor Pineiro: Ah bueno sí Entonces sí.
+02:00:15 Maria Del Carmen Acri: una semana después
+02:00:16 Luis Ojeda: Domingo 11, el lunes 12 tenemos feriado Ah no estoy en octubre.
+02:00:18 Maria Del Carmen Acri: no Miércoles 4 me salta al miércoles 11 en noviembre.
+02:00:40 Luis Ojeda: Noviembre miércoles once Sí está bien nueve y diez feriado el once sería el
+02:00:43 Maria Del Carmen Acri: sí
+02:00:46 Luis Ojeda: primer hábil.
+02:00:47 Maria Del Carmen Acri: Bien, ahí ya tengo. Todo menos la todo lo que estaba al principio menos la micro credencial está bien. Pregunta, si ese es el plan puede ser que para el 18 o para el 25. Del 11 pongo 25 este también micro credencial y los cruz de las actividades.
+02:01:17 Nestor Pineiro: Si no logro eso me pegó un tiro.
+02:01:21 Luis Ojeda: No, no te lo pego. Yo no te preocupes, por qué no ponemos para el 25? Y si entregamos antes quedamos con un genio como si fuera.
+02:01:32 Maria Del Carmen Acri: Por eso estoy poniendo 25 completo.
+02:01:36 Luis Ojeda: claro claro
+02:01:38 Nestor Pineiro: Sí el 25, el 25, yo quiero ver me he olvidado ya.
+02:01:42 Maria Del Carmen Acri: Yo también porque me estresó muchísimo esto.
+02:01:45 Luis Ojeda: Claro, por eso pongamos el 25, así no nos estresemos solo con los tiempos, si
+02:01:50 Nestor Pineiro: claro
+02:01:51 Luis Ojeda: entregamos el 18 Ya está listo.
+02:01:53 Maria Del Carmen Acri: Mejor me lo saco de encima completo Y con seguridad el resto del equipo está de
+02:01:54 Nestor Pineiro: Sí seguramente.
+02:01:55 Luis Ojeda: mejor todavía
+02:02:00 Maria Del Carmen Acri: acuerdo Hay que meterle mano a todo. A Back a from no puede Néstor solo estar haciendo el Back es una orden.
+02:02:09 Luis Ojeda: No, no no, no, yo me noto para trabajar también. no sé el que quiera y se anime así nos repartimos todo el Back para que no sea
+02:02:21 Maria Del Carmen Acri: Y se sacan el dolor de no es que se tienen que sacar el dolor.
+02:02:22 Luis Ojeda: toda la carga sobre
+02:02:25 Nestor Pineiro: Sí hay hay
+02:02:27 Maria Del Carmen Acri: posible y no quedar mal.
+02:02:29 Nestor Pineiro: El el vamos a apreciar mucha mano de obra para hacer el testing.
+02:02:34 Maria Del Carmen Acri: Está bien, eso va a ser.
+02:02:36 Nestor Pineiro: Porque lleva mucho tiempo entrada hacer ver qué pasa.
+02:02:38 Maria Del Carmen Acri: Ah bien está bien, pero si yo me lo saco de encima si tengo muchas manos no me lo saco de si va al 25 me lo saco de encima del 11, eso es lo que tenés que entender Si yo tengo muchas manos y ellos saben que hay ocho personas atrás y que dos estuvieron en examen o tres estuvieron en examen. y ellos saben perfectamente sí Entonces yo me los
+02:03:08 Nestor Pineiro: También saben perfectamente que no entregaron las cosas cuando debían.
+02:03:12 Maria Del Carmen Acri: Está bien, eso lo discuto con ellos, Yo no les estoy sacando crédito a ustedes sí, Al contrario De hecho no les voy a mostrar el mail, pero tal cual lo
+02:03:19 Nestor Pineiro: No, no, pero eso tiene que asumir su parte.
+02:03:28 Maria Del Carmen Acri: hablamos con el profe Solo que están con palabras finas Sí pero en el mes de lunes, pues fue así el profe me dijo perfecto y yo dije Uy qué raro que me haya dicho perfecto. fueron como cuando He mandado ya otros mil visitas, Sí y de hecho se siguen mandando, si nadie les quita mérito a ustedes sí quiero que estén claro y es lo que se dejó en claro y mañana espero que me abordasen por no decir me estás pelotudeando,
+02:04:07 Maria Del Carmen Acri: hijo. No Espero que alguien me ilumine para que yo no diga lo que pienso. Porque no lo puedo decir, pues son mis dadores de trabajo nada más que por eso no, porque no lo piense nada. Yo sinceramente estoy bastante indignada, pero
+02:04:23 Nestor Pineiro: Sí, hubo un momento en que escupí ha sido nítrico.
+02:04:34 Maria Del Carmen Acri: bueno, no es tema de esto. Entonces volvamos si varios ponen mano, me lo saco encima antes y después entre son varios también testean entonces cuanto antes
+02:04:44 Nestor Pineiro: No tengan la menor duda.
+02:04:49 Maria Del Carmen Acri: Cuantos más manos haya más rápido, me lo saco encima.
+02:04:53 Luis Ojeda: Y después hacemos la división de de cómo testear como ya la hicimos anteriormente.
+02:04:58 Maria Del Carmen Acri: exactamente
+02:04:59 Luis Ojeda: Tenemos el software para hacerlo y está funcionando bien.
+02:05:03 Maria Del Carmen Acri: Y nadie y nadie está complicadísimo con los exámenes ni con nada de todo eso
+02:05:04 Luis Ojeda: Que no va a ser el problema.
+02:05:11 Maria Del Carmen Acri: O me equivoco levanten la mano ahora o callen para siempre.
+02:05:14 Luis Ojeda: No, no, nosotros sí estamos complicados con los exámenes y trabajos prácticos y presentaciones grupales. Sí, estamos medio hasta las manos considerando que tenemos que hacer una aplicación cliente servidor que se conecte por fuera de internet y todavía no tenemos las especificaciones de que sí y que no puede tener.
+02:05:38 Maria Del Carmen Acri: Estás hablando de esto o de otra cosa?
+02:05:43 Luis Ojeda: Redes Por eso digo hablando de los exámenes estamos complicados Nosotros sí
+02:05:48 Maria Del Carmen Acri: Y por qué todavía no tienen Y por qué?
+02:05:48 Nestor Pineiro: Y todavía y todavía nos falta.
+02:05:48 Luis Ojeda: pero no importa. Ah porque no lo subió las notas del primer del primero Segundo parcial Néstor
+02:05:53 Nestor Pineiro: Porque no lo dio.
+02:05:59 Luis Ojeda: faltan
+02:06:02 Daira Barreto: Gracias al profe igual.
+02:06:02 Nestor Pineiro: uno solo
+02:06:04 Luis Ojeda: la nota la mitad
+02:06:04 Maria Del Carmen Acri: Ah eso iba a preguntar todos los todos los cuatrimestres pasa esto.
+02:06:08 Daira Barreto: Sí pero es así entrega las consignas tarda igual no es complicado de hacer.
+02:06:15 Maria Del Carmen Acri: Okay.
+02:06:15 Luis Ojeda: No, no digo que sea complicado, ya tengo hasta la idea de hacerlo.
+02:06:18 Daira Barreto: Pero las consignas te la da lo último.
+02:06:21 Luis Ojeda: No quiero desarrollar algo para tener y que después me diga esto no va, no quiero hacerlo de nuevo. Ya trabajo me sobra.
+02:06:29 Maria Del Carmen Acri: Sí, es un trabajo.
+02:06:32 Nestor Pineiro: este no Y todavía y todavía nos falta toda la documentación que hay que
+02:06:33 Luis Ojeda: Nada, ni hablar de esa parte.
+02:06:36 Nestor Pineiro: para Alan
+02:06:40 Maria Del Carmen Acri: Pero parada va a ser para mesas de finales O me equivoco.
+02:06:45 Luis Ojeda: Calculo que sí, pero igual tenemos que consultar toda la documentación de
+02:06:47 Nestor Pineiro: Sí y de cuál proyecto porque tenemos tres.
+02:06:51 Luis Ojeda: gestión de proyectos como primera carpeta.
+02:06:53 Maria Del Carmen Acri: Manden un mensajito al profe Y pregúntenle para cuándo lo tienen?
+02:06:57 Luis Ojeda: En la reunión de hace un ratito definimos eso pedirle al profe que necesitamos
+02:07:02 Maria Del Carmen Acri: Cuando qué fecha?
+02:07:06 Luis Ojeda: claro.
+02:07:07 Maria Del Carmen Acri: No qué fecha para qué fecha?
+02:07:09 Luis Ojeda: claro
+02:07:10 Maria Del Carmen Acri: exacta Ustedes dos específicamente.
+02:07:18 Luis Ojeda: el primero del ministerio el que quedó truncado el de los formularios con árbol de decisiones
+02:07:24 Maria Del Carmen Acri: Daira, vos también estás.
+02:07:26 Daira Barreto: No, Yo hoy estuve hablando con el profesor y también le preguntamos eso tenemos una reunión para el once y creo que para dijo que iba a mandarlo las fechas ya, pero no, no estoy tan segura de eso, así que habría que preguntarle.
+02:07:43 Maria Del Carmen Acri: Okay y Oriana vos también estás con el profe.
+02:07:49 Oriana Marazzita: No es el mismo caso que Luis y Néstor o que daira, porque no estoy en gestión, daira, solo está el PP cuatro, Yo también estoy un PP cuatro Me parece que aira está haciendo un proyecto con chicos con Luis Inés lo de tierra del fuego Pero ellos saldrán en gestión. Bueno es muy distinto todo cada uno.
+02:08:18 Maria Del Carmen Acri: sí, Luis y Néstor
+02:08:18 Luis Ojeda: Sí, como unificar la documentación Entonces nosotros, si ya arrancamos en gestión de proyecto con lo de los formularios del ministerio nos queda seguir
+02:08:30 Maria Del Carmen Acri: Tienen que ir por ahí.
+02:08:32 Luis Ojeda: por ese mismo camino.
+02:08:33 Maria Del Carmen Acri: Tienen que ir por ahí.
+02:08:35 Luis Ojeda: Nosotros íbamos a ir con geodock, pero nos cambió toda la jugada el primer
+02:08:40 Maria Del Carmen Acri: No, porque tiene que hacer lo hace transversal así como lo hace, sí.
+02:08:41 Luis Ojeda: día.
+02:08:46 Maria Del Carmen Acri: transversal con la profe.
+02:08:49 Oriana Marazzita: Daira, qué fecha era que la reunión con el profe.
+02:08:55 Daira Barreto: Nosotros íbamos a tener reunión el once. el miércoles 11
+02:09:01 Luis Ojeda: Yo lo escribo mañana para ver.
+02:09:05 Daira Barreto: Mi equipo no con el profe.
+02:09:08 Oriana Marazzita: Para preguntarle igual sí le mando un mil gracias.
+02:09:08 Maria Del Carmen Acri: Juan igg Ok Juan y Jesús lo que tienen que preparar es únicamente lo de
+02:09:11 Daira Barreto: Sí, sí.
+02:09:16 Maria Del Carmen Acri: agentes Me equivoco. Yo me pierdo con ustedes porque sí que están en la pp3, pero no sé qué materias están cursando, además de la pp3 suerte.
+02:09:29 Juan Yotti: Y tenemos el parcial de ingeniería el 17.
+02:09:42 Maria Del Carmen Acri: por eso le dije suerte y
+02:09:42 Luis Ojeda: De ochocientas páginas no es tanto.
+02:09:51 Maria Del Carmen Acri: Ah, no, porque no están con Alan no, no, no están.
+02:09:53 Noelia Fuentes: un pequeño manual
+02:09:55 Luis Ojeda: Ah, no, pero qué usan otra bibliografía?
+02:09:55 Maria Del Carmen Acri: profe, no no?
+02:09:56 Noelia Fuentes: con Ariel
+02:09:58 Juan Yotti: con Ariel
+02:09:59 Maria Del Carmen Acri: Sí están con otro profe, no sé por dónde va. O sea, así que sé por dónde va, porque estamos trabajando, pero es la primera vez el primer examen que escucho que él toma Entonces no sé. No está con otro profes. No, y Damián están también con ese del 17. Bien. Juan y Jesús lo de agentes Antes hablaban del para el once de hacerlo. No me acuerdo.
+02:10:40 Juan Yotti: Sí, sí, sí sí sí.
+02:10:41 Maria Del Carmen Acri: Y llegan.
+02:10:44 Juan Yotti: Y yo creo que sí.
+02:10:47 Jesús Ignacio García: Sí, por ahora sí llegamos.
+02:10:49 Maria Del Carmen Acri: ok Y Damián que estás con n8n.
+02:10:59 Damian Luna: Sí profe eso lo haría la otra semana o el 11 también.
+02:11:03 Maria Del Carmen Acri: Decímelo de Contame los no, los dos juntos no, porque me parece que no les va a dar el tiempo. para presentar el mismo día Que eres el 18 o antes el 4?
+02:11:22 Damian Luna: Vale Sí lo hablo con Montaño sino para el 18.
+02:11:29 Maria Del Carmen Acri: Bien, a priori para el 18 del 11, mira que el 17 tenés. ingeniería
+02:11:42 Damian Luna: Sí, sí, sí sí.
+02:11:43 Maria Del Carmen Acri: No hay problema Okay Ese es valiente que son los de la pp3. no E Cómo venís con la programación, porque lo tuyo es el 12.
+02:11:59 Noelia Fuentes: Ah eso eso iba a preguntar porque no lo no lo tenían lo hablamos veinte veces y nunca lo anoté.
+02:12:03 Maria Del Carmen Acri: el 12
+02:12:04 Noelia Fuentes: el doce de
+02:12:06 Maria Del Carmen Acri: Salvo que me pidan. Específicamente tu grupo que sea el 19 a todo esto Damián Ya sé que para el doce ustedes llegan, por eso no te lo pregunté. Por lo que estuvimos hablando lunes pasado, creo que nos reunimos con Jonathan ustedes llega, tienen casi finiquitado eso.
+02:12:27 Damian Luna: que el sistema
+02:12:28 Maria Del Carmen Acri: sí
+02:12:29 Damian Luna: Sí sí, ya está hecho.
+02:12:30 Maria Del Carmen Acri: Para el 12 llegan no es tu grupo en realidad es tu parte porque los chicos ya sé que lo tienen hecho.
+02:12:39 Noelia Fuentes: No, Sí o sea, para el 12 creo que llegamos y llegamos bien. Yo en el medio tengo ponerme al día con el curso de Amazon que no no había hecho.
+02:12:45 Maria Del Carmen Acri: Eso eso después después hablamos. te no pasa nada, después hablamos. Después te mando un mensajito por WhatsApp con respecto bien.
+02:13:03 Noelia Fuentes: Pero para el 12, yo creo que llegamos y llegamos bien.
+02:13:09 Maria Del Carmen Acri: Está bien. Yo como para tener en claro que se puede respetar admitiendo que me acepten el sin base y jarcodeado. Para el 11 entregar la primera versión que era casi completo y el 25 completísimo. Teniendo en cuenta eso y que van a tener que meter más para llegar lo antes posible porque después hay que hacer el testing después que se los entreguemos y que ellos lo pongan donde en el Sí también ahí.
+02:13:56 Maria Del Carmen Acri: Donde puedan hay que testearlo estoy contemplando todo eso sí, y ya si quieren les soplo fechas de finales. Que ya estamos hablando de diciembre, ya les puedo soplar fechas de finales. Les voy a compartir ustedes cualquier cosa no saben nada los que no cursan conmigo porque porque en realidad se pueden cambiar todavía las fechas. Creo que no está en el sitio oficial todavía. Solo nos han pasado un mail un mail ayer. Con lo cual todavía estamos sujetos a cambios.
+02:14:56 Maria Del Carmen Acri: Inscripciones a finales entre el 30 de noviembre y el 4 de diciembre, o sea ese espacio no van a hacer nada porque son las inscripciones. Sí el que tiene que preparar los pinales sí tendrá que hacer tiene que preparar finales. Pero si entregamos para el 25 completos ya cinco días antes están libres para preparar finales y estoy contemplando también eso entiendo que de los míos pp3 nadie va a ir a final de mis materias.
+02:15:36 Maria Del Carmen Acri: el resto se las debo Y las mesas de finales quedaron tomen con pinza al nueve entre el 9 y el 15. Tomen con pinza porque no me acuerdo cómo está el feriado del papa. El nueve es lunes y el lunes me parece que es feriado salvo que ministerio haya dicho, no hay mesa de examen y las mesas se toman porque es a la noche. Sí entonces las mesas me están quedando entre el nueve y el 15. Y específicamente.
+02:16:19 Maria Del Carmen Acri: Todos les interesa a partir de segundo año, verdad? Sí, segundo año ni siquiera ustedes segundo año no algunos sí, segundo año. Entiendo que ninguna de estas están cursando. Perdón esto segundo año. No creo que nada de todo esto al menos esto no. segundo año segundo cuatrimestre son las mías y la ingeniería Que quedó el viernes 11 y las mías todas el jueves 10. Y tercer año gestión va a ser el lunes 14.
+02:17:12 Nestor Pineiro: tres primer cuatrimestre
+02:17:17 Maria Del Carmen Acri: No, no, no, no son los que están cursando estas materias, eso no tengo en cuenta porque es cuando empezaron no no se preocupen o eso me lo cuando cursada, me parece que es eso Si empezaron en marzo o empezaron en agosto y para en agosto y para el Instituto agosto es el primer cuatrimestre. No mires esto mira tercer año porque es tercer año. realidad tercer año tiene un cuatrimestre solo.
+02:17:51 Maria Del Carmen Acri: no tiene
+02:17:55 Luis Ojeda: tercero profe cuatro y nueve
+02:17:55 Maria Del Carmen Acri: Sí el tercero el 9
+02:18:00 Luis Ojeda: Y redes el diez.
+02:18:02 Maria Del Carmen Acri: Y redes el 10 exactamente y trabajo que ustedes ya la tienen el 11 y gestión de proyecto el 14.
+02:18:12 Luis Ojeda: bien, no sé que el 14 quedamos libres en
+02:18:16 Maria Del Carmen Acri: Y Ah porque con melisario ya terminaron.
+02:18:19 Luis Ojeda: esto ya
+02:18:21 Maria Del Carmen Acri: Ojo, que ayer nos pasaron para modificar, no es este El oficial, eh? No es oficial esto eso Esto fue oficioso. Hasta que no lo pasen por el WhatsApp no es oficial todavía está sujeto a cambios. Horario fechas importantes puede llegar a estar y ya les digo si es oficial u oficioso es oficial es oficioso, no está acá todavía. Es oficioso. Así que ojo con eso yo no les mostré nada, Sí yo misma Ayer cuando apenas lo recibí cambie había un puesto el miércoles. Y cambia jueves.
+02:19:11 Nestor Pineiro: Bueno, igual del nueve catorce es una semana.
+02:19:15 Maria Del Carmen Acri: Es una semana, es que quedó una semana y medio por el feriado. está el siete feriado el 8 feriado. Ah No El Papa es ahora en noviembre que viene este en noviembre
+02:19:32 Luis Ojeda: noviembre del Papa sí
+02:19:35 Maria Del Carmen Acri: no es por el siete y el 8 es por el Entonces sí es a partir del nueve si es a partir del cambia acá dice No ella, Qué tienen los lunes con ella.
+02:19:49 Nestor Pineiro: sí
+02:19:50 Maria Del Carmen Acri: nada, va a ser el lunes, no creo que lo cambie, no creo que lo como tengo tres días puedo cambiar.
+02:19:55 Luis Ojeda: 23 El día 23, el día de fibonacci no sabía que el señor de los números tenían
+02:20:04 Nestor Pineiro: San fibonacci
+02:20:08 Luis Ojeda: día.
+02:20:09 Maria Del Carmen Acri: No sabía tampoco.
+02:20:10 Luis Ojeda: Esa figura. según Google
+02:20:15 Maria Del Carmen Acri: acá no sé por qué está en Amarillito Capaz Ah porque comparten el mismo día están los dos, ya entendí, sí. gente Dónde están acá algo más para dejar en claro? Los que no hablaron se van a someter. se someten a Oriana se somete a lo que decidimos y
+02:20:55 Daira Barreto: Mañana no, a ver qué definen.
+02:20:57 Maria Del Carmen Acri: Sí sí, sí, Hasta mañana al medio a tipo dos de la tarde no se toca nada. Hasta mañana Las dos de la tarde, porque todo esto está en el aire hasta que mañana no me reúna con ellos y me digan sí, no? Porque la reunión de mañana es para eso.
+02:21:13 Maria Del Carmen Acri: Para ajustar relojes que es la parte del mail que no se las conté. bien, si están sometidos a esta voluntad si es que están de acuerdo con voluntad después claro, después acentuar no podían haber opina.
+02:21:31 Nestor Pineiro: otorga
+02:21:35 Luis Ojeda: Esto no es una democracia.
+02:21:40 Maria Del Carmen Acri: No sí que es una democracia podría haber opinado a verlo cierto es que digo si yo se lo voy a estar pidiendo una Inteligencia artificial. Dividamos tareas Este es el pron, que pido teniendo en cuenta esto esto y esto se lo comparto y cada uno le pide un botón distinto Sí y después es unificar Néstor por mucho que te enojes. A lo mismo lo mismo que se hizo con el from cada uno agarra una parte y después
+02:22:08 Luis Ojeda: o
+02:22:13 Maria Del Carmen Acri: se unificó Sí hoy todo el mundo programa con Inteligencia artificial Lo importante es que pinche la menor cantidad posible. Y que sea lo más seguro posible. Sí, no es Inteligencia artificial sin inteligencia arti.
+02:22:32 Maria Del Carmen Acri: lógica para pedirlo lo más concreto posible. Dicho esto gente no se me enfermen prohibido enfermarse la informes de acá a fin de a navidades de acá a navidades están todas.
+02:22:53 Nestor Pineiro: Está prohibido.
+02:22:55 Maria Del Carmen Acri: porque todos se tienen que recibir Okay entonces, hacemos eso. No es solo por la entrega esto sino porque viene todo el grueso de exámenes y eso y nada, así después a un aporte yo dejaron de ser mis estudiantes con lo cual puedo ir a tomar café el resto también me quiero ir a tomar. son estudiantes míos. Quiero que dejen de ser estudiantes mí. Así nos podemos ir a tomar cafecito. Okay.
+02:23:31 Nestor Pineiro: ok
+02:23:33 Maria Del Carmen Acri: bien, me parece que si no hay nada más que aclarar no sé Luis
+02:23:39 Luis Ojeda: No, no, O sea lo que pueda aclarar oscurece Así que dejamos así enseguida no mañana temprano paso a la minuta de hoy a todos quieren todos en autos.
+02:23:50 Maria Del Carmen Acri: Está bien, está bien. Sí, incluirlo.
+02:23:57 Luis Ojeda: Sí, Alan y a Silvia los incluyo siempre.
+02:24:00 Nestor Pineiro: Acabo de bajar el resumen de la Inteligencia artificial de la conversación, son
+02:24:05 Nestor Pineiro: diez líneas. dos horas veinte
+02:24:12 Luis Ojeda: Yo voy a subir un poquito más Digamos como para hacer bulto.
+02:24:16 Maria Del Carmen Acri: Sí igual digamos que si te hizo lo concreto Listo ya está. Ahí ahí lo está modificando, le puso codea todo Néstor y vamos a mandar. Y vos mandar ese.
+02:24:33 Luis Ojeda: ya
+02:24:35 Nestor Pineiro: no, no, no, no, no me No me asusta el acertijo como te decía. el
+02:24:45 Maria Del Carmen Acri: Ya lo sé Néstor que no te asusta pero quiero que que se termine lo antes posible este trabajo me estresó, me estresó la falta de empatía.
+02:24:53 Luis Ojeda: sí
+02:24:57 Nestor Pineiro: Sí, sí, sí, sí, a mí lo que me cansó me puede hacer.
+02:24:59 Luis Ojeda: A todos.
+02:25:00 Maria Del Carmen Acri: Claramente no del lado de ustedes no claramente, no?
+02:25:03 Nestor Pineiro: a mí lo que me cansó no fue hacer el código, sino la falta de retorno de
+02:25:08 Luis Ojeda: respuesta
+02:25:11 Nestor Pineiro: del estado
+02:25:13 Maria Del Carmen Acri: Por eso es que mañana espero que me dio me ilumine para que no diga lo que
+02:25:19 Maria Del Carmen Acri: pienso una vez en la vida, una vez en cosa de seguir teniendo trabajo.
+02:25:25 Luis Ojeda: Por si acaso y como el no, ya lo tenemos Tírale la opción uno.
+02:25:30 Maria Del Carmen Acri: sí
+02:25:31 Luis Ojeda: Y es eso eso o nada decir esto.
+02:25:35 Maria Del Carmen Acri: Es la opción uno, el sí es la opción uno cosa que no tengamos ponernos mano
+02:25:36 Nestor Pineiro: Es lo que hay.
+02:25:43 Maria Del Carmen Acri: en y después va.
+02:25:45 Luis Ojeda: Ya está, porque el resto ya lo hacemos.
+02:25:50 Maria Del Carmen Acri: la opción 1 con entregas después De todo y ya está.
+02:25:57 Luis Ojeda: perfecto
+02:25:58 Maria Del Carmen Acri: ok 4 del 11 queda únicamente para la opción 2 y después sería.
+02:26:09 Nestor Pineiro: Y después lo que diga.
+02:26:11 Maria Del Carmen Acri: o Ok bien, gente de parte yo los libero.
+02:26:19 Nestor Pineiro: bueno
+02:26:20 Luis Ojeda: Gracias.
+02:26:21 Nestor Pineiro: Iremos por la sopa.
+02:26:22 Luis Ojeda: Mañana arrancamos temprano pasando minutos y demás te damos tu aviso.
+02:26:23 Maria Del Carmen Acri: Buenas noches. Sí, tranqui, tranqui. perfecto
+02:26:30 Nestor Pineiro: bueno
+02:26:30 Daira Barreto: cualquier cosa próxima reunión Cuando sería el viernes o
+02:26:35 Luis Ojeda: Yo diría que sí.
+02:26:39 Nestor Pineiro: Bueno buenas noches
+02:26:40 Maria Del Carmen Acri: Es presten atención a los mails porque apenas tengo la devolución. Mañana
+02:26:43 Daira Barreto: bueno
+02:26:46 Luis Ojeda: en base a
+02:26:46 Maria Del Carmen Acri: vamos, voy a estar mandando un mail.
+02:26:49 Daira Barreto: perfecto
+02:26:49 Luis Ojeda: Eso listo.
+02:26:51 Daira Barreto: Bueno buenas noches
+02:26:53 Luis Ojeda: Gracias, buenas noches a todos.
+02:26:54 Maria Del Carmen Acri: Buenas noches, chao, chao, buenas.
+  
