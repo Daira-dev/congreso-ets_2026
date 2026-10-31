@@ -133,6 +133,26 @@ export const DEFAULT_CAROUSEL_SLIDES: CarouselSlide[] = [
   },
 ];
 
+export interface FaqEnlace {
+  id: string;
+  titulo: string;
+  url: string;
+}
+
+export interface FaqArchivo {
+  id: string;
+  nombre: string;
+  url: string;
+  tamano?: string;
+}
+
+export interface FaqMultimedia {
+  id: string;
+  tipo: 'imagen' | 'video';
+  url: string;
+  titulo?: string;
+}
+
 export interface FaqItem {
   id: string;
   pregunta: string;
@@ -140,6 +160,9 @@ export interface FaqItem {
   categoria: string;
   orden: number;
   activo: boolean;
+  enlaces?: FaqEnlace[];
+  archivos?: FaqArchivo[];
+  multimedia?: FaqMultimedia[];
 }
 
 export const DEFAULT_FAQ_ITEMS: FaqItem[] = [
@@ -150,11 +173,14 @@ export const DEFAULT_FAQ_ITEMS: FaqItem[] = [
     categoria: 'General',
     orden: 1,
     activo: true,
+    enlaces: [
+      { id: 'enl-info-1', titulo: 'Conocé las modalidades del Congreso', url: '/#actividades' }
+    ],
   },
   {
     id: 'faq-2',
     pregunta: '¿Cuándo se realiza?',
-    respuesta: 'El 6 de noviembre de 2026.',
+    respuesta: 'El 6 de noviembre de 2026 en jornada completa de 09:00 a 18:00 hs.',
     categoria: 'General',
     orden: 2,
     activo: true,
@@ -162,15 +188,18 @@ export const DEFAULT_FAQ_ITEMS: FaqItem[] = [
   {
     id: 'faq-3',
     pregunta: '¿Dónde se realiza?',
-    respuesta: 'La sede prevista es el Auditorio Polo Saavedra, Crisólogo Larralde 5085, Ciudad de Buenos Aires.',
+    respuesta: 'La sede prevista es el Auditorio Polo Saavedra, Crisólogo Larralde 5085, Ciudad Autónoma de Buenos Aires.',
     categoria: 'Sede y Acceso',
     orden: 3,
     activo: true,
+    enlaces: [
+      { id: 'enl-mapa', titulo: 'Ver ubicación en Google Maps', url: 'https://maps.google.com/?q=Crisologo+Larralde+5085+Buenos+Aires' }
+    ],
   },
   {
     id: 'faq-4',
     pregunta: '¿La participación es gratuita?',
-    respuesta: 'Sí. El Congreso es una iniciativa pública, abierta y gratuita.',
+    respuesta: 'Sí. El Congreso es una iniciativa pública, abierta y 100% gratuita para toda la comunidad educativa y público interesado.',
     categoria: 'General',
     orden: 4,
     activo: true,
@@ -178,10 +207,13 @@ export const DEFAULT_FAQ_ITEMS: FaqItem[] = [
   {
     id: 'faq-5',
     pregunta: '¿Cómo me inscribo como asistente?',
-    respuesta: 'La inscripción se realiza desde esta web a través de la sección de inscripción oficial.',
+    respuesta: 'La inscripción se realiza desde esta web a través de la sección de inscripción oficial para asistentes generales.',
     categoria: 'Inscripción',
     orden: 5,
     activo: true,
+    enlaces: [
+      { id: 'enl-insc', titulo: 'Ir a Inscripciones', url: '/#contacto' }
+    ],
   },
   {
     id: 'faq-6',
@@ -230,6 +262,9 @@ export const DEFAULT_FAQ_ITEMS: FaqItem[] = [
     categoria: 'Propuestas',
     orden: 11,
     activo: true,
+    archivos: [
+      { id: 'arc-doc-part', nombre: '1 Aula Abierta - demostraciones aplicadas.pdf', url: '/PDF/1 Aula Abierta - demostraciones aplicadas.pdf' }
+    ],
   },
 ];
 
@@ -980,8 +1015,47 @@ router.get('/faq', requireHierarchy(3), async (_req: AuthenticatedRequest, res: 
 });
 
 /**
+ * Helper para sanitizar contenidos enriquecidos (URLs, PDFs, multimedia) de FAQs
+ */
+function sanitizeFaqEnrichments(body: any) {
+  const enlaces: FaqEnlace[] = Array.isArray(body.enlaces)
+    ? body.enlaces
+        .filter((e: any) => e && e.url && String(e.url).trim().length > 0)
+        .map((e: any) => ({
+          id: e.id ? String(e.id) : `enl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          titulo: String(e.titulo || e.url).trim(),
+          url: String(e.url).trim(),
+        }))
+    : [];
+
+  const archivos: FaqArchivo[] = Array.isArray(body.archivos)
+    ? body.archivos
+        .filter((a: any) => a && a.url && String(a.url).trim().length > 0)
+        .map((a: any) => ({
+          id: a.id ? String(a.id) : `arc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          nombre: String(a.nombre || a.url.split('/').pop() || 'Documento PDF').trim(),
+          url: String(a.url).trim(),
+          tamano: a.tamano ? String(a.tamano).trim() : undefined,
+        }))
+    : [];
+
+  const multimedia: FaqMultimedia[] = Array.isArray(body.multimedia)
+    ? body.multimedia
+        .filter((m: any) => m && m.url && String(m.url).trim().length > 0)
+        .map((m: any) => ({
+          id: m.id ? String(m.id) : `med-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          tipo: m.tipo === 'video' ? ('video' as const) : ('imagen' as const),
+          url: String(m.url).trim(),
+          titulo: m.titulo ? String(m.titulo).trim() : undefined,
+        }))
+    : [];
+
+  return { enlaces, archivos, multimedia };
+}
+
+/**
  * POST /api/admin/frontend-cms/faq
- * Crea un nuevo elemento de FAQ
+ * Crea un nuevo elemento de FAQ con soporte para URLs, PDFs y multimedia
  */
 router.post('/faq', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -990,6 +1064,8 @@ router.post('/faq', requireHierarchy(4), async (req: AuthenticatedRequest, res: 
       res.status(400).json({ ok: false, error: 'ERR_VALIDATION', message: 'Pregunta y respuesta son campos obligatorios.' });
       return;
     }
+
+    const { enlaces, archivos, multimedia } = sanitizeFaqEnrichments(req.body);
 
     const currentFaqs = await getFaqItemsFromDb();
     const maxOrden = currentFaqs.reduce((max, item) => Math.max(max, item.orden || 0), 0);
@@ -1002,6 +1078,9 @@ router.post('/faq', requireHierarchy(4), async (req: AuthenticatedRequest, res: 
       categoria: categoria ? String(categoria).trim() : 'General',
       activo: activo !== false,
       orden: typeof orden === 'number' ? orden : maxOrden + 1,
+      enlaces,
+      archivos,
+      multimedia,
     };
 
     const updated = [...currentFaqs, newFaq].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
@@ -1009,7 +1088,7 @@ router.post('/faq', requireHierarchy(4), async (req: AuthenticatedRequest, res: 
 
     res.status(201).json({
       ok: true,
-      mensaje: 'Pregunta frecuente creada exitosamente.',
+      mensaje: 'Pregunta frecuente creada exitosamente con sus contenidos.',
       faq: newFaq,
       faqs: updated,
     });
@@ -1063,12 +1142,12 @@ router.put('/faq/reorder', requireHierarchy(4), async (req: AuthenticatedRequest
 
 /**
  * PUT /api/admin/frontend-cms/faq/:id
- * Actualiza un elemento de FAQ existente
+ * Actualiza un elemento de FAQ existente (texto, visibilidad, orden, URLs, PDFs y multimedia)
  */
 router.put('/faq/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const faqId = req.params.id;
-    const { pregunta, respuesta, categoria, activo, orden } = req.body;
+    const { pregunta, respuesta, categoria, activo, orden, enlaces, archivos, multimedia } = req.body;
 
     const currentFaqs = await getFaqItemsFromDb();
     const index = currentFaqs.findIndex((f) => f.id === faqId);
@@ -1079,6 +1158,12 @@ router.put('/faq/:id', requireHierarchy(4), async (req: AuthenticatedRequest, re
     }
 
     const current = currentFaqs[index];
+    const enrichments = sanitizeFaqEnrichments({
+      enlaces: enlaces !== undefined ? enlaces : current.enlaces,
+      archivos: archivos !== undefined ? archivos : current.archivos,
+      multimedia: multimedia !== undefined ? multimedia : current.multimedia,
+    });
+
     const updatedFaq: FaqItem = {
       ...current,
       pregunta: pregunta !== undefined ? String(pregunta).trim() : current.pregunta,
@@ -1086,6 +1171,9 @@ router.put('/faq/:id', requireHierarchy(4), async (req: AuthenticatedRequest, re
       categoria: categoria !== undefined ? String(categoria).trim() : current.categoria,
       activo: activo !== undefined ? (activo !== false && (activo as any) !== 'false') : current.activo,
       orden: typeof orden === 'number' ? orden : current.orden,
+      enlaces: enrichments.enlaces,
+      archivos: enrichments.archivos,
+      multimedia: enrichments.multimedia,
     };
 
     currentFaqs[index] = updatedFaq;
