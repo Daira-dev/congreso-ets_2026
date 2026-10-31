@@ -470,7 +470,7 @@
                 <li><a href="#cms-tarjetas">19. CMS de Tarjetas y Secciones del Portal Web</a></li>
                 <li><a href="#rbac-granular">20. Matriz Granular de Roles y Permisos (RBAC)</a></li>
                 <li><a href="#identificaciones-digitales">21. Diseñador WYSIWYG de Identificaciones Móviles</a></li>
-                <li><a href="#cms-frontend-avanzado">22. CMS Frontend: Hero, Secciones, Carrusel y FAQs Enriquecidas</a></li>
+                <li><a href="#cms-frontend-avanzado">22. CMS Frontend: Hero, Secciones, Carrusel, FAQs, Video y Avisos en Vivo</a></li>
                 <li><a href="#materiales-crud-anidado">23. Gestión de Materiales: Arquitectura CRUD Anidado</a></li>
                 <li><a href="#mantenimiento-purga-segura">24. Mantenimiento y Purga Segura con Fail-Safe SHA-256</a></li>
             </ul>
@@ -1157,7 +1157,7 @@
         <!-- 22. CMS FRONTEND AVANZADO -->
         <section class="section-card" id="cms-frontend-avanzado">
             <h2>
-                <span>22. CMS Frontend: Hero, Secciones, Carrusel y FAQs Enriquecidas</span>
+                <span>22. CMS Frontend: Hero, Secciones, Carrusel, FAQs, Video y Avisos en Vivo</span>
                 <span class="meta-tag" style="background:#0284c7; color:white; font-size:12px;">Portal Dinámico</span>
             </h2>
             <p>El módulo <strong>CMS Frontend</strong> permite al equipo de comunicación y directivos modificar en tiempo real el diseño y contenidos del portal público sin necesidad de editar código fuente ni reiniciar servicios.</p>
@@ -1166,7 +1166,15 @@
             <p>Permite personalizar el título institucional superior, subtítulo, fecha proyectada, llamada a la acción (CTA) y esquema cromático del Hero. Incorpora regla tipográfica obligatoria que garantiza espacios antes y después de barras (<code> / </code>) y guiones (<code> - </code>), manteniendo la elegancia visual.</p>
 
             <h3>22.2 Control Dinámico de Visibilidad de Secciones Públicas</h3>
-            <p>El administrador puede mostrar u ocultar de forma independiente cualquiera de las 6 secciones estructurales del portal (<code>#actividades</code>, <code>#sedes</code>, <code>#cronograma</code>, <code>#propuestas</code>, <code>#participacion</code> y <code>#contacto</code>). La configuración se persiste en la base de datos central y conmuta reactivamente la visibilidad del componente contenedor.</p>
+            <p>El administrador puede mostrar u ocultar de forma independiente cualquiera de las 6 secciones estructurales del portal con impacto inmediato en el DOM:</p>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><strong>Sección Hero:</strong> Cabecera de bienvenida con logotipo, títulos y botón de acción.</li>
+                <li><strong>Avisos en Vivo (Push):</strong> Anuncio interactivo con llamado a la acción para notificaciones.</li>
+                <li><strong>El Congreso & Carrusel:</strong> Presentación institucional y slider multimedia dinámico.</li>
+                <li><strong>Actividades & Modalidades:</strong> Muestrario de modalidades formativas y de investigación.</li>
+                <li><strong>Programa del Congreso:</strong> Cronograma interactivo de salas, ponencias y filtros temáticos.</li>
+                <li><strong>🎬 Video Institucional (Sumate a la experiencia ETS):</strong> Spot audiovisual oficial del evento.</li>
+            </ul>
 
             <h3>22.3 Carrusel Multimedia Interactivo</h3>
             <p>Gestor de diapositivas con soporte para imágenes de alta fidelidad, videos institucionales, insignias promocionales, enlaces de acción externa y selección de diapositiva predeterminada.</p>
