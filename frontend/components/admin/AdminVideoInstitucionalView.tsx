@@ -85,6 +85,39 @@ export default function AdminVideoInstitucionalView({ onNotice }: Props) {
     setHasChanges(true);
   };
 
+  // Conmutador directo de visibilidad con impacto inmediato en BD y portal público
+  const handleToggleVisibilidad = async (forceState?: boolean) => {
+    const nuevoEstado = forceState !== undefined ? forceState : !config.activo;
+    const updatedConfig = { ...config, activo: nuevoEstado };
+    setConfig(updatedConfig);
+
+    try {
+      const res = await fetch('/api/admin/frontend-cms/video-institucional', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedConfig),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setHasChanges(false);
+        window.dispatchEvent(new CustomEvent('video-institucional-updated'));
+        window.dispatchEvent(new CustomEvent('secciones-updated'));
+        const estadoTxt = nuevoEstado ? 'visible en el portal público' : 'completamente oculta del portal público';
+        Swal.fire({
+          icon: 'success',
+          title: nuevoEstado ? 'Video Institucional Visible' : 'Video Institucional Oculto',
+          text: `La sección del video institucional ahora está ${estadoTxt}.`,
+          timer: 1800,
+          showConfirmButton: false,
+        });
+        onNotice(`Video institucional ahora está ${estadoTxt}.`);
+      }
+    } catch (err: any) {
+      console.error('Error conmutando visibilidad de video:', err);
+      Swal.fire('Error', err.message, 'error');
+    }
+  };
+
   const handleUrlBlur = () => {
     const embed = toEmbedUrl(config.videoUrl);
     if (embed !== config.videoUrl) {
@@ -199,7 +232,29 @@ export default function AdminVideoInstitucionalView({ onNotice }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* BOTÓN DIRECTO DE VISIBILIDAD (MOSTRAR / OCULTAR EN UN CLIC) */}
+          <button
+            type="button"
+            onClick={() => handleToggleVisibilidad()}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+              config.activo
+                ? 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            }`}
+            title={config.activo ? 'Hacer clic para ocultar del portal público' : 'Hacer clic para mostrar en el portal público'}
+          >
+            {config.activo ? (
+              <>
+                <span>👁️‍🗨️</span> Ocultar del Portal
+              </>
+            ) : (
+              <>
+                <span>👁️</span> Mostrar en el Portal
+              </>
+            )}
+          </button>
+
           <a
             href="/#congreso"
             target="_blank"
@@ -256,23 +311,48 @@ export default function AdminVideoInstitucionalView({ onNotice }: Props) {
             </span>
           </h3>
 
-          {/* ESTADO DE VISIBILIDAD */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <div>
-              <p className="font-bold text-sm text-gray-800">Mostrar Sección en Portal</p>
-              <p className="text-xs text-gray-500">
-                Determina si la sección de video se renderiza en la página principal.
-              </p>
+          {/* ESTADO DE VISIBILIDAD CON ACCIÓN DIRECTA */}
+          <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-sm text-gray-800">Visibilidad en el Portal Público</p>
+                <p className="text-xs text-gray-500">
+                  {config.activo
+                    ? 'La sección del video se renderiza actualmente en la página principal.'
+                    : 'La sección del video está actualmente oculta del DOM del portal.'}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0" title={config.activo ? 'Clic para ocultar' : 'Clic para mostrar'}>
+                <input
+                  type="checkbox"
+                  checked={config.activo}
+                  onChange={() => handleToggleVisibilidad()}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={config.activo}
-                onChange={(e) => handleChange('activo', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-            </label>
+
+            {/* BOTÓN EXPLÍCITO DE CONMUTACIÓN INMEDIATA */}
+            <button
+              type="button"
+              onClick={() => handleToggleVisibilidad()}
+              className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
+                config.activo
+                  ? 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              }`}
+            >
+              {config.activo ? (
+                <>
+                  <span>👁️‍🗨️</span> Clic aquí para Ocultar Video (Impacto Inmediato)
+                </>
+              ) : (
+                <>
+                  <span>👁️</span> Clic aquí para Mostrar Video (Impacto Inmediato)
+                </>
+              )}
+            </button>
           </div>
 
           {/* TÍTULO */}
