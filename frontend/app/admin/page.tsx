@@ -114,7 +114,7 @@ export default function AdminDashboardPage() {
   const [customThemeVars, setCustomThemeVars] = useState<BackendThemeVars | null>(null);
 
   // Monitoreo de contingencia y sincronización Offline (IndexedDB -> PostgreSQL)
-  const { isOnline, pendingCount, syncAcreditaciones } = useOfflineAcreditacion();
+  const { isOnline, pendingCount } = useOfflineAcreditacion();
   const [showSyncModal, setShowSyncModal] = useState<boolean>(false);
 
   useEffect(() => {

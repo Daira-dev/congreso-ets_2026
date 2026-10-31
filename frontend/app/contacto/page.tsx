@@ -139,7 +139,7 @@ export default function Contacto() {
     const [faqList, setFaqList] = useState<FAQItem[]>(DEFAULT_FAQ_DATA);
     const [openId, setOpenId] = useState<string | number | null>(null);
     const [selectedCategoria, setSelectedCategoria] = useState<string>('TODAS');
-    const [loading, setLoading] = useState<boolean>(true);
+    const [_loading, setLoading] = useState<boolean>(true);
 
     const fetchFaqs = async () => {
         try {

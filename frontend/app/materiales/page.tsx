@@ -122,7 +122,7 @@ const FilterButton = ({
 
 export default function Materiales() {
     const [materials, setMaterials] = useState<Content[]>(DEFAULT_CONTENTS);
-    const [loading, setLoading] = useState<boolean>(true);
+    const [_loading, setLoading] = useState<boolean>(true);
     const [selectedType, setSelectedType] = useState<FilterType>("todos");
     const [search, setSearch] = useState("");
     const [sortOrder, setSortOrder] = useState<"recientes" | "antiguos">("recientes");

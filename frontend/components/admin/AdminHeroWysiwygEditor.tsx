@@ -470,7 +470,7 @@ export default function AdminHeroWysiwygEditor({ onNotice }: Props) {
             {hero.mostrarMiscelaneas && (
               <>
                 <div className="absolute top-2 left-2 text-[10px] text-white/40 font-mono tracking-widest pointer-events-none">
-                  /// LÍNEAS HEADER ///
+                  {"/// LÍNEAS HEADER ///"}
                 </div>
                 <div className="absolute bottom-0 left-0 h-1.5 w-1/3 bg-blue-500 pointer-events-none" />
               </>

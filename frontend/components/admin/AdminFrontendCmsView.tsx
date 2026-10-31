@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
-import Image from 'next/image';
 import AdminHeroWysiwygEditor from './AdminHeroWysiwygEditor';
 import AdminSeccionesVisibilidadView from './AdminSeccionesVisibilidadView';
 import AdminCarouselView from './AdminCarouselView';
