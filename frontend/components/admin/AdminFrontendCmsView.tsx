@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import Image from 'next/image';
+import AdminHeroWysiwygEditor from './AdminHeroWysiwygEditor';
+import AdminSeccionesVisibilidadView from './AdminSeccionesVisibilidadView';
+import AdminCarouselView from './AdminCarouselView';
 
 interface FrontendCard {
   id: number | string;
@@ -38,6 +41,7 @@ const BUILTIN_PDFS = [
 ];
 
 export default function AdminFrontendCmsView({ onNotice }: Props) {
+  const [cmsSubtab, setCmsSubtab] = useState<'cards' | 'hero' | 'secciones' | 'carousel'>('cards');
   const [cards, setCards] = useState<FrontendCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -306,6 +310,67 @@ export default function AdminFrontendCmsView({ onNotice }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* NAVEGACIÓN MODULAR DE SUBPESTAÑAS DEL CMS FRONTEND */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 pb-3">
+        <button
+          type="button"
+          onClick={() => setCmsSubtab('cards')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            cmsSubtab === 'cards'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+          }`}
+        >
+          <span>🎴</span>
+          <span>Tarjetas de Modalidades ({cards.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCmsSubtab('hero')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            cmsSubtab === 'hero'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+          }`}
+        >
+          <span>🎨</span>
+          <span>Editor HERO (WYSIWYG)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCmsSubtab('secciones')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            cmsSubtab === 'secciones'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+          }`}
+        >
+          <span>👁️</span>
+          <span>Visibilidad de Secciones (6)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCmsSubtab('carousel')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            cmsSubtab === 'carousel'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+          }`}
+        >
+          <span>🎬</span>
+          <span>Carrousel Multimedia (Slider)</span>
+        </button>
+      </div>
+
+      {cmsSubtab === 'hero' && <AdminHeroWysiwygEditor onNotice={onNotice} />}
+      {cmsSubtab === 'secciones' && <AdminSeccionesVisibilidadView onNotice={onNotice} />}
+      {cmsSubtab === 'carousel' && <AdminCarouselView onNotice={onNotice} />}
+
+      {cmsSubtab === 'cards' && (
+        <div className="space-y-6">
       {/* ENCABEZADO Y ACCIONES PRINCIPALES */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -531,6 +596,8 @@ export default function AdminFrontendCmsView({ onNotice }: Props) {
           })}
         </div>
       )}
+    </div>
+  )}
 
       {/* MODAL DE EDICIÓN / CREACIÓN */}
       {isModalOpen && editingCard && (

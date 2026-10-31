@@ -367,7 +367,7 @@ export default function AdminDashboardPage() {
         { key: 'homologaciones', label: 'Homologación de Ponentes', shortLabel: 'Homologación', icon: '🎖️', desc: 'Validación y dictamen de expositores', minJerarquia: 4 },
         { key: 'certificados', label: 'Certificados Oficiales', shortLabel: 'Certificados', icon: '🎓', desc: 'Buscador, validación y emisión de diplomas', minJerarquia: 4 },
         { key: 'encuestas', label: 'Encuestas de Calidad', shortLabel: 'Encuestas', icon: '📋', desc: 'Métricas de satisfacción docente y feedback', minJerarquia: 4 },
-        { key: 'manuales', label: 'Manuales del Sistema', shortLabel: 'MANUALES', icon: '📖', desc: 'Manuales oficiales y exportación a PDF', minJerarquia: 3 },
+        { key: 'manuales', label: 'Manuales del Sistema', shortLabel: 'Manuales', icon: '📖', desc: 'Manuales oficiales y exportación a PDF', minJerarquia: 3 },
       ],
     },
     {
@@ -430,10 +430,13 @@ export default function AdminDashboardPage() {
     minJerarquia: 3,
   };
 
-  // Pestañas visibles según jerarquía y permisos asignados divididas en dos filas equilibradas
+  // Pestañas visibles según jerarquía y permisos asignados ordenadas alfabéticamente (A-Z)
   const visibleTabs = navGroups
     .flatMap((g) => g.tabs)
-    .filter((tab) => isTabAllowed(tab.key, tab.minJerarquia));
+    .filter((tab) => isTabAllowed(tab.key, tab.minJerarquia))
+    .sort((a, b) =>
+      (a.shortLabel || a.label).localeCompare(b.shortLabel || b.label, 'es', { sensitivity: 'base' })
+    );
 
   const shouldSplitRows = visibleTabs.length > 6;
   const splitIndex = shouldSplitRows ? Math.ceil(visibleTabs.length / 2) : visibleTabs.length;
@@ -976,51 +979,34 @@ export default function AdminDashboardPage() {
                   </p>
                 </div>
                 <span className="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg self-start sm:self-auto">
-                  13 Módulos de Gestión Activos
+                  {visibleTabs.length} Módulos de Gestión (Orden A-Z)
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-                {[
-                  { key: 'usuarios', icon: '👥', title: 'Participantes', desc: 'Inscriptos, roles, estados y promociones', tag: `${resumen?.confirmados || 0} activos`, color: 'hover:border-blue-300' },
-                  { key: 'actividades', icon: '📅', title: 'Actividades & Salas', desc: 'Charlas, talleres, oradores y cupos', tag: 'Cronograma', color: 'hover:border-indigo-300' },
-                  { key: 'materiales', icon: '📁', title: 'Gestión de Materiales', desc: 'Documentos, videos, imágenes y recursos', tag: 'Contenidos', color: 'hover:border-green-300' },
-                  { key: 'acreditaciones', icon: '🎟️', title: 'Control de Accesos', desc: 'Auditoría en vivo de molinetes y scans', tag: 'Molinetes', color: 'hover:border-emerald-300' },
-                  { key: 'certificados', icon: '🎓', title: 'Certificados Oficiales', desc: 'Emisión, validador QR y descarga ZIP', tag: 'Diplomas', color: 'hover:border-amber-300' },
-                  { key: 'encuestas', icon: '📋', title: 'Encuestas & Calidad', desc: 'Gestión de encuestas, preguntas y métricas', tag: 'Evaluación', color: 'hover:border-purple-300' },
-                  { key: 'puntos', icon: '🚪', title: 'Puntos de Acceso', desc: 'Puertas de ingreso, egreso y capacidades', tag: 'Sede Saavedra', color: 'hover:border-teal-300' },
-                  { key: 'operadores', icon: '🛡️', title: 'Operadores del Sistema', desc: 'Cuentas de acreditación y jerarquías', tag: 'Seguridad', color: 'hover:border-cyan-300' },
-                  { key: 'catalogo', icon: '📋', title: 'Materias Canónicas', desc: 'Áreas temáticas, códigos y créditos', tag: 'DETS Oficial', color: 'hover:border-sky-300' },
-                  { key: 'homologaciones', icon: '🎤', title: 'Homologación Ponentes', desc: 'Validación académica y dictámenes', tag: 'Tribunal', color: 'hover:border-rose-300' },
-                  { key: 'eventos', icon: '🏛️', title: 'Ediciones & Eventos', desc: 'Configuración anual de aforos y sedes', tag: 'ETS 2026', color: 'hover:border-violet-300' },
-                  { key: 'blacklist', icon: '🚫', title: 'Lista Negra (Exclusiones)', desc: 'Restricciones disciplinarias por DNI', tag: 'Admisión', color: 'hover:border-red-300' },
-                  { key: 'configuracion', icon: '⚙️', title: 'Parámetros del Sistema', desc: 'Reglas de negocio, cupos y roles', tag: 'Variables', color: 'hover:border-slate-400' },
-                  { key: 'identificacion_editor', icon: '🎨', title: 'Editor de Identificaciones', desc: 'Diseñador WYSIWYG Drag&Drop', tag: 'UI/UX', color: 'hover:border-pink-300' },
-                  { key: 'auditoria', icon: '📜', title: 'Bitácora Forense', desc: 'Trazabilidad inmutable de todas las acciones', tag: 'Logs Audit', color: 'hover:border-yellow-300' },
-                  { key: 'cron', icon: '⏱️', title: 'Planificador Asíncrono', desc: 'Daemon de bajas 48hs y ascensos FIFO', tag: 'Segundo Plano', color: 'hover:border-blue-400' },
-                ].map((item) => (
+                {visibleTabs.map((tab) => (
                   <div
-                    key={item.key}
-                    onClick={() => navigateToTab(item.key as TabKey)}
-                    className={`p-3.5 bg-slate-50 hover:bg-blue-50/50 border border-slate-200 rounded-xl transition cursor-pointer flex flex-col justify-between group shadow-2xs ${item.color}`}
+                    key={tab.key}
+                    onClick={() => navigateToTab(tab.key as TabKey)}
+                    className="p-3.5 bg-slate-50 hover:bg-blue-50/50 border border-slate-200 rounded-xl transition cursor-pointer flex flex-col justify-between group shadow-2xs hover:border-blue-300"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-1">
-                        <span className="text-2xl group-hover:scale-110 transition-transform">{item.icon}</span>
+                        <span className="text-2xl group-hover:scale-110 transition-transform">{tab.icon}</span>
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-white border border-gray-200 rounded-full text-gray-600">
-                          {item.tag}
+                          {tab.key === 'usuarios' ? `${resumen?.confirmados || 0} activos` : (tab.shortLabel || 'Módulo')}
                         </span>
                       </div>
                       <h4 className="font-bold text-sm text-gray-900 mt-2 group-hover:text-blue-700 transition-colors">
-                        {item.title}
+                        {tab.shortLabel || tab.label}
                       </h4>
                       <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">
-                        {item.desc}
+                        {tab.desc || tab.label}
                       </p>
                     </div>
 
                     <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-blue-600 group-hover:text-blue-800">
-                      <span>Abrir Gestión / CRUD</span>
+                      <span>Abrir Módulo</span>
                       <span className="group-hover:translate-x-1 transition-transform">→</span>
                     </div>
                   </div>

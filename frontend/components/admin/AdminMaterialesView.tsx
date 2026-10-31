@@ -139,7 +139,12 @@ function nombreTipo(tipo: TipoMaterial) {
 }
 
 export default function AdminMaterialesView() {
-  const [materiales, setMateriales] = useState<Material[]>([]);  const [busqueda, setBusqueda] = useState('');
+  const [subvistaMateriales, setSubvistaMateriales] = useState<'tarjetas' | 'categorias'>('tarjetas');
+  const [materiales, setMateriales] = useState<Material[]>([]);
+  const [categoriasImagenes, setCategoriasImagenes] = useState<Record<string, string>>({});
+  const [cargandoCategorias, setCargandoCategorias] = useState(false);
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
   const [filtroTipo, setFiltroTipo] = useState<'todos' | TipoMaterial>('todos');
   const [filtroEstado, setFiltroEstado] = useState<'todos' | EstadoMaterial>('todos');
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -151,6 +156,88 @@ export default function AdminMaterialesView() {
   const [arrastrandoArchivo, setArrastrandoArchivo] = useState(false);
   const inputArchivoRef = useRef<HTMLInputElement>(null);
   const inputPortadaRef = useRef<HTMLInputElement>(null);
+
+  async function cargarCategoriasImagenes() {
+    setCargandoCategorias(true);
+    try {
+      const res = await fetch('/api/materiales/categorias-imagenes');
+      const data = await res.json();
+      if (data.success && data.categorias) {
+        setCategoriasImagenes(data.categorias);
+      }
+    } catch (err) {
+      console.error('Error cargando imágenes de categorías:', err);
+    } finally {
+      setCargandoCategorias(false);
+    }
+  }
+
+  async function subirImagenCategoria(tipo: string, file: File) {
+    const allowedMimes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml', 'image/avif'];
+    if (!allowedMimes.includes(file.type)) {
+      await Swal.fire({
+        title: 'Tipo de archivo no admitido',
+        text: `El tipo MIME "${file.type}" no está permitido. Formatos válidos: PNG, JPG, WebP, SVG, AVIF.`,
+        icon: 'warning',
+      });
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('congreso_token');
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const upRes = await fetch('/api/materiales/upload-imagen', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          fileBase64: base64,
+          mimeType: file.type,
+        }),
+      });
+      const upData = await upRes.json();
+      if (!upRes.ok || !upData.success) {
+        throw new Error(upData.error || 'Error al almacenar imagen.');
+      }
+
+      // Asociar la URL a la categoría
+      const catRes = await fetch('/api/materiales/categorias-imagenes', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          tipo,
+          url_imagen: upData.url,
+        }),
+      });
+      const catData = await catRes.json();
+      if (!catRes.ok || !catData.success) {
+        throw new Error(catData.error || 'Error al persistir categoría.');
+      }
+
+      setCategoriasImagenes(catData.categorias);
+      Swal.fire({
+        icon: 'success',
+        title: 'Imagen de Categoría Actualizada',
+        text: `La imagen de "${tipo}" se guardó en imagenes_de_materiales/ y su ruta fue persistida en la base de datos.`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  }
 
   useEffect(() => {
     async function cargarMateriales() {
@@ -200,6 +287,7 @@ export default function AdminMaterialesView() {
     }
 
     cargarMateriales();
+    cargarCategoriasImagenes();
   }, []);
 
   const materialesFiltrados = useMemo(() => {
@@ -300,28 +388,87 @@ export default function AdminMaterialesView() {
       return;
     }
 
-    if (archivoSeleccionado || portadaSeleccionada) {
-      await Swal.fire({
-        title: 'Archivos no cargados',
-        text: 'Por ahora, ingresá las URLs de los archivos. La carga directa todavía no está implementada.',
-        icon: 'warning',
-      });
-      return;
-    }
-
     try {
       const token = localStorage.getItem('congreso_token');
       const editando = materialEditando !== null;
+      let finalImageUrl = formulario.portada_url;
+      let finalFileUrl = formulario.archivo_url;
+
+      // 1. Carga directa de Imagen de Portada (guardado físico en imagenes_de_materiales/ sin compresión)
+      if (portadaSeleccionada) {
+        const allowedMimes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml', 'image/avif'];
+        if (!allowedMimes.includes(portadaSeleccionada.type)) {
+          await Swal.fire({
+            title: 'Formato de imagen no admitido',
+            text: `El tipo MIME "${portadaSeleccionada.type}" no es válido. Formatos admitidos: PNG, JPG, WebP, SVG, AVIF.`,
+            icon: 'warning',
+          });
+          return;
+        }
+
+        const base64Img = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(portadaSeleccionada);
+        });
+
+        const upRes = await fetch('/api/materiales/upload-imagen', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            filename: portadaSeleccionada.name,
+            fileBase64: base64Img,
+            mimeType: portadaSeleccionada.type,
+          }),
+        });
+
+        const upData = await upRes.json();
+        if (!upRes.ok || !upData.success) {
+          throw new Error(upData.error || 'Fallo al subir la portada a imagenes_de_materiales/');
+        }
+        finalImageUrl = upData.url;
+      }
+
+      // 2. Carga directa de Archivo Principal
+      if (archivoSeleccionado) {
+        const base64File = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(archivoSeleccionado);
+        });
+
+        const upFileRes = await fetch('/api/admin/frontend-cms/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            filename: archivoSeleccionado.name,
+            fileBase64: base64File,
+          }),
+        });
+
+        const upFileData = await upFileRes.json();
+        if (upFileRes.ok && upFileData.url) {
+          finalFileUrl = upFileData.url;
+        }
+      }
 
       const payload = {
         type: formulario.tipo_contenido,
         title: titulo,
         description: formulario.descripcion.trim(),
         date: formulario.fecha_publicacion,
-        image: formulario.portada_url,
-        fileUrl: formulario.archivo_url,
+        image: finalImageUrl,
+        fileUrl: finalFileUrl,
         videoUrl: formulario.tipo_contenido === 'video'
-          ? formulario.archivo_url
+          ? (finalFileUrl || formulario.archivo_url)
           : '',
         images: [],
         publicado: formulario.estado === 'publicado',
@@ -422,125 +569,261 @@ export default function AdminMaterialesView() {
         <div>
           <h2 className="text-xl font-extrabold text-gray-900">Gestión de materiales</h2>
           <p className="mt-1 text-sm text-gray-500">
-            Administrá las tarjetas y los recursos que se mostrarán en la sección pública.
+            Administrá las tarjetas y las imágenes por categoría con almacenamiento en imagenes_de_materiales/ y PostgreSQL.
           </p>
         </div>
+        {subvistaMateriales === 'tarjetas' && (
+          <button
+            type="button"
+            onClick={abrirNuevo}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
+          >
+            <span className="text-lg leading-none">+</span> Nuevo material
+          </button>
+        )}
+      </div>
+
+      {/* Selector de subvista: Tarjetas vs Imágenes por Categoría */}
+      <div className="flex border-b border-gray-200 gap-2">
         <button
           type="button"
-          onClick={abrirNuevo}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
+          onClick={() => setSubvistaMateriales('tarjetas')}
+          className={`px-4 py-2 text-sm font-bold border-b-2 transition ${
+            subvistaMateriales === 'tarjetas'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
         >
-          <span className="text-lg leading-none">+</span> Nuevo material
+          Tarjetas y Recursos ({materiales.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubvistaMateriales('categorias')}
+          className={`px-4 py-2 text-sm font-bold border-b-2 transition ${
+            subvistaMateriales === 'categorias'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Imágenes por Categoría (6)
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Total de materiales</p>
-          <p className="mt-1 text-2xl font-extrabold text-gray-900">{materiales.length}</p>
-        </div>
-        <div className="rounded-xl border border-green-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wide text-green-700">Publicados</p>
-          <p className="mt-1 text-2xl font-extrabold text-green-700">{totalPublicados}</p>
-        </div>
-        <div className="rounded-xl border border-amber-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Borradores</p>
-          <p className="mt-1 text-2xl font-extrabold text-amber-700">{totalBorradores}</p>
-          <p className="mt-1 text-xs text-gray-500">{totalArchivados} archivados</p>
-        </div>
-      </div>
+      {subvistaMateriales === 'categorias' ? (
+        <section className="space-y-4">
+          <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4">
+            <h3 className="font-bold text-blue-900 text-sm">CRUD de Imágenes de Nivel 1: Por Categoría</h3>
+            <p className="text-xs text-blue-800 mt-1">
+              Las imágenes asignadas a cada categoría sirven como carátula por defecto de la sección. 
+              <strong> Dimensiones recomendadas:</strong> 800 x 800 px (proporción 1:1), <strong>72 a 96 DPI</strong>. 
+              <strong> Formatos permitidos:</strong> PNG, JPG, WebP, SVG, AVIF. 
+              Almacenamiento directo sin compresión destructiva en el directorio <code className="bg-white/80 px-1 py-0.5 rounded font-mono">imagenes_de_materiales/</code> con persistencia de ruta relativa en PostgreSQL.
+            </p>
+          </div>
 
-      <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,1fr)_200px_200px]">
-          <div>
-            <label htmlFor="materiales-busqueda" className={etiquetaCampo}>Buscar material</label>
-            <input
-              id="materiales-busqueda"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Título, descripción o etiqueta..."
-              className={campo}
-            />
-          </div>
-          <div>
-            <label htmlFor="materiales-tipo-filtro" className={etiquetaCampo}>Tipo de contenido</label>
-            <select id="materiales-tipo-filtro" value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value as typeof filtroTipo)} className={campo}>
-              <option value="todos">Todos los tipos</option>
-              {TIPOS.map((tipo) => <option key={tipo.value} value={tipo.value}>{tipo.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="materiales-estado-filtro" className={etiquetaCampo}>Estado</label>
-            <select id="materiales-estado-filtro" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as typeof filtroEstado)} className={campo}>
-              <option value="todos">Todos los estados</option>
-              {ESTADOS.map((estado) => <option key={estado.value} value={estado.value}>{estado.label}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
-          <p className="text-xs text-gray-500">
-            {materialesFiltrados.length} resultado{materialesFiltrados.length === 1 ? '' : 's'}
-          </p>
-          {(busqueda || filtroTipo !== 'todos' || filtroEstado !== 'todos') && (
-            <button type="button" onClick={() => { setBusqueda(''); setFiltroTipo('todos'); setFiltroEstado('todos'); }} className="text-xs font-semibold text-blue-700 hover:text-blue-900">
-              Limpiar filtros
-            </button>
-          )}
-        </div>
-      </section>
-
-      <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm text-gray-700">
-            <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
-              <tr>
-                <th className="px-4 py-3 font-bold">Material</th>
-                <th className="px-4 py-3 font-bold">Tipo</th>
-                <th className="px-4 py-3 font-bold">Fecha</th>
-                <th className="px-4 py-3 font-bold">Estado</th>
-                <th className="px-4 py-3 text-right font-bold">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {materialesFiltrados.map((material) => (
-                <tr key={material.id} className="transition hover:bg-gray-50">
-                  <td className="max-w-md px-4 py-3">
-                    <p className="font-bold text-gray-900">{material.titulo}</p>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">{material.descripcion || 'Sin descripción'}</p>
-                    {material.etiquetas.length > 0 && (
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {material.etiquetas.slice(0, 3).map((tag) => (
-                          <span key={tag} className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] text-gray-600">{tag}</span>
-                        ))}
-                        {material.etiquetas.length > 3 && <span className="text-[10px] text-gray-400">+{material.etiquetas.length - 3}</span>}
-                      </div>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3">{nombreTipo(material.tipo_contenido)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-gray-500">{formatearFecha(material.fecha_publicacion)}</td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${CLASES_ESTADO[material.estado]}`}>
-                      {ESTADOS.find((estado) => estado.value === material.estado)?.label}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button type="button" onClick={() => abrirEdicion(material)} className="rounded-md bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">Editar</button>
-                      <button type="button" onClick={() => eliminarMaterial(material)} className="rounded-md bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100">Eliminar</button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {TIPOS.map((tipo) => {
+              const urlActual = categoriasImagenes[tipo.value] || '';
+              return (
+                <div key={tipo.value} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-extrabold text-gray-900 text-base capitalize">{tipo.label}</span>
+                      <span className="text-[11px] font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                        800x800 px | 72-96 DPI
+                      </span>
                     </div>
-                  </td>
-                </tr>
-              ))}
-              {materialesFiltrados.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-12 text-center">
-                  <p className="font-semibold text-gray-700">No hay materiales para mostrar</p>
-                  <p className="mt-1 text-xs text-gray-500">Probá cambiar los filtros o crear un material nuevo.</p>
-                </td></tr>
+
+                    <div className="relative aspect-square w-full rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center mb-3">
+                      {urlActual ? (
+                        <img
+                          src={urlActual}
+                          alt={`Imagen categoría ${tipo.label}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-center p-4 text-gray-400">
+                          <span className="text-3xl block mb-1">🖼</span>
+                          <span className="text-xs">Sin imagen personalizada asignada</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {urlActual && (
+                      <p className="text-[11px] text-gray-500 truncate mb-3" title={urlActual}>
+                        <strong>Ruta:</strong> {urlActual}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t border-gray-100">
+                    <label className="flex-1 cursor-pointer text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-2 px-3 rounded-lg transition shadow-sm">
+                      <span>{urlActual ? 'Cambiar imagen' : 'Subir imagen'}</span>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml,image/avif"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) subirImagenCategoria(tipo.value, file);
+                        }}
+                      />
+                    </label>
+
+                    {urlActual && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const conf = await Swal.fire({
+                            title: `¿Quitar imagen de ${tipo.label}?`,
+                            text: 'Se restablecerá a la vista por defecto.',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, quitar',
+                            cancelButtonText: 'Cancelar',
+                          });
+                          if (!conf.isConfirmed) return;
+                          try {
+                            const token = localStorage.getItem('congreso_token');
+                            const res = await fetch('/api/materiales/categorias-imagenes', {
+                              method: 'PUT',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                              },
+                              body: JSON.stringify({ tipo: tipo.value, url_imagen: '' }),
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              setCategoriasImagenes(data.categorias);
+                              Swal.fire('Imagen quitada', '', 'success');
+                            }
+                          } catch (err: any) {
+                            Swal.fire('Error', err.message, 'error');
+                          }
+                        }}
+                        className="bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold py-2 px-3 rounded-lg transition"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Total de materiales</p>
+              <p className="mt-1 text-2xl font-extrabold text-gray-900">{materiales.length}</p>
+            </div>
+            <div className="rounded-xl border border-green-100 bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-wide text-green-700">Publicados</p>
+              <p className="mt-1 text-2xl font-extrabold text-green-700">{totalPublicados}</p>
+            </div>
+            <div className="rounded-xl border border-amber-100 bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Borradores</p>
+              <p className="mt-1 text-2xl font-extrabold text-amber-700">{totalBorradores}</p>
+              <p className="mt-1 text-xs text-gray-500">{totalArchivados} archivados</p>
+            </div>
+          </div>
+
+          <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,1fr)_200px_200px]">
+              <div>
+                <label htmlFor="materiales-busqueda" className={etiquetaCampo}>Buscar material</label>
+                <input
+                  id="materiales-busqueda"
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  placeholder="Título, descripción o etiqueta..."
+                  className={campo}
+                />
+              </div>
+              <div>
+                <label htmlFor="materiales-tipo-filtro" className={etiquetaCampo}>Tipo de contenido</label>
+                <select id="materiales-tipo-filtro" value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value as typeof filtroTipo)} className={campo}>
+                  <option value="todos">Todos los tipos</option>
+                  {TIPOS.map((tipo) => <option key={tipo.value} value={tipo.value}>{tipo.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="materiales-estado-filtro" className={etiquetaCampo}>Estado</label>
+                <select id="materiales-estado-filtro" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as typeof filtroEstado)} className={campo}>
+                  <option value="todos">Todos los estados</option>
+                  {ESTADOS.map((estado) => <option key={estado.value} value={estado.value}>{estado.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
+              <p className="text-xs text-gray-500">
+                {materialesFiltrados.length} resultado{materialesFiltrados.length === 1 ? '' : 's'}
+              </p>
+              {(busqueda || filtroTipo !== 'todos' || filtroEstado !== 'todos') && (
+                <button type="button" onClick={() => { setBusqueda(''); setFiltroTipo('todos'); setFiltroEstado('todos'); }} className="text-xs font-semibold text-blue-700 hover:text-blue-900">
+                  Limpiar filtros
+                </button>
               )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm text-gray-700">
+                <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
+                  <tr>
+                    <th className="px-4 py-3 font-bold">Material</th>
+                    <th className="px-4 py-3 font-bold">Tipo</th>
+                    <th className="px-4 py-3 font-bold">Fecha</th>
+                    <th className="px-4 py-3 font-bold">Estado</th>
+                    <th className="px-4 py-3 text-right font-bold">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {materialesFiltrados.map((material) => (
+                    <tr key={material.id} className="transition hover:bg-gray-50">
+                      <td className="max-w-md px-4 py-3">
+                        <p className="font-bold text-gray-900">{material.titulo}</p>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">{material.descripcion || 'Sin descripción'}</p>
+                        {material.etiquetas.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {material.etiquetas.slice(0, 3).map((tag) => (
+                              <span key={tag} className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] text-gray-600">{tag}</span>
+                            ))}
+                            {material.etiquetas.length > 3 && <span className="text-[10px] text-gray-400">+{material.etiquetas.length - 3}</span>}
+                          </div>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">{nombreTipo(material.tipo_contenido)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-gray-500">{formatearFecha(material.fecha_publicacion)}</td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${CLASES_ESTADO[material.estado]}`}>
+                          {ESTADOS.find((estado) => estado.value === material.estado)?.label}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <div className="flex justify-end gap-2">
+                          <button type="button" onClick={() => abrirEdicion(material)} className="rounded-md bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">Editar</button>
+                          <button type="button" onClick={() => eliminarMaterial(material)} className="rounded-md bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100">Eliminar</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {materialesFiltrados.length === 0 && (
+                    <tr><td colSpan={5} className="px-4 py-12 text-center">
+                      <p className="font-semibold text-gray-700">No hay materiales para mostrar</p>
+                      <p className="mt-1 text-xs text-gray-500">Probá cambiar los filtros o crear un material nuevo.</p>
+                    </td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
 
       {modalAbierto && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-3 sm:p-5" onMouseDown={(e) => { if (e.target === e.currentTarget) setModalAbierto(false); }}>
@@ -609,13 +892,20 @@ export default function AdminMaterialesView() {
                       </div>
                     </div>
                     <div className="rounded-xl border border-gray-200 p-4">
-                      <input ref={inputPortadaRef} type="file" accept="image/*" className="hidden" onChange={(e) => seleccionarArchivo(e, 'portada')} />
+                      <input ref={inputPortadaRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/avif" className="hidden" onChange={(e) => seleccionarArchivo(e, 'portada')} />
                       <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                         <div>
-                          <p className="text-sm font-bold text-gray-800">Imagen de portada</p>
-                          <p className="mt-1 text-xs text-gray-500">Imagen opcional que identifica visualmente la tarjeta.</p>
-                          <p className="mt-2 break-all text-xs font-semibold text-blue-700">{portadaSeleccionada?.name ?? formulario.portada_nombre ?? 'Ninguna portada seleccionada'}</p>
-                          {portadaSeleccionada && <p className="mt-1 text-[10px] text-amber-700">Seleccionada localmente; todavía no se subió al servidor.</p>}
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-gray-800">Imagen de portada (Tarjeta individual)</p>
+                            <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                              1200x675 px (16:9) | 72-96 DPI
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Formatos: PNG, JPG, WebP, SVG, AVIF. Se almacena sin compresión en <code className="font-mono">imagenes_de_materiales/</code>.
+                          </p>
+                          <p className="mt-2 break-all text-xs font-semibold text-blue-700">{portadaSeleccionada?.name ?? formulario.portada_url ?? formulario.portada_nombre ?? 'Ninguna portada seleccionada'}</p>
+                          {portadaSeleccionada && <p className="mt-1 text-[10px] text-green-700">✓ Archivo preparado para guardado físico y persistencia en base de datos.</p>}
                         </div>
                         <button type="button" onClick={() => inputPortadaRef.current?.click()} className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100">Seleccionar imagen</button>
                       </div>
@@ -667,13 +957,19 @@ export default function AdminMaterialesView() {
                       <span className="rounded-full bg-blue-100 px-2 py-1 text-[10px] font-bold text-blue-800">PREVIEW</span>
                     </div>
                     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                      <div className="flex h-36 items-center justify-center bg-gradient-to-br from-slate-100 to-blue-50">
+                      <div className="flex h-36 items-center justify-center bg-gradient-to-br from-slate-100 to-blue-50 relative overflow-hidden">
                         {portadaSeleccionada ? (
                           <div className="px-4 text-center">
-                            <span className="text-3xl">▧</span>
+                            <span className="text-3xl">🖼</span>
                             <p className="mt-1 max-w-[220px] break-all text-xs font-semibold text-gray-700">{portadaSeleccionada.name}</p>
-                            <p className="text-[10px] text-gray-500">Vista de archivo local</p>
+                            <p className="text-[10px] text-green-700 font-semibold">Listo para subida</p>
                           </div>
+                        ) : formulario.portada_url ? (
+                          <img
+                            src={formulario.portada_url}
+                            alt="Portada del material"
+                            className="w-full h-full object-cover"
+                          />
                         ) : formulario.portada_nombre ? (
                           <div className="px-4 text-center text-xs text-gray-500">Portada: {formulario.portada_nombre}</div>
                         ) : (
@@ -698,10 +994,10 @@ export default function AdminMaterialesView() {
                         </div>
                       </div>
                     </div>
-                    <p className="mt-3 text-[11px] leading-relaxed text-gray-500">Esta vista previa representa la información cargada; el diseño definitivo se ajustará al componente público cuando se integre con el modelo de datos.</p>
+                    <p className="mt-3 text-[11px] leading-relaxed text-gray-500">Esta vista previa representa la información cargada; el diseño definitivo se ajustará al componente público.</p>
                   </div>
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
-                    <strong>Modo de desarrollo.</strong> Guardar aplica los cambios solo a esta sesión. Los archivos seleccionados no se envían al servidor.
+                  <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-xs leading-relaxed text-green-900">
+                    <strong>Persistencia Activa:</strong> Los archivos de imagen se guardan físicamente en el directorio <code className="font-mono bg-white/70 px-1 rounded">imagenes_de_materiales/</code> sin compresión destructiva y su ruta se registra en PostgreSQL.
                   </div>
                 </aside>
               </div>

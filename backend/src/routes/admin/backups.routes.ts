@@ -8,6 +8,9 @@ import {
   createStandaloneSqlDump,
   listSqlDumps,
   getSqlDumpPath,
+  backupAndPurgeVisitors,
+  listVisitorBackups,
+  getVisitorBackupPath,
 } from '../../lib/backupService';
 
 const router = Router();
@@ -159,6 +162,74 @@ router.get('/dumps/descargar/:filename', requireHierarchy(4), async (req: Authen
   } catch (error: any) {
     console.error('Error descargando dump SQL:', error);
     res.status(500).json({ ok: false, error: 'ERR_DOWNLOAD_DUMP', message: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/backups/visitantes
+ * Lista los backups estructurados de visitantes realizados
+ */
+router.get('/visitantes', requireHierarchy(4), async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const backups = await listVisitorBackups();
+    res.json({
+      ok: true,
+      backups,
+      total: backups.length,
+    });
+  } catch (error: any) {
+    console.error('Error listando backups de visitantes:', error);
+    res.status(500).json({ ok: false, error: 'ERR_LIST_VISITOR_BACKUPS', message: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/backups/visitantes/descargar/:filename
+ * Descarga un archivo de backup estructurado de visitantes (.json o .sql)
+ */
+router.get('/visitantes/descargar/:filename', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const filename = req.params.filename;
+    const filepath = getVisitorBackupPath(filename);
+
+    if (!filepath) {
+      res.status(404).json({ ok: false, error: 'ERR_NOT_FOUND', message: 'Archivo de backup de visitantes no encontrado.' });
+      return;
+    }
+
+    res.download(filepath, filename);
+  } catch (error: any) {
+    console.error('Error descargando backup de visitantes:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DOWNLOAD_VISITOR_BACKUP', message: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/backups/visitantes/backup-y-purga
+ * Ejecuta el flujo estricto en 3 pasos:
+ * 1. Generación de backup estructurado (JSON + SQL)
+ * 2. Verificación de persistencia e integridad criptográfica en disco (Fail-safe atómico)
+ * 3. Purga transaccional de visitantes y registro de auditoría inmutable
+ */
+router.post('/visitantes/backup-y-purga', requireHierarchy(5), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const actor = req.operator?.email || 'SUPERADMIN';
+    const soloAsistentes = Boolean(req.body?.soloAsistentes);
+
+    const resultado = await backupAndPurgeVisitors(actor, { soloAsistentes });
+
+    res.status(200).json({
+      ok: true,
+      mensaje: resultado.mensaje,
+      resultado,
+    });
+  } catch (error: any) {
+    console.error('Error en backup y purga de visitantes:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'ERR_PURGE_VISITORS',
+      message: error.message || 'Fallo durante el flujo de backup y purga segura.',
+    });
   }
 });
 

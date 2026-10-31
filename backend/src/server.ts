@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -69,6 +71,13 @@ app.use(
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+
+// Servicio de activos multimedia de materiales (directorio ad-hoc imagenes_de_materiales/)
+const imagenesMaterialesDir = path.resolve(__dirname, '../../imagenes_de_materiales');
+if (!fs.existsSync(imagenesMaterialesDir)) {
+  fs.mkdirSync(imagenesMaterialesDir, { recursive: true });
+}
+app.use('/imagenes_de_materiales', express.static(imagenesMaterialesDir));
 
 // Inyección de contexto de sesión
 app.use(authenticateOperator);

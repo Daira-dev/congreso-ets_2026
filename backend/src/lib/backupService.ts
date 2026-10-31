@@ -807,3 +807,251 @@ export async function restoreBackup(
     };
   });
 }
+
+/**
+ * Realiza un backup estructurado de visitantes/asistentes y, tras verificar
+ * su integridad en disco (Fail-safe atómico), purga sus registros en base de datos.
+ */
+export async function backupAndPurgeVisitors(
+  actor: string,
+  options?: { soloAsistentes?: boolean }
+) {
+  ensureBackupDir();
+  const visitorDir = path.join(BACKUP_DIR, 'visitantes');
+  if (!fs.existsSync(visitorDir)) {
+    fs.mkdirSync(visitorDir, { recursive: true });
+  }
+
+  // 1. Obtener los usuarios que califican como visitantes a purgar
+  // Se excluyen expresamente aquellos que sean disertantes en actividades existentes
+  let userQuery = `
+    SELECT *
+    FROM usuarios
+    WHERE id NOT IN (SELECT disertante_usuario_id FROM actividades WHERE disertante_usuario_id IS NOT NULL)
+  `;
+
+  if (options?.soloAsistentes) {
+    userQuery += ` AND rol_principal_id IN (1, 2)`;
+  }
+
+  const usersRes = await query(userQuery);
+  const usersToPurge = usersRes.rows;
+  const userIds = usersToPurge.map((u) => u.id);
+
+  if (userIds.length === 0) {
+    return {
+      success: true,
+      total_purgados: 0,
+      mensaje: 'No se encontraron registros de visitantes para purgar.',
+      archivos: null,
+      sha256: null,
+      registros_purgados: {},
+    };
+  }
+
+  // 2. Extraer todos los registros dependientes de estos usuarios
+  const fksData: Record<string, any[]> = {};
+
+  const tablesToExport = [
+    { name: 'acreditaciones', col: 'usuario_id' },
+    { name: 'actividad_inscripciones', col: 'usuario_id' },
+    { name: 'confirmaciones_asistencia', col: 'usuario_id' },
+    { name: 'certificados', col: 'usuario_id' },
+    { name: 'suscripciones_push', col: 'usuario_id' },
+    { name: 'homologaciones_expositores', col: 'usuario_id' },
+    { name: 'usuario_roles_adicionales', col: 'usuario_id' },
+    { name: 'encuesta_respuestas', col: 'usuario_id' },
+  ];
+
+  for (const t of tablesToExport) {
+    const res = await query(`SELECT * FROM ${t.name} WHERE ${t.col} = ANY($1)`, [userIds]);
+    fksData[t.name] = res.rows;
+  }
+
+  // Detalles de encuestas asociadas
+  const respIds = (fksData['encuesta_respuestas'] || []).map((r: any) => r.id);
+  let encuestaDetalles: any[] = [];
+  if (respIds.length > 0) {
+    const detRes = await query(`SELECT * FROM encuesta_respuestas_detalles WHERE respuesta_id = ANY($1)`, [respIds]);
+    encuestaDetalles = detRes.rows;
+  }
+  fksData['encuesta_respuestas_detalles'] = encuestaDetalles;
+
+  // PASO 1: Generar backup estructurado (JSON y SQL)
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const jsonFilename = `backup_visitantes_${timestamp}.json`;
+  const sqlFilename = `backup_visitantes_${timestamp}.sql`;
+  const jsonPath = path.join(visitorDir, jsonFilename);
+  const sqlPath = path.join(visitorDir, sqlFilename);
+
+  const backupData = {
+    metadatos: {
+      tipo: 'backup_visitantes_estructurado',
+      creado_en: new Date().toISOString(),
+      actor,
+      total_usuarios: usersToPurge.length,
+      tablas: {
+        usuarios: usersToPurge.length,
+        ...Object.fromEntries(Object.entries(fksData).map(([k, v]) => [k, v.length])),
+      },
+    },
+    usuarios: usersToPurge,
+    relaciones: fksData,
+  };
+
+  const jsonContent = JSON.stringify(backupData, null, 2);
+  const jsonHash = crypto.createHash('sha256').update(jsonContent).digest('hex');
+
+  // Generar sentencias SQL para recrear los registros si fuera necesario
+  const formatSqlVal = (val: any): string => {
+    if (val === null || val === undefined) return 'NULL';
+    if (typeof val === 'number') return String(val);
+    if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+    if (val instanceof Date) return `'${val.toISOString()}'`;
+    if (typeof val === 'object') return `'${JSON.stringify(val).replace(/'/g, "''")}'`;
+    return `'${String(val).replace(/'/g, "''")}'`;
+  };
+
+  let sqlContent = `-- BACKUP VISITANTES ESTRUCTURADO - ${new Date().toISOString()}\n`;
+  sqlContent += `-- Actor: ${actor}\n-- Total usuarios: ${usersToPurge.length}\n\n`;
+
+  for (const u of usersToPurge) {
+    const keys = Object.keys(u);
+    const cols = keys.join(', ');
+    const vals = keys.map((k) => formatSqlVal(u[k])).join(', ');
+    sqlContent += `INSERT INTO usuarios (${cols}) VALUES (${vals}) ON CONFLICT (id) DO NOTHING;\n`;
+  }
+  sqlContent += `\n`;
+
+  for (const [table, rows] of Object.entries(fksData)) {
+    for (const r of rows) {
+      const keys = Object.keys(r);
+      const cols = keys.join(', ');
+      const vals = keys.map((k) => formatSqlVal(r[k])).join(', ');
+      sqlContent += `INSERT INTO ${table} (${cols}) VALUES (${vals}) ON CONFLICT DO NOTHING;\n`;
+    }
+  }
+
+  const sqlHash = crypto.createHash('sha256').update(sqlContent).digest('hex');
+
+  // Escribir a disco
+  fs.writeFileSync(jsonPath, jsonContent, 'utf-8');
+  fs.writeFileSync(sqlPath, sqlContent, 'utf-8');
+
+  // PASO 2: Verificar integridad y persistencia en disco (Fail-Safe Atómico)
+  if (!fs.existsSync(jsonPath) || !fs.existsSync(sqlPath)) {
+    throw new Error('FAIL-SAFE: Los archivos de backup no se crearon físicamente en disco.');
+  }
+
+  const jsonStat = fs.statSync(jsonPath);
+  const sqlStat = fs.statSync(sqlPath);
+
+  if (jsonStat.size === 0 || sqlStat.size === 0) {
+    throw new Error('FAIL-SAFE: Los archivos de backup en disco tienen tamaño 0 bytes.');
+  }
+
+  const diskJsonContent = fs.readFileSync(jsonPath, 'utf-8');
+  const diskSqlContent = fs.readFileSync(sqlPath, 'utf-8');
+
+  const diskJsonHash = crypto.createHash('sha256').update(diskJsonContent).digest('hex');
+  const diskSqlHash = crypto.createHash('sha256').update(diskSqlContent).digest('hex');
+
+  if (diskJsonHash !== jsonHash) {
+    throw new Error(`FAIL-SAFE: Corrupción de datos en ${jsonFilename}. Hash en memoria !== Hash en disco.`);
+  }
+
+  if (diskSqlHash !== sqlHash) {
+    throw new Error(`FAIL-SAFE: Corrupción de datos en ${sqlFilename}. Hash en memoria !== Hash en disco.`);
+  }
+
+  // PASO 3: Ejecutar la purga/limpieza segura dentro de una transacción atómica
+  await withTransaction(async (client) => {
+    // 3.1. Desvincular usuario_afectado_id en logs_auditoria para preservar la auditoría histórica
+    await client.query(`UPDATE logs_auditoria SET usuario_afectado_id = NULL WHERE usuario_afectado_id = ANY($1)`, [userIds]);
+
+    // 3.2. Eliminar referencias hijas en cascada estricta
+    if (respIds.length > 0) {
+      await client.query(`DELETE FROM encuesta_respuestas_detalles WHERE respuesta_id = ANY($1)`, [respIds]);
+    }
+    await client.query(`DELETE FROM encuesta_respuestas WHERE usuario_id = ANY($1)`, [userIds]);
+    await client.query(`DELETE FROM certificados WHERE usuario_id = ANY($1)`, [userIds]);
+    await client.query(`DELETE FROM confirmaciones_asistencia WHERE usuario_id = ANY($1)`, [userIds]);
+    await client.query(`DELETE FROM acreditaciones WHERE usuario_id = ANY($1)`, [userIds]);
+    await client.query(`DELETE FROM actividad_inscripciones WHERE usuario_id = ANY($1)`, [userIds]);
+    await client.query(`DELETE FROM suscripciones_push WHERE usuario_id = ANY($1)`, [userIds]);
+    await client.query(`DELETE FROM homologaciones_expositores WHERE usuario_id = ANY($1)`, [userIds]);
+    await client.query(`DELETE FROM usuario_roles_adicionales WHERE usuario_id = ANY($1)`, [userIds]);
+
+    // 3.3. Eliminar los usuarios visitantes
+    await client.query(`DELETE FROM usuarios WHERE id = ANY($1)`, [userIds]);
+
+    // 3.4. Registrar auditoría inmutable
+    const auditoriaDetalle = {
+      accion: 'PURGA_SEGURA_VISITANTES',
+      archivo_json: jsonFilename,
+      archivo_sql: sqlFilename,
+      sha256_json: diskJsonHash,
+      sha256_sql: diskSqlHash,
+      tamanio_json_bytes: jsonStat.size,
+      tamanio_sql_bytes: sqlStat.size,
+      total_usuarios_purgados: userIds.length,
+      tablas_afectadas: backupData.metadatos.tablas,
+      ejecutado_por: actor,
+      timestamp: new Date().toISOString(),
+    };
+
+    await client.query(
+      `INSERT INTO logs_auditoria (
+        evento, actor_usuario, detalles, timestamp, tabla_afectada, accion, usuario_responsable
+      ) VALUES (
+        'PURGA_SEGURA_VISITANTES',
+        $1,
+        $2::jsonb,
+        NOW(),
+        'usuarios',
+        'PURGA_CON_BACKUP_VERIFICADO',
+        $1
+      )`,
+      [actor, JSON.stringify(auditoriaDetalle)]
+    );
+  });
+
+  return {
+    success: true,
+    total_purgados: userIds.length,
+    mensaje: `Backup verificado exitosamente y purga atómica ejecutada. Se respaldaron y eliminaron ${userIds.length} registros de visitantes.`,
+    archivos: {
+      json: jsonFilename,
+      sql: sqlFilename,
+      tamanios: { json: jsonStat.size, sql: sqlStat.size },
+    },
+    sha256: { json: diskJsonHash, sql: diskSqlHash },
+    registros_purgados: backupData.metadatos.tablas,
+  };
+}
+
+export async function listVisitorBackups() {
+  ensureBackupDir();
+  const visitorDir = path.join(BACKUP_DIR, 'visitantes');
+  if (!fs.existsSync(visitorDir)) return [];
+
+  const files = fs.readdirSync(visitorDir).filter((f) => f.endsWith('.json') || f.endsWith('.sql'));
+  return files.map((filename) => {
+    const fullPath = path.join(visitorDir, filename);
+    const stat = fs.statSync(fullPath);
+    return {
+      filename,
+      sizeBytes: stat.size,
+      createdAt: stat.birthtime.toISOString(),
+      extension: path.extname(filename),
+    };
+  }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function getVisitorBackupPath(filename: string): string | null {
+  const visitorDir = path.join(BACKUP_DIR, 'visitantes');
+  const safeFilename = path.basename(filename);
+  const target = path.join(visitorDir, safeFilename);
+  if (fs.existsSync(target)) return target;
+  return null;
+}

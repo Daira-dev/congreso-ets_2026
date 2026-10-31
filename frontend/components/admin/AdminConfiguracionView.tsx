@@ -235,10 +235,24 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
   const [isRestoring, setIsRestoring] = useState(false);
 
   // Dumps de Base de Datos (.SQL)
-  const [backupSubtab, setBackupSubtab] = useState<'integrales' | 'dumps'>('integrales');
+  const [backupSubtab, setBackupSubtab] = useState<'integrales' | 'dumps' | 'visitantes'>('integrales');
   const [sqlDumps, setSqlDumps] = useState<Array<{ filename: string; sizeBytes: number; createdAt: string; tipo: string }>>([]);
+  const [visitorBackups, setVisitorBackups] = useState<Array<{ filename: string; sizeBytes: number; createdAt: string; extension: string }>>([]);
   const [isCreatingDump, setIsCreatingDump] = useState(false);
+  const [isPurgingVisitors, setIsPurgingVisitors] = useState(false);
   const [dumpTipoSelect, setDumpTipoSelect] = useState<'completo' | 'operacion' | 'configuracion' | 'usuarios'>('completo');
+
+  async function loadVisitorBackups() {
+    try {
+      const res = await fetch('/api/admin/backups/visitantes');
+      if (res.ok) {
+        const data = await res.json();
+        setVisitorBackups(data.backups || []);
+      }
+    } catch (err) {
+      console.error('Error cargando backups de visitantes:', err);
+    }
+  }
 
   async function loadBackups() {
     try {
@@ -371,6 +385,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
         fetch('/api/admin/catalogos'),
         loadBackups(),
         loadSqlDumps(),
+        loadVisitorBackups(),
         loadMailConfig(),
         loadMailTemplate(),
         loadPushStats(),
@@ -640,6 +655,77 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       });
     } finally {
       setIsCreatingDump(false);
+    }
+  }
+
+  async function handlePurgeVisitors() {
+    const confirm = await Swal.fire({
+      title: '¿Ejecutar Backup y Purga Segura de Visitantes?',
+      html: `
+        <div class="text-left text-xs text-gray-700 space-y-2">
+          <p>Esta acción implementa el <strong>protocolo estricto de seguridad en 3 pasos</strong>:</p>
+          <ol class="list-decimal pl-4 space-y-1">
+            <li><strong>Paso 1:</strong> Genera un backup estructurado (.json y .sql) con hash SHA-256 de todos los visitantes y sus tablas operativas vinculadas.</li>
+            <li><strong>Paso 2 (Fail-Safe Atómico):</strong> Verifica la existencia, tamaño y coincidencia criptográfica de hash en disco. Si hay cualquier falla, se aborta sin tocar la base de datos.</li>
+            <li><strong>Paso 3:</strong> Transacción atómica que purga los registros respaldados e inserta una auditoría inmutable en <code>logs_auditoria</code>.</li>
+          </ol>
+          <p class="text-red-600 font-bold mt-2">¿Deseas proceder con el resguardo e iniciar la purga segura?</p>
+        </div>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, ejecutar backup y purgar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#4b5563',
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    setIsPurgingVisitors(true);
+    try {
+      const token = localStorage.getItem('congreso_token');
+      const res = await fetch('/api/admin/backups/visitantes/backup-y-purga', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ soloAsistentes: false }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.ok) {
+        await loadVisitorBackups();
+        await Swal.fire({
+          title: 'Purga Segura Completada',
+          html: `
+            <div class="text-left text-xs text-gray-700 space-y-2">
+              <p class="font-bold text-green-700">✓ ${data.mensaje}</p>
+              ${data.resultado?.archivos ? `
+                <div class="bg-gray-50 p-2 rounded border border-gray-200">
+                  <p><strong>Archivo JSON:</strong> ${data.resultado.archivos.json}</p>
+                  <p><strong>Archivo SQL:</strong> ${data.resultado.archivos.sql}</p>
+                  <p><strong>SHA-256 (JSON):</strong> <code class="text-[10px] break-all">${data.resultado.sha256?.json}</code></p>
+                </div>
+              ` : ''}
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonColor: '#2563eb',
+        });
+      } else {
+        throw new Error(data.message || data.error || 'Error durante el proceso.');
+      }
+    } catch (err: any) {
+      await Swal.fire({
+        title: 'Operación Abortada (Fail-Safe)',
+        text: err.message || 'Error en la ejecución. No se modificó la base de datos.',
+        icon: 'error',
+      });
+    } finally {
+      setIsPurgingVisitors(false);
     }
   }
 
@@ -1196,6 +1282,16 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
             >
               🗄️ Dumps de Base de Datos (.SQL) ({sqlDumps.length})
             </button>
+            <button
+              onClick={() => setBackupSubtab('visitantes')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                backupSubtab === 'visitantes'
+                  ? 'bg-red-600 text-white shadow-xs'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+            >
+              🧹 Limpieza y Purga de Visitantes ({visitorBackups.length})
+            </button>
           </div>
 
           {backupSubtab === 'integrales' && (
@@ -1406,6 +1502,109 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                                 download
                               >
                                 📥 Descargar .SQL
+                              </a>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {backupSubtab === 'visitantes' && (
+            <div className="space-y-4">
+              <div className="bg-red-50/70 border border-red-200 rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="max-w-3xl space-y-2">
+                  <h4 className="text-sm font-bold text-red-950 flex items-center gap-2">
+                    <span>🛡️</span> Mantenimiento y Purga Segura de Visitantes (Protocolo en 3 Pasos)
+                  </h4>
+                  <p className="text-xs text-red-800 leading-relaxed">
+                    Esta función ejecuta una limpieza integral de los datos de visitantes (asistentes, acreditaciones, inscripciones y encuestas) garantizando resguardo previo inquebrantable:
+                  </p>
+                  <ul className="list-disc pl-4 text-xs text-red-900/90 space-y-1">
+                    <li><strong>Paso 1:</strong> Genera un backup estructurado (.json y .sql) con hash criptográfico SHA-256.</li>
+                    <li><strong>Paso 2:</strong> Verifica persistencia física en disco y consistencia exacta de hash (fail-safe atómico). Si falla, aborta sin tocar la base de datos.</li>
+                    <li><strong>Paso 3:</strong> Transacción atómica que purga únicamente los datos respaldados y genera un registro inmutable en <code>logs_auditoria</code>.</li>
+                  </ul>
+                </div>
+                <button
+                  onClick={handlePurgeVisitors}
+                  disabled={isPurgingVisitors}
+                  className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold shadow-sm whitespace-nowrap flex items-center gap-2"
+                >
+                  {isPurgingVisitors ? '⏳ Procesando resguardo...' : '🧹 Ejecutar Backup y Purga Segura'}
+                </button>
+              </div>
+
+              {/* Historial de backups de visitantes */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+                <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                  <div>
+                    <h5 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
+                      Historial de Backups Estructurados de Visitantes
+                    </h5>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Copias generadas automáticamente antes de cada ciclo de purga ({visitorBackups.length} archivos).
+                    </p>
+                  </div>
+                  <button
+                    onClick={loadVisitorBackups}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800"
+                  >
+                    🔄 Actualizar
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-xs">
+                    <thead className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase text-[10px]">
+                      <tr>
+                        <th className="px-4 py-3">Archivo de Backup</th>
+                        <th className="px-4 py-3">Tipo</th>
+                        <th className="px-4 py-3">Tamaño</th>
+                        <th className="px-4 py-3">Fecha y Hora</th>
+                        <th className="px-4 py-3 text-right">Descarga</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {visitorBackups.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                            No se registran backups de purgas de visitantes aún.
+                          </td>
+                        </tr>
+                      ) : (
+                        visitorBackups.map((b) => (
+                          <tr key={b.filename} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 font-mono font-bold text-gray-900">
+                              {b.filename}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+                                b.extension === '.json' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {b.extension.toUpperCase()}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-mono text-gray-700">
+                              {(b.sizeBytes / 1024).toFixed(2)} KB
+                            </td>
+                            <td className="px-4 py-3 text-gray-500">
+                              {new Date(b.createdAt).toLocaleString('es-AR', {
+                                dateStyle: 'medium',
+                                timeStyle: 'medium',
+                              })}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <a
+                                href={`/api/admin/backups/visitantes/descargar/${encodeURIComponent(b.filename)}`}
+                                className="px-2.5 py-1 bg-gray-800 hover:bg-black text-white rounded text-xs font-bold transition inline-flex items-center gap-1"
+                                download
+                              >
+                                📥 Descargar
                               </a>
                             </td>
                           </tr>

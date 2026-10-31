@@ -16,6 +16,13 @@ backend/.env
 
 # Backups locales
 backend/backups/
+backups/
+
+# Almacenamiento local de materiales (preservar estructura)
+imagenes_de_materiales/*
+!imagenes_de_materiales/.gitkeep
+frontend/public/imagenes_de_materiales/*
+!frontend/public/imagenes_de_materiales/.gitkeep
 
 # Logs y PIDs de procesos locales
 *.log
