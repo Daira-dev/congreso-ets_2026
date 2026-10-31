@@ -294,6 +294,9 @@
                 <li><a href="#arquitectura-evaluacion">14. Evaluación Arquitectónica: Next.js como BFF vs Backend Dedicado</a></li>
                 <li><a href="#rbac-arquitectura">15. Arquitectura de Seguridad RBAC & Matriz de Permisos JSONB</a></li>
                 <li><a href="#cms-email-engine">16. Motores de Renderizado Dinámico: CMS & Plantillas de Correo</a></li>
+                <li><a href="#cms-frontend-dinamico">17. Arquitectura del CMS Frontend Dinámico y FAQs Enriquecidas</a></li>
+                <li><a href="#materiales-crud-anidado-tech">18. Arquitectura de Materiales y Almacenamiento Físico (CRUD Anidado)</a></li>
+                <li><a href="#purga-sha256-tech">19. Protocolo de Purga Segura y Firma Criptográfica SHA-256</a></li>
             </ul>
         </nav>
     </aside>
@@ -1176,6 +1179,82 @@ npm run test:criticos
                 <li><strong>Estructura Tabular Estándar Email:</strong> Maquetado en tablas HTML puras con estilos CSS inline para máxima compatibilidad móvil.</li>
                 <li><strong>Sandbox Integrado:</strong> Modo simulador para pruebas de carga y QA sin costo de servidor SMTP.</li>
             </ul>
+        </section>
+
+        <!-- 17. CMS FRONTEND DINÁMICO & FAQS ENRIQUECIDAS -->
+        <section class="section-card" id="cms-frontend-dinamico">
+            <h2>17. Arquitectura del CMS Frontend Dinámico y FAQs Enriquecidas</h2>
+            <p>El subsistema CMS Frontend descentraliza la administración de contenidos sin alterar el ciclo de vida del compilado estático, permitiendo reconfiguración en caliente de Hero, Secciones, Carrusel y Preguntas Frecuentes.</p>
+
+            <h3>17.1 Modelo de Almacenamiento Centralizado</h3>
+            <p>Se utiliza la tabla <code>configuraciones_sistema</code> de PostgreSQL como almacén clave-valor con tipado JSONB y auditoría de timestamps:</p>
+            <pre><code>-- Claves del CMS Frontend en configuraciones_sistema
+'frontend_hero_cms'                -- { titulo_superior, fecha_texto, cta_principal, ... }
+'frontend_secciones_visibilidad'   -- [ { id, titulo, id_dom, visible, orden }, ... ]
+'frontend_carousel_cms'            -- [ { id, titulo, imagen_url, video_url, activo, ... }, ... ]
+'frontend_faq_cms'                 -- [ { id, pregunta, respuesta, activo, enlaces, archivos, multimedia }, ... ]</code></pre>
+
+            <h3>17.2 Endpoints y Ciclo de Vida Reactivo</h3>
+            <p>Los endpoints administrativos bajo <code>/api/admin/frontend-cms/*</code> aplican el middleware de jerarquía <code>requireHierarchy(4)</code>. Los endpoints públicos bajo <code>/api/frontend/*</code> emiten cabeceras obligatorias:</p>
+            <pre><code>Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate</code></pre>
+            <p>En el navegador, las mutaciones exitosas despachan eventos sintácticos <code>window.dispatchEvent(new CustomEvent('faq-updated'))</code> que provocan la refactorización inmediata de los componentes React observadores sin forzar un reload completo de la aplicación.</p>
+        </section>
+
+        <!-- 18. ARQUITECTURA DE MATERIALES (CRUD ANIDADO) -->
+        <section class="section-card" id="materiales-crud-anidado-tech">
+            <h2>18. Arquitectura de Materiales y Almacenamiento Físico (CRUD Anidado)</h2>
+            <p>El subsistema de materiales resuelve la disociación entre la tarjeta representativa de catálogo y el contenido detallado del visor.</p>
+
+            <h3>18.1 Esquema Relacional de la Entidad Materiales</h3>
+            <pre><code>CREATE TABLE IF NOT EXISTS materiales (
+    id SERIAL PRIMARY KEY,
+    evento_id INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('novedad', 'documento', 'video', 'flyer', 'foto', 'recurso')),
+    titulo VARCHAR(200) NOT NULL,
+    descripcion TEXT,                             -- Resumen breve de la tarjeta
+    fecha_publicacion DATE NOT NULL DEFAULT CURRENT_DATE,
+    url_imagen TEXT,                              -- Portada en imagenes_de_materiales/
+    url_archivo TEXT,                             -- Documento descargable principal
+    url_video TEXT,                               -- Video embebido (YouTube / Vimeo / MP4)
+    imagenes JSONB NOT NULL DEFAULT '[]'::jsonb,  -- Galería de fotos del detalle
+    contenido_detalle TEXT,                       -- Cuerpo extendido del artículo
+    enlaces_externos JSONB DEFAULT '[]'::jsonb,   -- Enlaces complementarios [ { id, titulo, url } ]
+    publicado BOOLEAN NOT NULL DEFAULT FALSE,
+    creado_en TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);</code></pre>
+
+            <h3>18.2 Almacenamiento Físico sin Compresión Destructiva</h3>
+            <p>Las imágenes se cargan a través de <code>POST /api/materiales/upload-imagen</code>, validando tipo MIME y extensión. Los archivos se guardan físicamente en el directorio <code>imagenes_de_materiales/</code> sin transformaciones destructivas de compresión. En la base de datos se almacena únicamente la ruta relativa <code>/imagenes_de_materiales/{nombre_timestamp}.ext</code>, desacoplando los binarios pesados del motor relacional PostgreSQL.</p>
+
+            <h3>18.3 Controladores Desacoplados</h3>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><code>PUT /api/materiales/:id/tarjeta</code>: Actualiza exclusivamente título, tipo, fecha, resumen, portada y estado de publicación.</li>
+                <li><code>PUT /api/materiales/:id/contenido</code>: Actualiza exclusivamente el cuerpo extendido, archivo adjunto, video, galería de fotos y enlaces externos.</li>
+            </ul>
+        </section>
+
+        <!-- 19. PURGA SEGURA CON FIRMA SHA-256 -->
+        <section class="section-card" id="purga-sha256-tech">
+            <h2>19. Protocolo de Purga Segura y Firma Criptográfica SHA-256</h2>
+            <p>Implementación técnica del protocolo de prevención de pérdida accidental de datos en operaciones masivas de depuración:</p>
+
+            <pre><code>Secuencia Atómica de Purga:
+[ Administrador ] ----( Solicita Purga )----> [ Frontend ] (Bloqueado)
+        |
+        +----( GET /api/admin/mantenimiento/backup-visitantes )----> [ Backend ]
+                                                                        |
+                                                    Genera script SQL con usuarios rol 'visitante'
+                                                    Calcula digest crypto.createHash('sha256')
+                                                    Emite archivo con cabeceras de descarga
+        |                                                               |
+[ Descarga Backup .sql ] <----------------------------------------------+
+        |
+[ Desbloqueo de Botón ] ----( POST /api/admin/mantenimiento/purgar-visitantes { sha256 } )
+                                                                        |
+                                                    Valida correspondencia de hash
+                                                    Ejecuta DELETE atómico en transacción
+                                                    Asienta registro en auditoria_logs</code></pre>
         </section>
 
     </main>

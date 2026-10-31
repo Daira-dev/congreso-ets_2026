@@ -470,6 +470,9 @@
                 <li><a href="#cms-tarjetas">19. CMS de Tarjetas y Secciones del Portal Web</a></li>
                 <li><a href="#rbac-granular">20. Matriz Granular de Roles y Permisos (RBAC)</a></li>
                 <li><a href="#identificaciones-digitales">21. Diseñador WYSIWYG de Identificaciones Móviles</a></li>
+                <li><a href="#cms-frontend-avanzado">22. CMS Frontend: Hero, Secciones, Carrusel y FAQs Enriquecidas</a></li>
+                <li><a href="#materiales-crud-anidado">23. Gestión de Materiales: Arquitectura CRUD Anidado</a></li>
+                <li><a href="#mantenimiento-purga-segura">24. Mantenimiento y Purga Segura con Fail-Safe SHA-256</a></li>
             </ul>
         </nav>
     </aside>
@@ -1148,6 +1151,87 @@
                 <li>Ajustar tamaño, posición (X, Y) y capa visual (Traer al frente / Enviar al fondo).</li>
                 <li>Definir fondo con degradados vectoriales o imágenes institucionales optimizadas.</li>
                 <li>Pulsar <strong>Guardar Credencial Móvil</strong>: las dimensiones y coordenadas se sincronizan inmediatamente con el visor de credencial PWA de los participantes.</li>
+            </ol>
+        </section>
+
+        <!-- 22. CMS FRONTEND AVANZADO -->
+        <section class="section-card" id="cms-frontend-avanzado">
+            <h2>
+                <span>22. CMS Frontend: Hero, Secciones, Carrusel y FAQs Enriquecidas</span>
+                <span class="meta-tag" style="background:#0284c7; color:white; font-size:12px;">Portal Dinámico</span>
+            </h2>
+            <p>El módulo <strong>CMS Frontend</strong> permite al equipo de comunicación y directivos modificar en tiempo real el diseño y contenidos del portal público sin necesidad de editar código fuente ni reiniciar servicios.</p>
+
+            <h3>22.1 Editor WYSIWYG del Hero Principal</h3>
+            <p>Permite personalizar el título institucional superior, subtítulo, fecha proyectada, llamada a la acción (CTA) y esquema cromático del Hero. Incorpora regla tipográfica obligatoria que garantiza espacios antes y después de barras (<code> / </code>) y guiones (<code> - </code>), manteniendo la elegancia visual.</p>
+
+            <h3>22.2 Control Dinámico de Visibilidad de Secciones Públicas</h3>
+            <p>El administrador puede mostrar u ocultar de forma independiente cualquiera de las 6 secciones estructurales del portal (<code>#actividades</code>, <code>#sedes</code>, <code>#cronograma</code>, <code>#propuestas</code>, <code>#participacion</code> y <code>#contacto</code>). La configuración se persiste en la base de datos central y conmuta reactivamente la visibilidad del componente contenedor.</p>
+
+            <h3>22.3 Carrusel Multimedia Interactivo</h3>
+            <p>Gestor de diapositivas con soporte para imágenes de alta fidelidad, videos institucionales, insignias promocionales, enlaces de acción externa y selección de diapositiva predeterminada.</p>
+
+            <h3>22.4 Editor y CRUD Enriquecido de Preguntas Frecuentes (FAQ)</h3>
+            <p>El portal cuenta con un catálogo interactivo de consultas frecuentes que soporta contenidos multiformato:</p>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><strong>Visibilidad Independiente por Tarjeta:</strong> Conmutador instantáneo <code>Pública / Oculta</code> con guardado optimista.</li>
+                <li><strong>URLs y Enlaces de Interés:</strong> Vinculación de enlaces externos (por ejemplo, ubicación en Google Maps, portales educativos o redes sociales).</li>
+                <li><strong>Documentos Oficiales en PDF:</strong> Subida y asociación de archivos PDF descargables directamente por los visitantes al desplegar la pregunta.</li>
+                <li><strong>Multimedia (Fotos y Videos):</strong> Incorporación de imágenes explicativas y videos de YouTube con reproductor embebido responsivo.</li>
+                <li><strong>Restauración de Emergencia:</strong> Botón para restaurar con un solo clic las 11 preguntas oficiales iniciales del congreso.</li>
+            </ul>
+        </section>
+
+        <!-- 23. GESTIÓN DE MATERIALES CON CRUD ANIDADO -->
+        <section class="section-card" id="materiales-crud-anidado">
+            <h2>
+                <span>23. Gestión de Materiales: Arquitectura CRUD Anidado</span>
+                <span class="meta-tag" style="background:#0284c7; color:white; font-size:12px;">Materiales & Medios</span>
+            </h2>
+            <p>Para garantizar una navegación ordenada y escalable, el módulo de <strong>Materiales</strong> opera bajo una arquitectura anidada en dos niveles desacoplados:</p>
+
+            <h3>23.1 Nivel 1 — CRUD de Tarjetas con su Imagen</h3>
+            <p>Gestiona la visualización resumida de cada recurso en la lista pública:</p>
+            <ol class="step-list">
+                <li><strong>Metadatos de Tarjeta:</strong> Título, tipo de contenido (Novedad, Documento, Video, Flyer, Foto, Recurso), fecha de publicación y resumen breve.</li>
+                <li><strong>Portada Personalizada:</strong> Carga de imagen representativa almacenada físicamente en <code>imagenes_de_materiales/</code> sin compresión destructiva, o selección de presets oficiales.</li>
+                <li><strong>Control de Estado:</strong> Publicación inmediata o mantenimiento en borrador visible únicamente por operadores.</li>
+            </ol>
+
+            <h3>23.2 Nivel 2 — CRUD Anidado del Contenido del Botón &quot;Ver&quot;</h3>
+            <p>Al hacer clic en el botón <strong>&quot;Contenido botón 'Ver'&quot;</strong>, se abre el gestor específico para los elementos desplegados al visitante:</p>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><strong>Cuerpo Extendido:</strong> Redacción completa del artículo, memoria pedagógica o informe técnico.</li>
+                <li><strong>Galería de Fotos:</strong> Sub-CRUD para subir o remover fotos en alta definición.</li>
+                <li><strong>Video Interactivo:</strong> Reproductor embebido automático para videos institucionales.</li>
+                <li><strong>Documento Adjunto:</strong> Descarga directa de archivos PDF de ponencias o normativas.</li>
+                <li><strong>Enlaces Externos:</strong> Colección de vínculos web complementarios.</li>
+            </ul>
+
+            <h3>23.3 Carátulas Base por Categoría</h3>
+            <p>Subpestaña dedicada para definir las imágenes predeterminadas de cada uno de los 6 tipos de material (800x800 px, 72-96 DPI), asegurando coherencia gráfica cuando una tarjeta no cuenta con portada particular.</p>
+        </section>
+
+        <!-- 24. PURGA SEGURA CON FAIL-SAFE SHA-256 -->
+        <section class="section-card" id="mantenimiento-purga-segura">
+            <h2>
+                <span>24. Mantenimiento y Purga Segura con Fail-Safe SHA-256</span>
+                <span class="meta-tag" style="background:#ef4444; color:white; font-size:12px;">Disaster Recovery</span>
+            </h2>
+            <p>Para prevenir la eliminación accidental de asistentes o pérdida de datos históricos, la plataforma incorpora un protocolo de <strong>Fail-Safe Criptográfico Atómico</strong>:</p>
+
+            <div class="callout warning">
+                <span style="font-size: 20px;">⚠️</span>
+                <div>
+                    <strong>Mecanismo de Bloqueo Mandatorio:</strong> El botón de confirmación de purga permanece estrictamente bloqueado e inhabilitado hasta que el administrador descarga obligatoriamente una copia de respaldo completa en formato SQL, validada con firma de integridad <strong>SHA-256</strong>.
+                </div>
+            </div>
+
+            <ol class="step-list">
+                <li>Ingresar a la pestaña <strong>Mantenimiento y Purga de Visitantes</strong>.</li>
+                <li>Pulsar <strong>Descargar Respaldo Obligatorio (SQL)</strong>: el backend genera el archivo de respaldo con el padrón íntegro y emite un hash SHA-256 inmutable.</li>
+                <li>El sistema habilita el botón de confirmación destructiva.</li>
+                <li>Al confirmar con doble validación de seguridad, se eliminan los registros de visitantes y la acción queda asentada de forma permanente en la bitácora de auditoría forense con usuario, fecha, hora y hash del respaldo generado.</li>
             </ol>
         </section>
     </main>

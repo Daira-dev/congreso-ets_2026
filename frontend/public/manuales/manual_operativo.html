@@ -321,6 +321,10 @@
                 <li><a href="#temas-admin">11. Gestión de Temas del Backend</a></li>
                 <li><a href="#temas-frontend">12. Temas del Frontend (4 Vistas)</a></li>
                 <li><a href="#journaling-ops">13. Journaling, Diagnóstico y Rate Limiting</a></li>
+                <li><a href="#sedes-mapas-ops">14. Gestión de Sede Física y Mapas Interactivos</a></li>
+                <li><a href="#correo-ops">15. Operación de Envíos Masivos y Sandbox de Correo</a></li>
+                <li><a href="#cms-materiales-ops">16. Operación del CMS Frontend y Gestión de Materiales</a></li>
+                <li><a href="#purga-visitantes-ops">17. Protocolo de Respaldo Pre-Purga de Visitantes (Disaster Recovery)</a></li>
             </ul>
         </nav>
     </aside>
@@ -766,6 +770,117 @@ psql -h localhost -p 5432 -U postgres -d congreso_ets2026 -f C:\Ruta\volcado_dat
                     <strong>Manejo Operativo del Error 429:</strong> Si un puesto de acreditación en una red compartida (misma IP pública) reporta error 429 durante una prueba masiva, el personal de IT puede verificar el registro en el visor de Journaling o solicitar al operador esperar 5 minutos a que expire la ventana del limitador.
                 </div>
             </div>
+        </section>
+
+        <!-- 14. GESTIÓN DE SEDE FÍSICA Y MAPAS -->
+        <section class="section-card" id="sedes-mapas-ops">
+            <h2>
+                <span>14. Gestión de Sede Física y Mapas Interactivos</span>
+                <span class="badge-ops" style="background:#dcfce7; color:#15803d; font-size:12px;">Infraestructura del Evento</span>
+            </h2>
+            <p>El personal técnico puede actualizar la ubicación del evento y la cartografía interactiva sin interrumpir la operación pública:</p>
+
+            <h3>14.1 Configuración de Ubicación en el Evento Activo</h3>
+            <ol class="step-list">
+                <li>Acceder a <strong>Ediciones & Eventos</strong> en el panel de control.</li>
+                <li>Editar la edición vigente (<code>ETS_2026</code>) e ingresar en la sección <strong>Ubicación y Sede</strong>.</li>
+                <li>Completar: <strong>Nombre del Edificio / Sede</strong> (ej: <em>Centro Metropolitano de Diseño - CMD</em>), <strong>Dirección Postal</strong> y <strong>URL de Mapa Embebido (Google Maps / OpenStreetMap)</strong>.</li>
+                <li>Guardar cambios: el portal web público y los mapas en el pie de página se actualizan al instante para los asistentes.</li>
+            </ol>
+        </section>
+
+        <!-- 15. OPERACIÓN DE CORREO Y SANDBOX -->
+        <section class="section-card" id="correo-ops">
+            <h2>
+                <span>15. Operación de Envíos Masivos y Sandbox de Correo</span>
+                <span class="badge-ops" style="background:#dcfce7; color:#15803d; font-size:12px;">Servicio SMTP</span>
+            </h2>
+            <p>Protocolos de contingencia y validación previa antes de despachar comunicaciones masivas a miles de inscriptos:</p>
+
+            <h3>15.1 Activación del Modo Sandbox</h3>
+            <p>En el archivo de entorno del backend (<code>.env</code>):</p>
+            <pre><code># Modo Sandbox: los correos no se envían al servidor SMTP sino que se registran en logs
+EMAIL_SANDBOX=true</code></pre>
+            <p>Con <code>EMAIL_SANDBOX=true</code>, los operadores pueden registrar asistentes de prueba, regenerar credenciales y probar la plantilla sin consumir cuota de envío diaria de Google Workspace ni saturar servidores institucionales.</p>
+
+            <h3>15.2 Conmutación a Producción</h3>
+            <p>Para habilitar el envío real durante el congreso:</p>
+            <pre><code>EMAIL_SANDBOX=false
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=congreso.ets@bue.edu.ar
+SMTP_PASS=xxxx-xxxx-xxxx-xxxx</code></pre>
+            <p>Verificar que la contraseña de aplicación generada en la consola de Google Workspace tenga permisos SMTP activos.</p>
+        </section>
+
+        <!-- 16. OPERACIÓN DEL CMS FRONTEND Y GESTIÓN DE MATERIALES -->
+        <section class="section-card" id="cms-materiales-ops">
+            <h2>16. Operación del CMS Frontend y Gestión de Materiales</h2>
+            <p>Procedimientos estandarizados para el equipo de soporte y contenidos del Congreso:</p>
+
+            <h3>16.1 Publicación y Ocultamiento de Secciones del Portal</h3>
+            <ol class="step-list">
+                <li>Acceder al panel con cuenta de jerarquía directiva o soporte (nivel &ge; 4).</li>
+                <li>Hacer clic en <strong>CMS Frontend</strong> &rarr; subpestaña <strong>Visibilidad de Secciones</strong>.</li>
+                <li>Conmutar el botón de la sección deseada (por ejemplo, despublicar <em>#propuestas</em> una vez cerrado el llamado). El guardado es automático y no requiere reiniciar el frontend.</li>
+            </ol>
+
+            <h3>16.2 Actualización de Preguntas Frecuentes con PDFs y Enlaces</h3>
+            <p>Para cargar o modificar respuestas oficiales:</p>
+            <ol class="step-list">
+                <li>Ir a <strong>CMS Frontend</strong> &rarr; <strong>Preguntas Frecuentes (FAQ)</strong>.</li>
+                <li>Para conmutar si se muestra u oculta en el portal, usar el interruptor directo <code>Pública / Oculta</code> en la fila.</li>
+                <li>Para editar: hacer clic en <code>✏️ Editar Contenido</code>.</li>
+                <li>Navegar a la pestaña <strong>PDFs</strong> para subir resoluciones oficiales o a la pestaña <strong>URLs</strong> para añadir enlaces de Google Maps o portales de consulta.</li>
+                <li>Guardar cambios: el evento reactivo actualiza la vista pública en milisegundos.</li>
+            </ol>
+
+            <h3>16.3 Carga de Materiales y Normas de Imágenes</h3>
+            <p>Las imágenes cargadas deben ajustarse a las siguientes especificaciones:</p>
+            <table class="doc-table">
+                <thead>
+                    <tr>
+                        <th>Uso / Destino</th>
+                        <th>Dimensiones Recomendadas</th>
+                        <th>Resolución</th>
+                        <th>Formatos Admitidos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Carátula por Categoría</strong></td>
+                        <td>800 &times; 800 px (1:1)</td>
+                        <td>72 a 96 DPI</td>
+                        <td>PNG, JPG, WebP, SVG, AVIF</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Portada de Tarjeta de Material</strong></td>
+                        <td>1200 &times; 675 px (16:9)</td>
+                        <td>72 a 96 DPI</td>
+                        <td>PNG, JPG, WebP, AVIF</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Galería de Fotos del Detalle</strong></td>
+                        <td>1920 &times; 1080 px máx.</td>
+                        <td>72 a 96 DPI</td>
+                        <td>PNG, JPG, WebP</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- 17. PROTOCOLO DE PURGA Y COPIAS DE SEGURIDAD (DR) -->
+        <section class="section-card" id="purga-visitantes-ops">
+            <h2>17. Protocolo de Respaldo Pre-Purga de Visitantes (Disaster Recovery)</h2>
+            <p>Procedimiento inquebrantable de contingencia para la depuración del padrón de visitantes de prueba:</p>
+
+            <ol class="step-list">
+                <li>Acceder a la pestaña de administración <strong>Mantenimiento y Purga</strong>.</li>
+                <li>Hacer clic en <strong>Descargar Respaldo Obligatorio (SQL)</strong>. Guardar el archivo <code>backup_visitantes_{fecha}.sql</code> en un almacenamiento seguro o nube institucional.</li>
+                <li>Verificar el hash <strong>SHA-256</strong> reportado en pantalla para validar la integridad del archivo.</li>
+                <li>Una vez descargado y validado, el botón de confirmación de purga quedará habilitado.</li>
+                <li>Confirmar la acción: el sistema realiza la limpieza y registra un evento inmutable en el registro de auditoría con la firma criptográfica del respaldo.</li>
+            </ol>
         </section>
 
     </main>

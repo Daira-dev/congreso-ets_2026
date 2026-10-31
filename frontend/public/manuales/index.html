@@ -159,9 +159,9 @@
         <div class="grid-manuales">
             <!-- MANUAL DE USUARIO -->
             <div class="card-manual">
-                <span class="tag tag-user">Ilustrado · Editores WYSIWYG</span>
+                <span class="tag tag-user">Ilustrado · Editores WYSIWYG & CMS</span>
                 <h2>Manual de Usuario</h2>
-                <p>Guía de operación paso a paso para asistentes, operadores de acreditación y administradores. Incluye instructivos para el Diseñador Visual de Certificados, Constructor de Encuestas y el nuevo <strong>Editor Integral de Temas en Vivo con inspector Clic para Corregir</strong>.</p>
+                <p>Guía de operación paso a paso para asistentes, operadores de acreditación y administradores. Incluye instructivos para el Diseñador Visual de Certificados, Constructor de Encuestas, <strong>CMS Frontend (Hero, Secciones, Carrusel y FAQs Enriquecidas)</strong>, <strong>Gestión de Materiales con CRUD Anidado en 2 Niveles</strong> y <strong>Mantenimiento/Purga Segura con Fail-Safe SHA-256</strong>.</p>
                 <div style="display: flex; gap: 8px; margin-top: auto;">
                     <a href="manual_usuario.html" class="btn-acceder" style="flex: 1;">Ver Manual &rarr;</a>
                     <a href="manual_usuario.html" target="_blank" class="btn-acceder" style="background: #ef4444; padding: 12px 14px;" title="Abrir para imprimir o descargar en PDF">📥 PDF</a>
@@ -172,7 +172,7 @@
             <div class="card-manual">
                 <span class="tag tag-tech">Arquitectura & APIs</span>
                 <h2>Manual Técnico</h2>
-                <p>Especificación de software, esquema relacional en 3FN, criptografía simétrica AES-256 para códigos QR, catálogo de endpoints REST, motor de tematización dinámica scoped (<code>.admin-root</code>) y sincronización batch.</p>
+                <p>Especificación de software, esquema relacional en 3FN, criptografía simétrica AES-256 para códigos QR, catálogo de endpoints REST, motor de tematización scoped (<code>.admin-root</code>), <strong>Arquitectura CMS Frontend Dinámico con JSONB</strong>, <strong>Controladores desacoplados de Materiales y Media física en <code>imagenes_de_materiales/</code></strong>, <strong>Protocolo de Purga Segura y Firma SHA-256</strong>, <strong>Journaling asíncrono con caché TTL</strong> y suite de tests críticos.</p>
                 <div style="display: flex; gap: 8px; margin-top: auto;">
                     <a href="manual_tecnico.html" class="btn-acceder" style="flex: 1;">Ver Manual &rarr;</a>
                     <a href="manual_tecnico.html" target="_blank" class="btn-acceder" style="background: #ef4444; padding: 12px 14px;" title="Abrir para imprimir o descargar en PDF">📥 PDF</a>
@@ -183,7 +183,7 @@
             <div class="card-manual">
                 <span class="tag tag-ops">Sistemas & IT</span>
                 <h2>Manual Operativo</h2>
-                <p>Guía de despliegue nativo en Microsoft Windows 10/11, administración del servicio PostgreSQL, configuración de correo Google SMTP, gestión de perfiles visuales oficiales CABA, exportación JSON y contingencia offline.</p>
+                <p>Guía de despliegue nativo en Microsoft Windows 10/11 y distribuciones Linux (Ubuntu/Debian), administración de PostgreSQL, configuración de correo Google SMTP, <strong>Operación del CMS Frontend & Normas de Resolución/DPI para Materiales</strong>, <strong>Protocolo de Respaldo Pre-Purga (Disaster Recovery)</strong>, conmutación en caliente de Journaling (3 niveles) y contingencia offline.</p>
                 <div style="display: flex; gap: 8px; margin-top: auto;">
                     <a href="manual_operativo.html" class="btn-acceder" style="flex: 1;">Ver Manual &rarr;</a>
                     <a href="manual_operativo.html" target="_blank" class="btn-acceder" style="background: #ef4444; padding: 12px 14px;" title="Abrir para imprimir o descargar en PDF">📥 PDF</a>
@@ -194,16 +194,46 @@
             <div class="card-manual">
                 <span class="tag" style="background: #f3e8ff; color: #6b21a8;">PostgreSQL 16 · 3FN</span>
                 <h2>Diccionario de Datos</h2>
-                <p>Catálogo exhaustivo de tablas, atributos, tipos de datos, claves primarias, foráneas, restricciones de unicidad y reglas de integridad referencial agrupadas por módulos.</p>
+                <p>Catálogo exhaustivo de <strong>23 tablas normalizadas</strong> (incluyendo <code>materiales</code>, <code>logs_journaling</code>, campos de permisos granulares RBAC, atributos de sede dinámica y claves avanzadas de <code>configuraciones_sistema</code>), claves primarias, foráneas, restricciones de unicidad e índices para alta concurrencia.</p>
                 <div style="display: flex; gap: 8px; margin-top: auto;">
                     <a href="diccionario_datos.html" class="btn-acceder" style="flex: 1; background: #8b5cf6;">Ver Diccionario &rarr;</a>
                     <a href="diccionario_datos.html" target="_blank" class="btn-acceder" style="background: #ef4444; padding: 12px 14px;" title="Abrir para imprimir o descargar en PDF">📥 PDF</a>
                 </div>
             </div>
+
+            <!-- PLAN DE TESTING E2E -->
+            <div class="card-manual" style="border-top: 4px solid #10b981;">
+                <span class="tag" style="background: #dcfce7; color: #15803d;">Simulación Humana · 22 Casos</span>
+                <h2>Plan de Testing E2E</h2>
+                <p>Guía de pruebas funcionales y de aceptación simulando a un humano frente a la computadora. Cubre <strong>22 casos de uso</strong> detallados: Portal Público, Acreditación PWA/Anti-passback, RBAC granular, CMS de tarjetas, Editor de Correos, Gestión de Sedes e Identificaciones Digitales.</p>
+                <div style="display: flex; gap: 8px; margin-top: auto;">
+                    <a href="plan_de_testing_e2e.md" class="btn-acceder" style="flex: 1; background: #10b981;">Ver Plan de Testing &rarr;</a>
+                </div>
+            </div>
+
+            <!-- CURSO DE CAPACITACIÓN INTERACTIVA HTML + CANVAS -->
+            <div class="card-manual" style="border-top: 4px solid #38bdf8; background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);">
+                <span class="tag" style="background: #e0f2fe; color: #0284c7;">HTML5 + Canvas · 8 Módulos</span>
+                <h2>Curso General de Capacitación</h2>
+                <p>Campus formativo interactivo con simuladores en <strong>HTML5 Canvas</strong>, capturas de pantalla de todos los módulos, guías operativas paso a paso y validación de conocimientos mediante cuestionarios para todo el personal.</p>
+                <div style="display: flex; gap: 8px; margin-top: auto;">
+                    <a href="curso_capacitacion.html" class="btn-acceder" style="flex: 1; background: #0284c7;">Ingresar al Campus &rarr;</a>
+                </div>
+            </div>
+
+            <!-- CURSO PRÁCTICO PARA OPERADORES Y MESA DE ENTRADA -->
+            <div class="card-manual" style="border-top: 4px solid #10b981; background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%);">
+                <span class="tag" style="background: #dcfce7; color: #15803d;">Puestos de Puerta & Oficina · Simulación</span>
+                <h2>Curso de Operadores y Puestos de Acceso</h2>
+                <p>Capacitación práctica para el personal en molinetes y mesas de entrada: escaneo ágil con cámara, resolución de alertas por <strong>Anti-Passback</strong>, búsqueda manual por DNI, reenvío de credenciales y entrega de certificados.</p>
+                <div style="display: flex; gap: 8px; margin-top: auto;">
+                    <a href="curso_operadores.html" class="btn-acceder" style="flex: 1; background: #10b981;">Abrir Simulador Operador &rarr;</a>
+                </div>
+            </div>
         </div>
 
         <footer>
-            Congreso ETS 2026 &bull; Dirección de Educación Técnica Superior (DETS - GCABA) &bull; Documentación Oficial
+            Congreso ETS 2026 &bull; Dirección de Educación Técnica Superior (DETS - GCABA) &bull; Documentación Oficial Actualizada
         </footer>
     </div>
 

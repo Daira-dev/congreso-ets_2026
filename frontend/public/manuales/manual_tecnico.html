@@ -290,6 +290,13 @@
                 <li><a href="#backup-engine">10. Motor de Backups</a></li>
                 <li><a href="#windows-arch">11. Despliegue en Windows</a></li>
                 <li><a href="#theming-engine">12. Motor de Tematización Scoped (.admin-root)</a></li>
+                <li><a href="#journaling-tech">13. Journaling en Caliente, Rate Limiting & Tests Críticos</a></li>
+                <li><a href="#arquitectura-evaluacion">14. Evaluación Arquitectónica: Next.js como BFF vs Backend Dedicado</a></li>
+                <li><a href="#rbac-arquitectura">15. Arquitectura de Seguridad RBAC & Matriz de Permisos JSONB</a></li>
+                <li><a href="#cms-email-engine">16. Motores de Renderizado Dinámico: CMS & Plantillas de Correo</a></li>
+                <li><a href="#cms-frontend-dinamico">17. Arquitectura del CMS Frontend Dinámico y FAQs Enriquecidas</a></li>
+                <li><a href="#materiales-crud-anidado-tech">18. Arquitectura de Materiales y Almacenamiento Físico (CRUD Anidado)</a></li>
+                <li><a href="#purga-sha256-tech">19. Protocolo de Purga Segura y Firma Criptográfica SHA-256</a></li>
             </ul>
         </nav>
     </aside>
@@ -909,6 +916,8 @@ enum BackupType {
   // Modales y Ventanas Emergentes
   '--admin-modal-bg': string;        // Superficie de cuadros de diálogo flotantes
   '--admin-modal-text': string;      // Tipografía interna de ventanas modales
+  // Geometría y Bordes (Radius)
+  '--admin-btn-radius': string;      // Radio de curvatura de botones (0px Cuadrado a 9999px Píldora)
 }</code></pre>
 
             <h3>12.2 Aislamiento Estricto mediante `.admin-root`</h3>
@@ -981,6 +990,271 @@ enum BackupType {
                 <li><strong>Seguridad & Auditoría:</strong> Los endpoints <code>PUT /api/admin/configuracion/tema-default</code> y <code>PUT /api/admin/configuracion/tema-frontend-default</code> exigen jerarquía mínima 4 (Administrador) y registran automáticamente el cambio en <code>logs_auditoria</code> (módulo <code>CONFIGURACION</code>, acción <code>TEMA_DEFAULT_UPDATE</code> o <code>TEMA_FRONTEND_DEFAULT_UPDATE</code>) con el ID del operador responsable.</li>
                 <li><strong>Secuencia de Carga y Fallbacks:</strong> Tanto en el backend como en el frontend público, los componentes verifican primero las preferencias locales en <code>localStorage</code>. Si no existen, consultan los endpoints correspondientes de configuración global en PostgreSQL y realizan la hidratación automática de las variables de diseño.</li>
             </ul>
+        </section>
+
+        <!-- 13. JOURNALING EN CALIENTE, RATE LIMITING Y TESTS CRÍTICOS -->
+        <section class="section-card" id="journaling-tech">
+            <h2>13. Arquitectura de Journaling en Memoria, Rate Limiting y Tests E2E Críticos</h2>
+            <p>Para satisfacer requerimientos de alta disponibilidad, diagnóstico forense y resistencia ante ataques en capa de aplicación, se integraron tres capas críticas en la infraestructura del Backend y Frontend.</p>
+
+            <h3>13.1 Módulo de Journaling Dinámico con Caché en Memoria (TTL 10s)</h3>
+            <p>La arquitectura de captura de eventos HTTP implementa un patrón asíncrono no bloqueante basado en eventos del ciclo de vida de Express (<code>res.on('finish')</code>):</p>
+            <pre><code>// Flujo asíncrono en journalingMiddleware.ts:
+[Cliente HTTP] ────► [journalingMiddleware] ────► [Controlador / Ruta]
+                            │                               │
+                      Verifica TTL                  Genera Respuesta
+                      en Memoria (10s)                      │
+                            │                               ▼
+                    [configuraciones_sistema]        res.on('finish')
+                            │                               │
+                            └──────────────┬────────────────┘
+                                           ▼ (Si nivel activo y aplica)
+                             INSERT INTO logs_journaling (...) 
+                             (Ejecución en Background / Non-blocking)</code></pre>
+
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><strong>Mitigación de Sobrecarga (Caché TTL):</strong> Para no saturar PostgreSQL consultando el nivel de debug en cada petición HTTP concurrente, <code>journalingMiddleware.ts</code> mantiene una variable en memoria con un <em>Time-To-Live</em> de 10.000 ms. Al cambiar el modo en el panel administrativo, el cambio se propaga a todos los hilos en un lapso máximo de 10 segundos.</li>
+                <li><strong>Captura Post-Ejecución:</strong> El middleware interviene la llamada suscribiéndose a <code>res.on('finish')</code>. Esto garantiza que la duración de respuesta hacia el usuario final se mida con precisión de milisegundos sin demorar el flujo de red.</li>
+                <li><strong>Sanitización de Seguridad:</strong> El interceptor clona el <code>req.body</code> y reemplaza campos sensibles como <code>password</code>, <code>contrasena</code> y <code>token</code> por <code>"[REDACTED]"</code> antes de persistirlos en formato <code>JSONB</code>.</li>
+                <li><strong>Estructura en PostgreSQL (<code>logs_journaling</code>):</strong>
+                    <ul style="margin-left: 20px; margin-top: 6px;">
+                        <li><code>id BIGSERIAL PRIMARY KEY</code></li>
+                        <li><code>nivel VARCHAR(10)</code>: 'ERROR', 'WARN', 'INFO'</li>
+                        <li><code>metodo VARCHAR(10)</code> y <code>ruta VARCHAR(255)</code></li>
+                        <li><code>status_code INT</code> y <code>duracion_ms INT</code></li>
+                        <li><code>ip_origen VARCHAR(45)</code> y <code>usuario_email VARCHAR(120)</code></li>
+                        <li><code>request_headers JSONB</code>, <code>request_body JSONB</code>, <code>error_detalles TEXT</code></li>
+                        <li><code>timestamp TIMESTAMPTZ DEFAULT NOW()</code></li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3>13.2 Rate Limiting en Capa de Aplicación (RFC Headers)</h3>
+            <p>Se integró <code>express-rate-limit</code> en las rutas públicas críticas con el objetivo de prevenir el agotamiento de recursos y salvaguardar los cupos de procesamiento:</p>
+            <table class="doc-table" style="margin-bottom: 20px;">
+                <thead>
+                    <tr>
+                        <th>Ruta Protegida</th>
+                        <th>Ventana Temporal</th>
+                        <th>Límite Máximo</th>
+                        <th>Encabezados Estándar Emitidos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>POST /api/registro</code></td>
+                        <td>15 minutos</td>
+                        <td>25 peticiones / IP</td>
+                        <td><code>RateLimit-Limit</code>, <code>RateLimit-Remaining</code>, <code>RateLimit-Reset</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>GET/POST /api/credencial</code></td>
+                        <td>5 minutos</td>
+                        <td>60 peticiones / IP</td>
+                        <td><code>RateLimit-Limit</code>, <code>RateLimit-Remaining</code>, <code>RateLimit-Reset</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>13.3 Suite de Pruebas Automatizadas de Flujos Críticos (E2E)</h3>
+            <p>Para certificar la integridad de los 3 procesos esenciales de negocio de manera reproducible, se desarrolló el runner <code>npm run test:criticos</code> implementado en <code>backend/src/tests/flujos_criticos.test.ts</code>:</p>
+            <ol class="step-list">
+                <li><strong>Flujo 1: Inscripción Completa de Asistente:</strong> Crea un usuario con rol y correo dinámico en <code>/api/registro</code>, valida la respuesta <code>HTTP 201 Created</code>, el hash bcrypt de la contraseña y la generación de la clave alfanumérica única.</li>
+                <li><strong>Flujo 2: Generación y Validación Criptográfica del QR:</strong> Solicita el gafete digital en <code>/api/credencial</code>, comprueba el token AES-256-CBC, simula el escaneo desde el lector y valida la verificación del token en <code>/api/acreditacion/validar-qr</code>.</li>
+                <li><strong>Flujo 3: Acreditación de Operador y Emisión Vectorial de Certificado:</strong> Emite la confirmación de check-in en el punto de acceso, transiciona el estado a <em>Acreditado</em> y genera el certificado PDF en <code>/api/certificados/descargar/:id</code> comprobando la firma de <code>%PDF-1.</code> y su integridad binaria.</li>
+            </ol>
+            <pre><code># Ejecución de la suite crítica en terminal:
+cd backend
+npm run test:criticos
+
+# Salida esperada:
+# ✔ 1. Inscripción completa de un asistente
+# ✔ 2. Generación y lectura del QR con firma válida
+# ✔ 3. Acreditación de operador y emisión de certificado
+# Total: 3/3 suites aprobadas (100%)</code></pre>
+        <!-- 14. EVALUACIÓN ARQUITECTÓNICA: NEXT.JS COMO BFF VS BACKEND DEDICADO -->
+        <section class="section-card" id="arquitectura-evaluacion">
+            <h2>14. Evaluación Arquitectónica: Next.js como BFF vs Backend Dedicado</h2>
+            <p>Conforme al dictamen de ingeniería del sistema, <strong>Next.js no actúa como backend generalista ni motor de persistencia relacional</strong> en esta plataforma, sino como un framework fullstack especializado en la interfaz y capa <em>BFF (Backend for Frontend)</em>. A continuación se documentan los fundamentos de diseño y su implementación en el Congreso ETS 2026:</p>
+            
+            <div style="overflow-x: auto; margin-top: 1rem;">
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>Criterio Técnico</th>
+                            <th>Next.js (BFF / Frontend)</th>
+                            <th>Backend Dedicado (Express + TypeScript)</th>
+                            <th>Decisión en el Proyecto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Rol Arquitectónico</strong></td>
+                            <td>Enrutador de vistas, SSR/SSG, hidratación React y BFF ligero.</td>
+                            <td>API RESTful desacoplada, reglas de negocio e integridad transaccional.</td>
+                            <td><span class="badge" style="background:#e0f2fe; color:#0369a1;">Desacoplado</span> Frontend en Next.js (puerto 3000), Backend en Express (puerto 4000).</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Pool de Conexiones DB</strong></td>
+                            <td>Riesgo de agotamiento de conexiones en entornos de invocación efímeros.</td>
+                            <td>Pool persistente en memoria (<code>pg.Pool</code>) con reutilización controlada de sockets.</td>
+                            <td><span class="badge" style="background:#dcfce7; color:#15803d;">Persistente</span> Toda interacción con PostgreSQL 16 se ejecuta en el servidor Express.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Generación Masiva de I/O y Binarios</strong></td>
+                            <td>Inconsistencia de tiempos de respuesta por sobrecarga del runtime de build.</td>
+                            <td>Generación vectorial en stream con <code>pdf-lib</code> y empaquetado <code>archiver</code>.</td>
+                            <td><span class="badge" style="background:#dcfce7; color:#15803d;">Dedicado</span> Emisión de credenciales QR, planillas y certificados oficiales en Express.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Procesos en Segundo Plano (Workers/Cron)</strong></td>
+                            <td>Inexistencia de soporte de daemons persistentes en el ciclo de vida sin servicios SaaS.</td>
+                            <td>Scheduler autónomo de Node.js con tareas cron de reintento y mantenimiento.</td>
+                            <td><span class="badge" style="background:#dcfce7; color:#15803d;">Autónomo</span> Motor cron nativo para correos, lista de espera y backups sin dependencias externas.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Cabeceras de Seguridad y Caching</strong></td>
+                            <td>Proxy transparente y sanitización de cookies de sesión HTTP-Only.</td>
+                            <td>Control estricto de CORS, cabeceras anti-sniffing, X-Frame-Options y ETag/Cache-Control.</td>
+                            <td><span class="badge" style="background:#dcfce7; color:#15803d;">Seguro</span> Cabeceras de seguridad activadas y cache de catálogo público configurada.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p style="margin-top: 1rem;"><strong>Conclusión:</strong> La arquitectura desacoplada garantiza escalabilidad independiente, minimiza el consumo de memoria en producción y previene bloqueos en el frontend durante el procesamiento de lotes o transacciones de acreditación masiva.</p>
+        </section>
+
+        <!-- 15. ARQUITECTURA DE SEGURIDAD RBAC & JSONB -->
+        <section class="section-card" id="rbac-arquitectura">
+            <h2>
+                <span>15. Arquitectura de Seguridad RBAC & Matriz de Permisos JSONB</span>
+                <span class="badge" style="background:#e0e7ff; color:#4338ca;">Seguridad & Middleware</span>
+            </h2>
+            <p>El sistema implementa una matriz de control de acceso basada en roles híbrida que combina jerarquías numéricas con permisos granulares almacenados en columnas semiestructuradas de tipo <code>JSONB</code> en PostgreSQL (<code>roles.permisos</code> y <code>operadores.permisos</code>).</p>
+
+            <h3>15.1 Estructura del Objeto de Permisos</h3>
+            <p>La estructura JSON normalizada valida los derechos operativos por módulo:</p>
+            <pre><code>{
+  "eventos": { "ver": true, "crear": true, "editar": true, "eliminar": false },
+  "usuarios": { "ver": true, "crear": true, "editar": true, "eliminar": true },
+  "actividades": { "ver": true, "crear": true, "editar": true, "eliminar": false },
+  "acreditacion": { "ver": true, "escanear": true, "editar": false },
+  "certificados": { "ver": true, "disenar": true, "emitir": true },
+  "correo": { "ver": true, "disenar": true, "enviar": true },
+  "cms": { "ver": true, "editar": true },
+  "sistema": { "ver": false, "backups": false, "journaling": false }
+}</code></pre>
+
+            <h3>15.2 Middleware de Autorización en Node.js Express</h3>
+            <p>El backend cuenta con la función middleware <code>requerirPermiso(modulo, accion)</code> que intercepta cada llamada a la API REST:</p>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li>Extrae la sesión y el token del operador autenticado.</li>
+                <li>Si el operador tiene jerarquía 5 (<code>Superadmin</code>), se conceden todos los accesos por defecto (<em>Bypass administrativo</em>).</li>
+                <li>Para el resto de roles y operadores, evalúa si <code>operador.permisos[modulo][accion] === true</code> o hereda de <code>rol.permisos[modulo][accion]</code>.</li>
+                <li>Si la condición no se cumple, rechaza inmediatamente la solicitud con código <code>HTTP 403 Forbidden</code> y registra el evento en <code>logs_auditoria</code>.</li>
+            </ul>
+        </section>
+
+        <!-- 16. MOTORES DE RENDERIZADO DINÁMICO: CMS & EMAIL -->
+        <section class="section-card" id="cms-email-engine">
+            <h2>
+                <span>16. Motores de Renderizado Dinámico: CMS & Plantillas de Correo</span>
+                <span class="badge" style="background:#e0e7ff; color:#4338ca;">Dynamic Engines</span>
+            </h2>
+            <p>Para independizar al equipo de operaciones de despliegues constantes en producción, se desacoplaron dos motores de renderizado dinámico:</p>
+
+            <h3>16.1 Motor de CMS de Frontend (Next.js Client + Backend API)</h3>
+            <p>El portal web consulta en tiempo de ejecución los bloques activos configurados en <code>/api/cms/cards</code>:</p>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li>Caché perimetral con cabeceras <code>Cache-Control: public, max-age=60, stale-while-revalidate=300</code>.</li>
+                <li>Renderizado dinámico de tarjetas informativas con soporte de íconos SVG y enlaces interactivos.</li>
+                <li>Persistencia en la tabla de configuraciones o JSONB para edición sin downtime.</li>
+            </ul>
+
+            <h3>16.2 Motor de Plantillas de Correo (Header / Footer Personalizable)</h3>
+            <p>El servicio <code>emailService.ts</code> encapsula la compilación de plantillas HTML responsivas:</p>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><strong>Inyección de Token QR:</strong> Genera un código QR embebido en formato base64 como adjunto inline (CID) para visualización inmediata en cualquier cliente de correo (Outlook, Gmail, Thunderbird, Webmail GCABA) sin bloqueos de carga remota.</li>
+                <li><strong>Estructura Tabular Estándar Email:</strong> Maquetado en tablas HTML puras con estilos CSS inline para máxima compatibilidad móvil.</li>
+                <li><strong>Sandbox Integrado:</strong> Modo simulador para pruebas de carga y QA sin costo de servidor SMTP.</li>
+            </ul>
+        </section>
+
+        <!-- 17. CMS FRONTEND DINÁMICO & FAQS ENRIQUECIDAS -->
+        <section class="section-card" id="cms-frontend-dinamico">
+            <h2>17. Arquitectura del CMS Frontend Dinámico y FAQs Enriquecidas</h2>
+            <p>El subsistema CMS Frontend descentraliza la administración de contenidos sin alterar el ciclo de vida del compilado estático, permitiendo reconfiguración en caliente de Hero, Secciones, Carrusel y Preguntas Frecuentes.</p>
+
+            <h3>17.1 Modelo de Almacenamiento Centralizado</h3>
+            <p>Se utiliza la tabla <code>configuraciones_sistema</code> de PostgreSQL como almacén clave-valor con tipado JSONB y auditoría de timestamps:</p>
+            <pre><code>-- Claves del CMS Frontend en configuraciones_sistema
+'frontend_hero_cms'                -- { titulo_superior, fecha_texto, cta_principal, ... }
+'frontend_secciones_visibilidad'   -- [ { id, titulo, id_dom, visible, orden }, ... ]
+'frontend_carousel_cms'            -- [ { id, titulo, imagen_url, video_url, activo, ... }, ... ]
+'frontend_faq_cms'                 -- [ { id, pregunta, respuesta, activo, enlaces, archivos, multimedia }, ... ]</code></pre>
+
+            <h3>17.2 Endpoints y Ciclo de Vida Reactivo</h3>
+            <p>Los endpoints administrativos bajo <code>/api/admin/frontend-cms/*</code> aplican el middleware de jerarquía <code>requireHierarchy(4)</code>. Los endpoints públicos bajo <code>/api/frontend/*</code> emiten cabeceras obligatorias:</p>
+            <pre><code>Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate</code></pre>
+            <p>En el navegador, las mutaciones exitosas despachan eventos sintácticos <code>window.dispatchEvent(new CustomEvent('faq-updated'))</code> que provocan la refactorización inmediata de los componentes React observadores sin forzar un reload completo de la aplicación.</p>
+        </section>
+
+        <!-- 18. ARQUITECTURA DE MATERIALES (CRUD ANIDADO) -->
+        <section class="section-card" id="materiales-crud-anidado-tech">
+            <h2>18. Arquitectura de Materiales y Almacenamiento Físico (CRUD Anidado)</h2>
+            <p>El subsistema de materiales resuelve la disociación entre la tarjeta representativa de catálogo y el contenido detallado del visor.</p>
+
+            <h3>18.1 Esquema Relacional de la Entidad Materiales</h3>
+            <pre><code>CREATE TABLE IF NOT EXISTS materiales (
+    id SERIAL PRIMARY KEY,
+    evento_id INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('novedad', 'documento', 'video', 'flyer', 'foto', 'recurso')),
+    titulo VARCHAR(200) NOT NULL,
+    descripcion TEXT,                             -- Resumen breve de la tarjeta
+    fecha_publicacion DATE NOT NULL DEFAULT CURRENT_DATE,
+    url_imagen TEXT,                              -- Portada en imagenes_de_materiales/
+    url_archivo TEXT,                             -- Documento descargable principal
+    url_video TEXT,                               -- Video embebido (YouTube / Vimeo / MP4)
+    imagenes JSONB NOT NULL DEFAULT '[]'::jsonb,  -- Galería de fotos del detalle
+    contenido_detalle TEXT,                       -- Cuerpo extendido del artículo
+    enlaces_externos JSONB DEFAULT '[]'::jsonb,   -- Enlaces complementarios [ { id, titulo, url } ]
+    publicado BOOLEAN NOT NULL DEFAULT FALSE,
+    creado_en TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);</code></pre>
+
+            <h3>18.2 Almacenamiento Físico sin Compresión Destructiva</h3>
+            <p>Las imágenes se cargan a través de <code>POST /api/materiales/upload-imagen</code>, validando tipo MIME y extensión. Los archivos se guardan físicamente en el directorio <code>imagenes_de_materiales/</code> sin transformaciones destructivas de compresión. En la base de datos se almacena únicamente la ruta relativa <code>/imagenes_de_materiales/{nombre_timestamp}.ext</code>, desacoplando los binarios pesados del motor relacional PostgreSQL.</p>
+
+            <h3>18.3 Controladores Desacoplados</h3>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><code>PUT /api/materiales/:id/tarjeta</code>: Actualiza exclusivamente título, tipo, fecha, resumen, portada y estado de publicación.</li>
+                <li><code>PUT /api/materiales/:id/contenido</code>: Actualiza exclusivamente el cuerpo extendido, archivo adjunto, video, galería de fotos y enlaces externos.</li>
+            </ul>
+        </section>
+
+        <!-- 19. PURGA SEGURA CON FIRMA SHA-256 -->
+        <section class="section-card" id="purga-sha256-tech">
+            <h2>19. Protocolo de Purga Segura y Firma Criptográfica SHA-256</h2>
+            <p>Implementación técnica del protocolo de prevención de pérdida accidental de datos en operaciones masivas de depuración:</p>
+
+            <pre><code>Secuencia Atómica de Purga:
+[ Administrador ] ----( Solicita Purga )----> [ Frontend ] (Bloqueado)
+        |
+        +----( GET /api/admin/mantenimiento/backup-visitantes )----> [ Backend ]
+                                                                        |
+                                                    Genera script SQL con usuarios rol 'visitante'
+                                                    Calcula digest crypto.createHash('sha256')
+                                                    Emite archivo con cabeceras de descarga
+        |                                                               |
+[ Descarga Backup .sql ] <----------------------------------------------+
+        |
+[ Desbloqueo de Botón ] ----( POST /api/admin/mantenimiento/purgar-visitantes { sha256 } )
+                                                                        |
+                                                    Valida correspondencia de hash
+                                                    Ejecuta DELETE atómico en transacción
+                                                    Asienta registro en auditoria_logs</code></pre>
         </section>
 
     </main>

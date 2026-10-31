@@ -383,6 +383,7 @@
                 <li><a href="#tab-catalogo-actividades">→ catalogo_actividades</a></li>
                 <li><a href="#tab-actividades">→ actividades</a></li>
                 <li><a href="#tab-actividad-inscripciones">→ actividad_inscripciones</a></li>
+                <li><a href="#tab-materiales">→ materiales</a></li>
 
                 <div class="nav-group-title">Módulo 3: Acreditaciones & QR</div>
                 <li><a href="#mod-acreditacion">3. Acreditación & Seguridad</a></li>
@@ -1337,6 +1338,135 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- TABLA: materiales -->
+            <div class="table-container" id="tab-materiales">
+                <div class="table-header">
+                    <span class="table-title">materiales</span>
+                    <div class="table-meta">
+                        <span><strong>Clave Primaria:</strong> id (SERIAL)</span>
+                        <span><strong>Arquitectura:</strong> CRUD Anidado (Tarjeta + Contenido)</span>
+                    </div>
+                </div>
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>Campo</th>
+                            <th>Tipo de Dato</th>
+                            <th>Modificador</th>
+                            <th>Clave</th>
+                            <th>Descripción / Regla de Negocio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>id</code></td>
+                            <td><code>SERIAL</code></td>
+                            <td><span class="nn">NOT NULL</span></td>
+                            <td><span class="key-badge pk">PK</span></td>
+                            <td>Identificador numérico autoincremental del material o publicación.</td>
+                        </tr>
+                        <tr>
+                            <td><code>evento_id</code></td>
+                            <td><code>INTEGER</code></td>
+                            <td><span class="nn">NOT NULL</span></td>
+                            <td><span class="key-badge fk">FK</span></td>
+                            <td>Referencia foránea a <code>eventos(id)</code> con <code>ON DELETE CASCADE</code>.</td>
+                        </tr>
+                        <tr>
+                            <td><code>tipo</code></td>
+                            <td><code>VARCHAR(20)</code></td>
+                            <td><span class="nn">NOT NULL</span></td>
+                            <td>-</td>
+                            <td>Categoría del material: <code>novedad</code>, <code>documento</code>, <code>video</code>, <code>flyer</code>, <code>foto</code>, <code>recurso</code>.</td>
+                        </tr>
+                        <tr>
+                            <td><code>titulo</code></td>
+                            <td><code>VARCHAR(200)</code></td>
+                            <td><span class="nn">NOT NULL</span></td>
+                            <td>-</td>
+                            <td>Título descriptivo de la tarjeta de catálogo.</td>
+                        </tr>
+                        <tr>
+                            <td><code>descripcion</code></td>
+                            <td><code>TEXT</code></td>
+                            <td>NULL</td>
+                            <td>-</td>
+                            <td>Resumen breve mostrado en la tarjeta pública del listado.</td>
+                        </tr>
+                        <tr>
+                            <td><code>fecha_publicacion</code></td>
+                            <td><code>DATE</code></td>
+                            <td><span class="nn">NOT NULL DEFAULT CURRENT_DATE</span></td>
+                            <td>-</td>
+                            <td>Fecha visible de la publicación para ordenamiento cronológico.</td>
+                        </tr>
+                        <tr>
+                            <td><code>url_imagen</code></td>
+                            <td><code>TEXT</code></td>
+                            <td>NULL</td>
+                            <td>-</td>
+                            <td>Ruta relativa de la portada física en <code>imagenes_de_materiales/</code> o preset.</td>
+                        </tr>
+                        <tr>
+                            <td><code>url_archivo</code></td>
+                            <td><code>TEXT</code></td>
+                            <td>NULL</td>
+                            <td>-</td>
+                            <td>Ruta del documento oficial adjunto para descargar (PDF).</td>
+                        </tr>
+                        <tr>
+                            <td><code>url_video</code></td>
+                            <td><code>TEXT</code></td>
+                            <td>NULL</td>
+                            <td>-</td>
+                            <td>Enlace del video interactivo embebido (YouTube / Vimeo / MP4).</td>
+                        </tr>
+                        <tr>
+                            <td><code>imagenes</code></td>
+                            <td><code>JSONB</code></td>
+                            <td><span class="nn">NOT NULL DEFAULT '[]'::jsonb</span></td>
+                            <td>-</td>
+                            <td>Galería de fotos complementarias del detalle <code>[ "url1", "url2" ]</code>.</td>
+                        </tr>
+                        <tr>
+                            <td><code>contenido_detalle</code></td>
+                            <td><code>TEXT</code></td>
+                            <td>NULL</td>
+                            <td>-</td>
+                            <td>Cuerpo extendido o artículo completo desplegado al presionar el botón "Ver".</td>
+                        </tr>
+                        <tr>
+                            <td><code>enlaces_externos</code></td>
+                            <td><code>JSONB</code></td>
+                            <td><code>DEFAULT '[]'::jsonb</code></td>
+                            <td>-</td>
+                            <td>Colección de vínculos web complementarios <code>[ { id, titulo, url } ]</code>.</td>
+                        </tr>
+                        <tr>
+                            <td><code>publicado</code></td>
+                            <td><code>BOOLEAN</code></td>
+                            <td><span class="nn">NOT NULL DEFAULT FALSE</span></td>
+                            <td>-</td>
+                            <td>Indicador de visibilidad en el portal público (TRUE = público, FALSE = borrador).</td>
+                        </tr>
+                        <tr>
+                            <td><code>creado_en</code></td>
+                            <td><code>TIMESTAMPTZ</code></td>
+                            <td><code>DEFAULT NOW()</code></td>
+                            <td>-</td>
+                            <td>Marca temporal de creación del registro.</td>
+                        </tr>
+                        <tr>
+                            <td><code>actualizado_en</code></td>
+                            <td><code>TIMESTAMPTZ</code></td>
+                            <td><code>DEFAULT NOW()</code></td>
+                            <td>-</td>
+                            <td>Marca temporal de la última actualización de tarjeta o contenido.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <!-- =================================================================== -->
@@ -2189,14 +2319,14 @@
                             <td><code>VARCHAR(100)</code></td>
                             <td><span class="nn">NOT NULL</span></td>
                             <td><span class="key-badge pk">PK</span></td>
-                            <td>Nombre identificador del parámetro del sistema (ej: <code>plantilla_certificado_oficial</code>, <code>smtp_google</code>, <code>aforo_maximo_confirmados</code>).</td>
+                            <td>Nombre identificador del parámetro del sistema (ej: <code>plantilla_certificado_oficial</code>, <code>smtp_google</code>, <code>frontend_hero_cms</code>, <code>frontend_secciones_visibilidad</code>, <code>frontend_carousel_cms</code>, <code>frontend_faq_cms</code>, <code>materiales_categorias_imagenes</code>).</td>
                         </tr>
                         <tr>
                             <td><code>valor</code></td>
                             <td><code>JSONB</code></td>
                             <td><span class="nn">NOT NULL</span></td>
                             <td>-</td>
-                            <td>Estructura JSON binaria con los parámetros dinámicos, fuentes, firmantes y credenciales.</td>
+                            <td>Estructura JSON binaria con los parámetros dinámicos, fuentes, firmantes, slides de carrusel, items de FAQ enriquecidos y credenciales.</td>
                         </tr>
                         <tr>
                             <td><code>descripcion</code></td>
@@ -2210,7 +2340,7 @@
                             <td><code>VARCHAR(50)</code></td>
                             <td><code>DEFAULT 'GENERAL'</code></td>
                             <td>-</td>
-                            <td>Agrupación operativa: <code>GENERAL</code>, <code>CERTIFICADOS</code>, <code>CORREO</code>, <code>BACKUP</code>, <code>SEGURIDAD</code>.</td>
+                            <td>Agrupación operativa: <code>GENERAL</code>, <code>FRONTEND</code>, <code>MATERIALES</code>, <code>CERTIFICADOS</code>, <code>CORREO</code>, <code>BACKUP</code>, <code>SEGURIDAD</code>.</td>
                         </tr>
                         <tr>
                             <td><code>actualizado_en</code></td>

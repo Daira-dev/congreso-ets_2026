@@ -465,6 +465,14 @@
                 <li><a href="#cron">14. Tareas Programadas</a></li>
                 <li><a href="#estadisticas">15. Estadísticas y Reportes</a></li>
                 <li><a href="#temas-backend">16. Personalización Visual & Editor de Temas</a></li>
+                <li><a href="#journaling-user">17. Diagnóstico en Vivo (Journaling) y Seguridad</a></li>
+                <li><a href="#correo-editor">18. Plantillas de Correo con Encabezado y Footer Configurables</a></li>
+                <li><a href="#cms-tarjetas">19. CMS de Tarjetas y Secciones del Portal Web</a></li>
+                <li><a href="#rbac-granular">20. Matriz Granular de Roles y Permisos (RBAC)</a></li>
+                <li><a href="#identificaciones-digitales">21. Diseñador WYSIWYG de Identificaciones Móviles</a></li>
+                <li><a href="#cms-frontend-avanzado">22. CMS Frontend: Hero, Secciones, Carrusel y FAQs Enriquecidas</a></li>
+                <li><a href="#materiales-crud-anidado">23. Gestión de Materiales: Arquitectura CRUD Anidado</a></li>
+                <li><a href="#mantenimiento-purga-segura">24. Mantenimiento y Purga Segura con Fail-Safe SHA-256</a></li>
             </ul>
         </nav>
     </aside>
@@ -1001,6 +1009,11 @@
                         <td><code>--admin-table-header-bg</code>, <code>--admin-table-row-hover</code>, <code>--admin-border</code></td>
                         <td>Cabeceras de columnas y efecto visual al apoyar el cursor.</td>
                     </tr>
+                    <tr>
+                        <td><strong>Geometría de Botones (Radius)</strong></td>
+                        <td><code>--admin-btn-radius</code>, <code>--frontend-btn-radius</code></td>
+                        <td>Curvatura de esquinas: chips de selección rápida (0px Cuadrado, 4px Leve, 8px Suave, 16px Redondeado, 9999px Píldora) y slider de precisión (0 a 32px).</td>
+                    </tr>
                 </tbody>
             </table>
 
@@ -1026,6 +1039,201 @@
             </div>
         </section>
 
+        <!-- 17. DIAGNÓSTICO EN VIVO (JOURNALING) Y SEGURIDAD -->
+        <section class="section-card" id="journaling-user">
+            <h2>17. Diagnóstico en Vivo (Journaling) y Seguridad de Acceso</h2>
+            <p>El sistema incorpora un monitor de transacciones en tiempo real diseñado para auditar solicitudes, diagnosticar errores de conexión y fiscalizar las protecciones de tráfico.</p>
+
+            <h3>17.1 Acceso al Módulo de Diagnóstico</h3>
+            <p>Para usuarios con privilegios de <strong>Administrador (Nivel 4 o 5)</strong>:</p>
+            <ol class="step-list">
+                <li>Dirigirse a <strong>⚙️ Parámetros del Sistema</strong> desde la barra de navegación del panel.</li>
+                <li>Hacer clic sobre la pestaña <strong>📝 Journaling & Diagnóstico</strong>.</li>
+                <li>El sistema cargará la consola interactiva con el estado del interceptor, estadísticas de latencia y la tabla de eventos recientes.</li>
+            </ol>
+
+            <h3>17.2 Conmutador de Telemetría</h3>
+            <p>En la esquina superior de la consola se encuentra el selector de <strong>Nivel de Journaling</strong>:</p>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><strong>Apagado (DISABLED):</strong> Recomendado para jornadas estándar donde no existan incidencias reportadas.</li>
+                <li><strong>Solo Errores (ERRORS_ONLY):</strong> Nivel predeterminado que solo retiene peticiones fallidas (códigos 4xx y 5xx) para auditoría.</li>
+                <li><strong>Detallado Completo (VERBOSE_ALL):</strong> Registra cada petición HTTP, útil cuando un operador experimenta problemas específicos al intentar guardar o imprimir.</li>
+            </ul>
+
+            <h3>17.3 Protección de Tráfico y Mensajes de Exceso (Rate Limit)</h3>
+            <p>Para garantizar que el servidor no sufra ralentizaciones causadas por clics repetidos involuntarios o scripts externos, el sistema limita automáticamente la frecuencia de solicitudes en formularios públicos:</p>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li>Si un asistente intenta enviar el formulario de inscripción más de 25 veces en 15 minutos, el sistema mostrará un aviso: <em>"Demasiadas solicitudes de registro desde esta IP. Por favor intente más tarde."</em></li>
+                <li>En tal situación, el usuario o la terminal solo deben aguardar a que transcurra el tiempo indicado para volver a interactuar con normalidad.</li>
+            </ul>
+        </section>
+
+        <!-- 18. PLANTILLAS DE CORREO -->
+        <section class="section-card" id="correo-editor">
+            <h2>
+                <span>18. Plantillas de Correo con Encabezado y Footer Configurables</span>
+                <span class="meta-tag" style="background:#0284c7; color:white; font-size:12px;">Comunicaciones</span>
+            </h2>
+            <p>El sistema cuenta con un editor especializado en el Centro de Control para diseñar los correos institucionales de confirmación de inscripción, acreditación y avisos oficiales, garantizando una identidad visual sobria y profesional de acuerdo a las directivas del GCABA.</p>
+            
+            <h3>18.1 Componentes de la Plantilla</h3>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><strong>Encabezado Personalizado (Header):</strong> Permite definir el logotipo o banner superior, color de fondo, título institucional y subtítulo del evento.</li>
+                <li><strong>Cuerpo del Mensaje (Body):</strong> Admite formato enriquecido, variables dinámicas (<code>{{nombre}}</code>, <code>{{apellido}}</code>, <code>{{dni}}</code>, <code>{{codigo_evento}}</code>) e incrustación automática del código QR criptográfico para el acceso.</li>
+                <li><strong>Pie de Página (Footer):</strong> Configuración de firma institucional, redes sociales, teléfono de soporte de la DETS, leyendas legales de protección de datos personales y enlaces de desuscripción.</li>
+            </ul>
+
+            <h3>18.2 Previsualización en Tiempo Real y Modo Sandbox</h3>
+            <ol class="step-list">
+                <li>Ingresar a <strong>📧 Plantillas de Correo</strong> en el panel de administración.</li>
+                <li>Modificar los campos de texto, paleta de colores y enlaces institucionales.</li>
+                <li>Hacer clic en <strong>👁️ Previsualizar Correo</strong> para alternar entre la vista de escritorio y vista móvil.</li>
+                <li>Pulsar <strong>🧪 Enviar Correo de Prueba</strong> para verificar el renderizado en un buzón real o examinar el registro en el Sandbox sin consumir cupo de envío masivo.</li>
+                <li>Pulsar <strong>💾 Guardar Plantilla</strong> para aplicar los cambios a todas las notificaciones automáticas salientes.</li>
+            </ol>
+        </section>
+
+        <!-- 19. CMS DE TARJETAS DEL FRONTEND -->
+        <section class="section-card" id="cms-tarjetas">
+            <h2>
+                <span>19. CMS de Tarjetas y Secciones del Portal Web</span>
+                <span class="meta-tag" style="background:#0284c7; color:white; font-size:12px;">Gestión de Contenido</span>
+            </h2>
+            <p>El administrador puede adaptar dinámicamente los bloques informativos de la Landing Page sin necesidad de modificar código fuente ni desplegar nuevamente la aplicación.</p>
+
+            <h3>19.1 Modificación de Tarjetas Públicas</h3>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><strong>Ejes Temáticos y Paneles:</strong> Modificar títulos, íconos y sinopsis explicativas de cada eje pedagógico presentado en el congreso.</li>
+                <li><strong>Puntos de Información y Preguntas Frecuentes:</strong> Crear y reordenar tarjetas informativas sobre acreditación, transporte, sedes y material digital.</li>
+                <li><strong>Visibilidad en Caliente:</strong> Activar o desactivar bloques temporales (por ejemplo, anuncios de último momento o alertas de cupo agotado) con un interruptor inmediato.</li>
+            </ul>
+        </section>
+
+        <!-- 20. RBAC GRANULAR -->
+        <section class="section-card" id="rbac-granular">
+            <h2>
+                <span>20. Matriz Granular de Roles y Permisos (RBAC)</span>
+                <span class="meta-tag" style="background:#0284c7; color:white; font-size:12px;">Seguridad</span>
+            </h2>
+            <p>Para delegar responsabilidades sin comprometer la seguridad de datos sensibles, el sistema incorpora una matriz de control de acceso basada en roles (RBAC) con permisos granulares por módulo.</p>
+
+            <h3>20.1 Módulos y Acciones Configurables</h3>
+            <p>Cada rol (o cada operador de forma individual) puede tener permisos diferenciados (Lectura, Escritura, Creación, Baja) sobre los siguientes módulos:</p>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><strong>eventos:</strong> Gestión de ediciones, cupos y sedes físicas.</li>
+                <li><strong>usuarios:</strong> Visualización de padrón, edición de datos y bajas de participantes.</li>
+                <li><strong>actividades:</strong> Agenda de talleres, asignación de salas y expositores.</li>
+                <li><strong>acreditacion:</strong> Escaneo en puerta y consulta de accesos en tiempo real.</li>
+                <li><strong>certificados:</strong> Emisión, diseño y descarga de diplomas oficiales.</li>
+                <li><strong>encuestas:</strong> Edición de formularios y descarga de métricas.</li>
+                <li><strong>sistema:</strong> Configuración global, copias de seguridad y journaling forense.</li>
+            </ul>
+            <div class="callout tip">
+                <span style="font-size: 20px;">🛡️</span>
+                <div>
+                    <strong>Principio de Mínimo Privilegio:</strong> Los operadores de acreditación en puestos de acceso solo requieren el permiso <code>acreditacion:escaneo</code> y <code>acreditacion:lectura</code>, impidiendo el acceso involuntario a configuraciones del sistema o bases de datos completas.
+                </div>
+            </div>
+        </section>
+
+        <!-- 21. DISEÑADOR DE IDENTIFICACIONES MÓVILES -->
+        <section class="section-card" id="identificaciones-digitales">
+            <h2>
+                <span>21. Diseñador WYSIWYG de Identificaciones Móviles</span>
+                <span class="meta-tag" style="background:#0284c7; color:white; font-size:12px;">Credenciales</span>
+            </h2>
+            <p>Módulo interactivo basado en drag & drop y posicionamiento absoluto de capas con gestión de profundidad (Z-Index) para componer la credencial digital que los asistentes visualizan en sus teléfonos móviles.</p>
+
+            <h3>21.1 Manejo de Capas y Widgets</h3>
+            <ol class="step-list">
+                <li>Seleccionar la pestaña <strong>🪪 Identificación Digital</strong> en el panel.</li>
+                <li>Arrastrar widgets desde la paleta: <em>Código QR, Nombre Completo, Rol / Categoría, DNI, Logotipo del Evento, Franja de Seguridad</em>.</li>
+                <li>Ajustar tamaño, posición (X, Y) y capa visual (Traer al frente / Enviar al fondo).</li>
+                <li>Definir fondo con degradados vectoriales o imágenes institucionales optimizadas.</li>
+                <li>Pulsar <strong>Guardar Credencial Móvil</strong>: las dimensiones y coordenadas se sincronizan inmediatamente con el visor de credencial PWA de los participantes.</li>
+            </ol>
+        </section>
+
+        <!-- 22. CMS FRONTEND AVANZADO -->
+        <section class="section-card" id="cms-frontend-avanzado">
+            <h2>
+                <span>22. CMS Frontend: Hero, Secciones, Carrusel y FAQs Enriquecidas</span>
+                <span class="meta-tag" style="background:#0284c7; color:white; font-size:12px;">Portal Dinámico</span>
+            </h2>
+            <p>El módulo <strong>CMS Frontend</strong> permite al equipo de comunicación y directivos modificar en tiempo real el diseño y contenidos del portal público sin necesidad de editar código fuente ni reiniciar servicios.</p>
+
+            <h3>22.1 Editor WYSIWYG del Hero Principal</h3>
+            <p>Permite personalizar el título institucional superior, subtítulo, fecha proyectada, llamada a la acción (CTA) y esquema cromático del Hero. Incorpora regla tipográfica obligatoria que garantiza espacios antes y después de barras (<code> / </code>) y guiones (<code> - </code>), manteniendo la elegancia visual.</p>
+
+            <h3>22.2 Control Dinámico de Visibilidad de Secciones Públicas</h3>
+            <p>El administrador puede mostrar u ocultar de forma independiente cualquiera de las 6 secciones estructurales del portal (<code>#actividades</code>, <code>#sedes</code>, <code>#cronograma</code>, <code>#propuestas</code>, <code>#participacion</code> y <code>#contacto</code>). La configuración se persiste en la base de datos central y conmuta reactivamente la visibilidad del componente contenedor.</p>
+
+            <h3>22.3 Carrusel Multimedia Interactivo</h3>
+            <p>Gestor de diapositivas con soporte para imágenes de alta fidelidad, videos institucionales, insignias promocionales, enlaces de acción externa y selección de diapositiva predeterminada.</p>
+
+            <h3>22.4 Editor y CRUD Enriquecido de Preguntas Frecuentes (FAQ)</h3>
+            <p>El portal cuenta con un catálogo interactivo de consultas frecuentes que soporta contenidos multiformato:</p>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><strong>Visibilidad Independiente por Tarjeta:</strong> Conmutador instantáneo <code>Pública / Oculta</code> con guardado optimista.</li>
+                <li><strong>URLs y Enlaces de Interés:</strong> Vinculación de enlaces externos (por ejemplo, ubicación en Google Maps, portales educativos o redes sociales).</li>
+                <li><strong>Documentos Oficiales en PDF:</strong> Subida y asociación de archivos PDF descargables directamente por los visitantes al desplegar la pregunta.</li>
+                <li><strong>Multimedia (Fotos y Videos):</strong> Incorporación de imágenes explicativas y videos de YouTube con reproductor embebido responsivo.</li>
+                <li><strong>Restauración de Emergencia:</strong> Botón para restaurar con un solo clic las 11 preguntas oficiales iniciales del congreso.</li>
+            </ul>
+        </section>
+
+        <!-- 23. GESTIÓN DE MATERIALES CON CRUD ANIDADO -->
+        <section class="section-card" id="materiales-crud-anidado">
+            <h2>
+                <span>23. Gestión de Materiales: Arquitectura CRUD Anidado</span>
+                <span class="meta-tag" style="background:#0284c7; color:white; font-size:12px;">Materiales & Medios</span>
+            </h2>
+            <p>Para garantizar una navegación ordenada y escalable, el módulo de <strong>Materiales</strong> opera bajo una arquitectura anidada en dos niveles desacoplados:</p>
+
+            <h3>23.1 Nivel 1 — CRUD de Tarjetas con su Imagen</h3>
+            <p>Gestiona la visualización resumida de cada recurso en la lista pública:</p>
+            <ol class="step-list">
+                <li><strong>Metadatos de Tarjeta:</strong> Título, tipo de contenido (Novedad, Documento, Video, Flyer, Foto, Recurso), fecha de publicación y resumen breve.</li>
+                <li><strong>Portada Personalizada:</strong> Carga de imagen representativa almacenada físicamente en <code>imagenes_de_materiales/</code> sin compresión destructiva, o selección de presets oficiales.</li>
+                <li><strong>Control de Estado:</strong> Publicación inmediata o mantenimiento en borrador visible únicamente por operadores.</li>
+            </ol>
+
+            <h3>23.2 Nivel 2 — CRUD Anidado del Contenido del Botón &quot;Ver&quot;</h3>
+            <p>Al hacer clic en el botón <strong>&quot;Contenido botón 'Ver'&quot;</strong>, se abre el gestor específico para los elementos desplegados al visitante:</p>
+            <ul style="margin-left: 24px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.6;">
+                <li><strong>Cuerpo Extendido:</strong> Redacción completa del artículo, memoria pedagógica o informe técnico.</li>
+                <li><strong>Galería de Fotos:</strong> Sub-CRUD para subir o remover fotos en alta definición.</li>
+                <li><strong>Video Interactivo:</strong> Reproductor embebido automático para videos institucionales.</li>
+                <li><strong>Documento Adjunto:</strong> Descarga directa de archivos PDF de ponencias o normativas.</li>
+                <li><strong>Enlaces Externos:</strong> Colección de vínculos web complementarios.</li>
+            </ul>
+
+            <h3>23.3 Carátulas Base por Categoría</h3>
+            <p>Subpestaña dedicada para definir las imágenes predeterminadas de cada uno de los 6 tipos de material (800x800 px, 72-96 DPI), asegurando coherencia gráfica cuando una tarjeta no cuenta con portada particular.</p>
+        </section>
+
+        <!-- 24. PURGA SEGURA CON FAIL-SAFE SHA-256 -->
+        <section class="section-card" id="mantenimiento-purga-segura">
+            <h2>
+                <span>24. Mantenimiento y Purga Segura con Fail-Safe SHA-256</span>
+                <span class="meta-tag" style="background:#ef4444; color:white; font-size:12px;">Disaster Recovery</span>
+            </h2>
+            <p>Para prevenir la eliminación accidental de asistentes o pérdida de datos históricos, la plataforma incorpora un protocolo de <strong>Fail-Safe Criptográfico Atómico</strong>:</p>
+
+            <div class="callout warning">
+                <span style="font-size: 20px;">⚠️</span>
+                <div>
+                    <strong>Mecanismo de Bloqueo Mandatorio:</strong> El botón de confirmación de purga permanece estrictamente bloqueado e inhabilitado hasta que el administrador descarga obligatoriamente una copia de respaldo completa en formato SQL, validada con firma de integridad <strong>SHA-256</strong>.
+                </div>
+            </div>
+
+            <ol class="step-list">
+                <li>Ingresar a la pestaña <strong>Mantenimiento y Purga de Visitantes</strong>.</li>
+                <li>Pulsar <strong>Descargar Respaldo Obligatorio (SQL)</strong>: el backend genera el archivo de respaldo con el padrón íntegro y emite un hash SHA-256 inmutable.</li>
+                <li>El sistema habilita el botón de confirmación destructiva.</li>
+                <li>Al confirmar con doble validación de seguridad, se eliminan los registros de visitantes y la acción queda asentada de forma permanente en la bitácora de auditoría forense con usuario, fecha, hora y hash del respaldo generado.</li>
+            </ol>
+        </section>
     </main>
 
     <!-- MODAL LIGHTBOX PARA AMPLIAR IMÁGENES -->
