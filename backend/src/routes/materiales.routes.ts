@@ -32,6 +32,106 @@ function obtenerEventoId(valor: unknown): number | null {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+// Inicializa las columnas extendidas y semillas iniciales si la tabla está vacía
+async function asegurarMaterialesIniciales(): Promise<void> {
+  try {
+    await query(`
+      ALTER TABLE materiales 
+      ADD COLUMN IF NOT EXISTS contenido_detalle TEXT,
+      ADD COLUMN IF NOT EXISTS enlaces_externos JSONB DEFAULT '[]'::jsonb
+    `);
+
+    const countRes = await query('SELECT COUNT(*) FROM materiales');
+    if (parseInt(countRes.rows[0].count, 10) === 0) {
+      const eventoRes = await query(`SELECT id FROM eventos WHERE codigo = 'ETS_2026' OR activo = TRUE ORDER BY (codigo = 'ETS_2026') DESC LIMIT 1`);
+      if (eventoRes.rows.length > 0) {
+        const eventoId = eventoRes.rows[0].id;
+        const initialSeeds = [
+          {
+            type: 'novedad',
+            date: '2026-09-11',
+            title: 'Novedades del Congreso ETS 2026',
+            description: 'En este espacio se publicarán las novedades relacionadas con el Congreso de Educación Técnica Superior.',
+            contenidoDetalle: 'El Congreso de Educación Técnica Superior 2026 reunirá a directivos, docentes, especialistas y estudiantes para compartir innovaciones pedagógicas, prácticas profesionalizantes y modelos de enseñanza aplicados en el ámbito técnico superior.',
+            image: '/assets/icons/card1.svg',
+            publicado: true,
+          },
+          {
+            type: 'documento',
+            date: '2026-09-10',
+            title: 'Documento general de participación',
+            description: 'Información orientativa para participar del 1er Congreso de Educación Técnica Superior.',
+            contenidoDetalle: 'Descargá el documento institucional orientativo con las bases y condiciones, lineamientos pedagógicos y pautas de participación para instituciones, equipos de cátedra y estudiantes del sistema técnico superior.',
+            fileUrl: '/PDF/1 Aula Abierta - demostraciones aplicadas.pdf',
+            image: '/assets/icons/card2.svg',
+            publicado: true,
+          },
+          {
+            type: 'video',
+            date: '2026-09-09',
+            title: 'Conocé el Congreso ETS 2026',
+            description: 'Contenido audiovisual institucional relacionado con el Congreso.',
+            contenidoDetalle: 'Video de presentación y recorrido sobre los ejes temáticos, los dispositivos de muestra permanente y las actividades académicas proyectadas para la jornada.',
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            image: '/assets/icons/card3.svg',
+            publicado: true,
+          },
+          {
+            type: 'flyer',
+            date: '2026-09-08',
+            title: 'Flyer oficial del Congreso',
+            description: 'Pieza gráfica institucional del Congreso de Educación Técnica Superior.',
+            contenidoDetalle: 'Pieza gráfica y afiche institucional para difusión en carteleras institucionales, portales educativos y comunidades académicas.',
+            image: '/assets/icons/card4.svg',
+            publicado: true,
+          },
+          {
+            type: 'foto',
+            date: '2026-09-07',
+            title: 'Fotografías del Congreso',
+            description: 'Registro fotográfico de las actividades del Congreso de Educación Técnica Superior.',
+            contenidoDetalle: 'Colección de imágenes del espacio de exposición, auditorios y stands tecnológicos preparados para el desarrollo del Congreso.',
+            image: '/assets/icons/card5.svg',
+            images: ['/assets/icons/card1.svg', '/assets/icons/card2.svg', '/assets/icons/card3.svg'],
+            publicado: true,
+          },
+          {
+            type: 'recurso',
+            date: '2026-09-06',
+            title: 'Recursos para participantes',
+            description: 'Materiales y recursos vinculados con el programa y los dispositivos de participación.',
+            contenidoDetalle: 'Repositorio de recursos, plantillas descargables y enlaces útiles para los participantes acreditados.',
+            image: '/assets/icons/card1.svg',
+            enlacesExternos: [
+              { id: 'enlace-1', titulo: 'Portal de la Dirección de Educación Técnica Superior', url: 'https://buenosaires.gob.ar/educacion' },
+              { id: 'enlace-2', titulo: 'Programa y Cronograma Oficial', url: '/#actividades' },
+            ],
+            publicado: true,
+          },
+        ];
+
+        for (const s of initialSeeds) {
+          await query(
+            `INSERT INTO materiales (evento_id, tipo, titulo, descripcion, fecha_publicacion, url_imagen, url_archivo, url_video, imagenes, contenido_detalle, enlaces_externos, publicado)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11::jsonb, $12)`,
+            [
+              eventoId, s.type, s.title, s.description, s.date,
+              s.image || null, s.fileUrl || null, s.videoUrl || null,
+              JSON.stringify(s.images || []), s.contenidoDetalle || null,
+              JSON.stringify(s.enlacesExternos || []), s.publicado,
+            ]
+          );
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error asegurando materiales iniciales:', err);
+  }
+}
+
+// Ejecutar siembra inicial
+asegurarMaterialesIniciales();
+
 /* Lista materiales publicados para el sitio público */
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -57,6 +157,8 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
               titulo AS title, descripcion AS description,
               url_imagen AS image, url_archivo AS "fileUrl",
               url_video AS "videoUrl", imagenes AS images,
+              COALESCE(contenido_detalle, '') AS "contenidoDetalle",
+              COALESCE(enlaces_externos, '[]'::jsonb) AS "enlacesExternos",
               publicado
        FROM materiales
        WHERE evento_id = $1 AND publicado = TRUE
@@ -96,6 +198,8 @@ router.get('/admin', requireHierarchy(4), async (req: AuthenticatedRequest, res:
               titulo AS title, descripcion AS description,
               url_imagen AS image, url_archivo AS "fileUrl",
               url_video AS "videoUrl", imagenes AS images,
+              COALESCE(contenido_detalle, '') AS "contenidoDetalle",
+              COALESCE(enlaces_externos, '[]'::jsonb) AS "enlacesExternos",
               publicado
        FROM materiales
        WHERE evento_id = $1
@@ -115,12 +219,19 @@ router.post('/', requireHierarchy(4), async (req: AuthenticatedRequest, res: Res
   try {
     const {
       evento_id, type, title, description,
-      date, image, fileUrl, videoUrl, images, publicado
+      date, image, fileUrl, videoUrl, images,
+      contenidoDetalle, contenido_detalle,
+      enlacesExternos, enlaces_externos,
+      publicado
     } = req.body;
 
-    const eventoId = obtenerEventoId(evento_id);
+    let targetEventoId = obtenerEventoId(evento_id);
+    if (!targetEventoId) {
+      const defEvento = await query(`SELECT id FROM eventos WHERE codigo = 'ETS_2026' OR activo = TRUE ORDER BY (codigo = 'ETS_2026') DESC LIMIT 1`);
+      if (defEvento.rows.length > 0) targetEventoId = defEvento.rows[0].id;
+    }
 
-    if (!eventoId || !TIPOS_VALIDOS.includes(type) || !title?.trim()) {
+    if (!targetEventoId || !TIPOS_VALIDOS.includes(type) || !title?.trim()) {
       res.status(400).json({
         success: false,
         error: 'El evento, el tipo y el título son obligatorios.'
@@ -128,24 +239,21 @@ router.post('/', requireHierarchy(4), async (req: AuthenticatedRequest, res: Res
       return;
     }
 
-    const evento = await query('SELECT id FROM eventos WHERE id = $1', [eventoId]);
-
-    if (!evento.rows.length) {
-      res.status(400).json({ success: false, error: 'El evento indicado no existe.' });
-      return;
-    }
+    const detalleText = (contenidoDetalle !== undefined ? contenidoDetalle : contenido_detalle) || null;
+    const enlacesJson = JSON.stringify(Array.isArray(enlacesExternos) ? enlacesExternos : (Array.isArray(enlaces_externos) ? enlaces_externos : []));
 
     const result = await query(
       `INSERT INTO materiales
         (evento_id, tipo, titulo, descripcion, fecha_publicacion,
-         url_imagen, url_archivo, url_video, imagenes, publicado)
+         url_imagen, url_archivo, url_video, imagenes, contenido_detalle, enlaces_externos, publicado)
        VALUES ($1, $2, $3, $4, COALESCE($5::date, CURRENT_DATE),
-               $6, $7, $8, $9::jsonb, $10)
+               $6, $7, $8, $9::jsonb, $10, $11::jsonb, $12)
        RETURNING id`,
       [
-        eventoId, type, title.trim(), description || null,
+        targetEventoId, type, title.trim(), description || null,
         date || null, image || null, fileUrl || null, videoUrl || null,
         JSON.stringify(Array.isArray(images) ? images : []),
+        detalleText, enlacesJson,
         publicado === true
       ]
     );
@@ -161,21 +269,31 @@ router.post('/', requireHierarchy(4), async (req: AuthenticatedRequest, res: Res
   }
 });
 
-/* Actualiza un material existente */
+/* Actualiza un material existente (completo) */
 router.put('/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const id = obtenerEventoId(req.params.id);
     const {
       evento_id, type, title, description,
-      date, image, fileUrl, videoUrl, images, publicado
+      date, image, fileUrl, videoUrl, images,
+      contenidoDetalle, contenido_detalle,
+      enlacesExternos, enlaces_externos,
+      publicado
     } = req.body;
 
-    const eventoId = obtenerEventoId(evento_id);
+    let targetEventoId = obtenerEventoId(evento_id);
+    if (!targetEventoId) {
+      const defEvento = await query(`SELECT id FROM eventos WHERE codigo = 'ETS_2026' OR activo = TRUE ORDER BY (codigo = 'ETS_2026') DESC LIMIT 1`);
+      if (defEvento.rows.length > 0) targetEventoId = defEvento.rows[0].id;
+    }
 
-    if (!id || !eventoId || !TIPOS_VALIDOS.includes(type) || !title?.trim()) {
+    if (!id || !targetEventoId || !TIPOS_VALIDOS.includes(type) || !title?.trim()) {
       res.status(400).json({ success: false, error: 'Los datos del material son inválidos.' });
       return;
     }
+
+    const detalleText = (contenidoDetalle !== undefined ? contenidoDetalle : contenido_detalle) || null;
+    const enlacesJson = JSON.stringify(Array.isArray(enlacesExternos) ? enlacesExternos : (Array.isArray(enlaces_externos) ? enlaces_externos : []));
 
     const result = await query(
       `UPDATE materiales
@@ -188,14 +306,17 @@ router.put('/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: R
            url_archivo = $7,
            url_video = $8,
            imagenes = $9::jsonb,
-           publicado = $10,
+           contenido_detalle = $10,
+           enlaces_externos = $11::jsonb,
+           publicado = $12,
            actualizado_en = NOW()
-       WHERE id = $11
+       WHERE id = $13
        RETURNING id`,
       [
-        eventoId, type, title.trim(), description || null,
+        targetEventoId, type, title.trim(), description || null,
         date || null, image || null, fileUrl || null, videoUrl || null,
         JSON.stringify(Array.isArray(images) ? images : []),
+        detalleText, enlacesJson,
         publicado === true, id
       ]
     );
@@ -209,6 +330,92 @@ router.put('/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: R
   } catch (error) {
     console.error('Error al actualizar material:', error);
     res.status(500).json({ success: false, error: 'Error al actualizar material' });
+  }
+});
+
+/**
+ * PUT /api/materiales/:id/tarjeta
+ * CRUD Nivel 1: Actualiza exclusivamente los campos de la tarjeta con su imagen
+ */
+router.put('/:id/tarjeta', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const id = obtenerEventoId(req.params.id);
+    const { type, title, description, date, image, publicado } = req.body;
+
+    if (!id || !title?.trim() || !TIPOS_VALIDOS.includes(type)) {
+      res.status(400).json({ success: false, error: 'ID, tipo y título son requeridos para la tarjeta.' });
+      return;
+    }
+
+    const result = await query(
+      `UPDATE materiales
+       SET tipo = $1,
+           titulo = $2,
+           descripcion = $3,
+           fecha_publicacion = COALESCE($4::date, CURRENT_DATE),
+           url_imagen = $5,
+           publicado = COALESCE($6, publicado),
+           actualizado_en = NOW()
+       WHERE id = $7
+       RETURNING id, tipo AS type, titulo AS title, descripcion AS description,
+                 TO_CHAR(fecha_publicacion, 'YYYY-MM-DD') AS date,
+                 url_imagen AS image, publicado`,
+      [type, title.trim(), description || null, date || null, image || null, publicado, id]
+    );
+
+    if (!result.rows.length) {
+      res.status(404).json({ success: false, error: 'Material no encontrado.' });
+      return;
+    }
+
+    res.json({ success: true, message: 'Tarjeta de material actualizada correctamente.', material: result.rows[0] });
+  } catch (error: any) {
+    console.error('Error en PUT /:id/tarjeta:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/materiales/:id/contenido
+ * CRUD Nivel 2: Actualiza exclusivamente el contenido que se despliega al presionar el botón "Ver"
+ */
+router.put('/:id/contenido', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const id = obtenerEventoId(req.params.id);
+    const { contenidoDetalle, fileUrl, videoUrl, images, enlacesExternos } = req.body;
+
+    if (!id) {
+      res.status(400).json({ success: false, error: 'Identificador de material inválido.' });
+      return;
+    }
+
+    const imagesJson = JSON.stringify(Array.isArray(images) ? images : []);
+    const enlacesJson = JSON.stringify(Array.isArray(enlacesExternos) ? enlacesExternos : []);
+
+    const result = await query(
+      `UPDATE materiales
+       SET contenido_detalle = $1,
+           url_archivo = $2,
+           url_video = $3,
+           imagenes = $4::jsonb,
+           enlaces_externos = $5::jsonb,
+           actualizado_en = NOW()
+       WHERE id = $6
+       RETURNING id, contenido_detalle AS "contenidoDetalle",
+                 url_archivo AS "fileUrl", url_video AS "videoUrl",
+                 imagenes AS images, enlaces_externos AS "enlacesExternos"`,
+      [contenidoDetalle || null, fileUrl || null, videoUrl || null, imagesJson, enlacesJson, id]
+    );
+
+    if (!result.rows.length) {
+      res.status(404).json({ success: false, error: 'Material no encontrado.' });
+      return;
+    }
+
+    res.json({ success: true, message: 'Contenido del botón "Ver" actualizado correctamente.', contenido: result.rows[0] });
+  } catch (error: any) {
+    console.error('Error en PUT /:id/contenido:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

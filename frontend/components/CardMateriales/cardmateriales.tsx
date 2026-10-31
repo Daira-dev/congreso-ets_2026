@@ -19,6 +19,8 @@ export type Content = {
     videoUrl?: string;
     fileUrl?: string;
     images?: string[];
+    contenidoDetalle?: string;
+    enlacesExternos?: Array<{ id: string; titulo: string; url: string }>;
 };
 
 type CardMaterialesProps = {
