@@ -133,6 +133,106 @@ export const DEFAULT_CAROUSEL_SLIDES: CarouselSlide[] = [
   },
 ];
 
+export interface FaqItem {
+  id: string;
+  pregunta: string;
+  respuesta: string;
+  categoria: string;
+  orden: number;
+  activo: boolean;
+}
+
+export const DEFAULT_FAQ_ITEMS: FaqItem[] = [
+  {
+    id: 'faq-1',
+    pregunta: '¿Qué es el Congreso ETS 2026?',
+    respuesta: 'Es una instancia institucional, académico-aplicada, demostrativa y formativa destinada a mostrar y poner en diálogo experiencias de enseñanza, prácticas profesionalizantes, proyectos, producciones estudiantiles y modelos de gestión y enseñanza de la Educación Técnica Superior.',
+    categoria: 'General',
+    orden: 1,
+    activo: true,
+  },
+  {
+    id: 'faq-2',
+    pregunta: '¿Cuándo se realiza?',
+    respuesta: 'El 6 de noviembre de 2026.',
+    categoria: 'General',
+    orden: 2,
+    activo: true,
+  },
+  {
+    id: 'faq-3',
+    pregunta: '¿Dónde se realiza?',
+    respuesta: 'La sede prevista es el Auditorio Polo Saavedra, Crisólogo Larralde 5085, Ciudad de Buenos Aires.',
+    categoria: 'Sede y Acceso',
+    orden: 3,
+    activo: true,
+  },
+  {
+    id: 'faq-4',
+    pregunta: '¿La participación es gratuita?',
+    respuesta: 'Sí. El Congreso es una iniciativa pública, abierta y gratuita.',
+    categoria: 'General',
+    orden: 4,
+    activo: true,
+  },
+  {
+    id: 'faq-5',
+    pregunta: '¿Cómo me inscribo como asistente?',
+    respuesta: 'La inscripción se realiza desde esta web a través de la sección de inscripción oficial.',
+    categoria: 'Inscripción',
+    orden: 5,
+    activo: true,
+  },
+  {
+    id: 'faq-6',
+    pregunta: '¿Tengo que inscribirme en cada actividad?',
+    respuesta: 'No. La inscripción es general al Congreso. El formulario releva intereses temáticos, pero esa selección no constituye una reserva fija de lugar en actividades específicas.',
+    categoria: 'Inscripción',
+    orden: 6,
+    activo: true,
+  },
+  {
+    id: 'faq-7',
+    pregunta: '¿La inscripción tiene cupo?',
+    respuesta: 'Sí. La cantidad de inscripciones confirmadas está sujeta a la capacidad máxima de la sede. Una vez alcanzado el cupo, el sistema permite registrarse en lista de espera.',
+    categoria: 'Inscripción',
+    orden: 7,
+    activo: true,
+  },
+  {
+    id: 'faq-8',
+    pregunta: '¿Para qué sirve el Código QR?',
+    respuesta: 'Las personas con inscripción confirmada reciben un Código QR personal e intransferible que se utilizará para acreditar el ingreso en puertas y registrar la asistencia a actividades durante la jornada.',
+    categoria: 'Acreditación',
+    orden: 8,
+    activo: true,
+  },
+  {
+    id: 'faq-9',
+    pregunta: '¿Debo presentar el DNI al ingresar?',
+    respuesta: 'En principio, la acreditación se realiza mediante el QR generado por el sistema y no está previsto solicitar el documento físico en el ingreso rutinario.',
+    categoria: 'Acreditación',
+    orden: 9,
+    activo: true,
+  },
+  {
+    id: 'faq-10',
+    pregunta: '¿Habrá constancia o microcredencial de participación?',
+    respuesta: 'Se prevé la emisión posterior de una constancia o microcredencial a partir de la participación efectiva. El criterio operativo definido requiere acreditación general al Congreso y registro de asistencia a al menos una actividad.',
+    categoria: 'Certificados',
+    orden: 10,
+    activo: true,
+  },
+  {
+    id: 'faq-11',
+    pregunta: '¿Cómo se presentan propuestas institucionales?',
+    respuesta: 'Las instituciones de Formación Técnica Superior dependientes de la DETS cuentan con un circuito específico de carga de propuestas, diferente de la inscripción de asistentes.',
+    categoria: 'Propuestas',
+    orden: 11,
+    activo: true,
+  },
+];
+
 export const DEFAULT_FRONTEND_CARDS: FrontendCard[] = [
   {
     id: 1,
@@ -274,6 +374,26 @@ export async function getCarouselSlidesFromDb(): Promise<CarouselSlide[]> {
     console.error('Error leyendo frontend_carousel_cms:', err);
   }
   return DEFAULT_CAROUSEL_SLIDES;
+}
+
+/**
+ * Obtiene los elementos de preguntas frecuentes (FAQ) desde la base de datos o valores por defecto
+ */
+export async function getFaqItemsFromDb(): Promise<FaqItem[]> {
+  try {
+    const res = await query(
+      `SELECT valor FROM configuraciones_sistema WHERE clave = 'frontend_faq_cms' LIMIT 1`
+    );
+    if (res.rows.length > 0 && res.rows[0].valor) {
+      const parsed = typeof res.rows[0].valor === 'string' ? JSON.parse(res.rows[0].valor) : res.rows[0].valor;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error('Error leyendo frontend_faq_cms:', err);
+  }
+  return DEFAULT_FAQ_ITEMS;
 }
 
 const router = Router();
@@ -822,6 +942,211 @@ router.delete('/carousel/:id', requireHierarchy(4), async (req: AuthenticatedReq
     });
   } catch (error: any) {
     console.error('Error en DELETE /api/admin/frontend-cms/carousel/:id:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * Persiste los elementos de FAQ en la base de datos central PostgreSQL
+ */
+export async function saveFaqItemsToDb(faqs: FaqItem[]): Promise<void> {
+  await query(
+    `INSERT INTO configuraciones_sistema (clave, valor, descripcion, categoria, actualizado_en)
+     VALUES ('frontend_faq_cms', $1, 'Preguntas Frecuentes (FAQ) del Frontend dinámico', 'FRONTEND', NOW())
+     ON CONFLICT (clave) DO UPDATE
+     SET valor = $1, actualizado_en = NOW()`,
+    [JSON.stringify(faqs)]
+  );
+}
+
+/**
+ * GET /api/admin/frontend-cms/faq
+ * Listado completo de preguntas frecuentes para el panel administrativo
+ */
+router.get('/faq', requireHierarchy(3), async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const items = await getFaqItemsFromDb();
+    const sorted = [...items].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+    res.json({
+      ok: true,
+      faqs: sorted,
+      total: sorted.length,
+      defaultCount: DEFAULT_FAQ_ITEMS.length,
+    });
+  } catch (error: any) {
+    console.error('Error en GET /api/admin/frontend-cms/faq:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/frontend-cms/faq
+ * Crea un nuevo elemento de FAQ
+ */
+router.post('/faq', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { pregunta, respuesta, categoria, activo, orden } = req.body;
+    if (!pregunta || !respuesta) {
+      res.status(400).json({ ok: false, error: 'ERR_VALIDATION', message: 'Pregunta y respuesta son campos obligatorios.' });
+      return;
+    }
+
+    const currentFaqs = await getFaqItemsFromDb();
+    const maxOrden = currentFaqs.reduce((max, item) => Math.max(max, item.orden || 0), 0);
+    const newId = `faq-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    const newFaq: FaqItem = {
+      id: newId,
+      pregunta: String(pregunta).trim(),
+      respuesta: String(respuesta).trim(),
+      categoria: categoria ? String(categoria).trim() : 'General',
+      activo: activo !== false,
+      orden: typeof orden === 'number' ? orden : maxOrden + 1,
+    };
+
+    const updated = [...currentFaqs, newFaq].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+    await saveFaqItemsToDb(updated);
+
+    res.status(201).json({
+      ok: true,
+      mensaje: 'Pregunta frecuente creada exitosamente.',
+      faq: newFaq,
+      faqs: updated,
+    });
+  } catch (error: any) {
+    console.error('Error en POST /api/admin/frontend-cms/faq:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * PUT /api/admin/frontend-cms/faq/reorder
+ * Actualiza el ordenamiento de los elementos de FAQ
+ */
+router.put('/faq/reorder', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids)) {
+      res.status(400).json({ ok: false, error: 'ERR_VALIDATION', message: 'Se requiere un array de IDs ordenados en "ids".' });
+      return;
+    }
+
+    const currentFaqs = await getFaqItemsFromDb();
+    const map = new Map(currentFaqs.map((f) => [f.id, f]));
+
+    const reordered: FaqItem[] = [];
+    ids.forEach((id: string, index: number) => {
+      const item = map.get(id);
+      if (item) {
+        reordered.push({ ...item, orden: index + 1 });
+        map.delete(id);
+      }
+    });
+
+    // Añadir los que no se hayan incluido en ids
+    Array.from(map.values()).forEach((item) => {
+      reordered.push({ ...item, orden: reordered.length + 1 });
+    });
+
+    await saveFaqItemsToDb(reordered);
+
+    res.json({
+      ok: true,
+      mensaje: 'Orden de preguntas frecuentes actualizado correctamente.',
+      faqs: reordered,
+    });
+  } catch (error: any) {
+    console.error('Error en PUT /api/admin/frontend-cms/faq/reorder:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * PUT /api/admin/frontend-cms/faq/:id
+ * Actualiza un elemento de FAQ existente
+ */
+router.put('/faq/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const faqId = req.params.id;
+    const { pregunta, respuesta, categoria, activo, orden } = req.body;
+
+    const currentFaqs = await getFaqItemsFromDb();
+    const index = currentFaqs.findIndex((f) => f.id === faqId);
+
+    if (index === -1) {
+      res.status(404).json({ ok: false, error: 'ERR_NOT_FOUND', message: 'Pregunta frecuente no encontrada.' });
+      return;
+    }
+
+    const current = currentFaqs[index];
+    const updatedFaq: FaqItem = {
+      ...current,
+      pregunta: pregunta !== undefined ? String(pregunta).trim() : current.pregunta,
+      respuesta: respuesta !== undefined ? String(respuesta).trim() : current.respuesta,
+      categoria: categoria !== undefined ? String(categoria).trim() : current.categoria,
+      activo: activo !== undefined ? (activo !== false && (activo as any) !== 'false') : current.activo,
+      orden: typeof orden === 'number' ? orden : current.orden,
+    };
+
+    currentFaqs[index] = updatedFaq;
+    const sorted = [...currentFaqs].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+    await saveFaqItemsToDb(sorted);
+
+    res.json({
+      ok: true,
+      mensaje: 'Pregunta frecuente actualizada exitosamente.',
+      faq: updatedFaq,
+      faqs: sorted,
+    });
+  } catch (error: any) {
+    console.error('Error en PUT /api/admin/frontend-cms/faq/:id:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/frontend-cms/faq/:id
+ * Elimina un elemento de FAQ
+ */
+router.delete('/faq/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const faqId = req.params.id;
+    const currentFaqs = await getFaqItemsFromDb();
+    const filtered = currentFaqs.filter((f) => f.id !== faqId);
+
+    if (filtered.length === currentFaqs.length) {
+      res.status(404).json({ ok: false, error: 'ERR_NOT_FOUND', message: 'Pregunta frecuente no encontrada.' });
+      return;
+    }
+
+    const renumbered = filtered.map((f, idx) => ({ ...f, orden: idx + 1 }));
+    await saveFaqItemsToDb(renumbered);
+
+    res.json({
+      ok: true,
+      mensaje: 'Pregunta frecuente eliminada exitosamente.',
+      faqs: renumbered,
+    });
+  } catch (error: any) {
+    console.error('Error en DELETE /api/admin/frontend-cms/faq/:id:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/frontend-cms/faq/reset
+ * Restaura las 11 preguntas frecuentes oficiales por defecto
+ */
+router.post('/faq/reset', requireHierarchy(5), async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    await saveFaqItemsToDb(DEFAULT_FAQ_ITEMS);
+    res.json({
+      ok: true,
+      mensaje: 'Preguntas frecuentes restablecidas a los 11 elementos oficiales por defecto.',
+      faqs: DEFAULT_FAQ_ITEMS,
+    });
+  } catch (error: any) {
+    console.error('Error en POST /api/admin/frontend-cms/faq/reset:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
   }
 });

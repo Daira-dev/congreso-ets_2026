@@ -6,6 +6,7 @@ import Image from 'next/image';
 import AdminHeroWysiwygEditor from './AdminHeroWysiwygEditor';
 import AdminSeccionesVisibilidadView from './AdminSeccionesVisibilidadView';
 import AdminCarouselView from './AdminCarouselView';
+import AdminFaqCmsView from './AdminFaqCmsView';
 
 interface FrontendCard {
   id: number | string;
@@ -41,7 +42,7 @@ const BUILTIN_PDFS = [
 ];
 
 export default function AdminFrontendCmsView({ onNotice }: Props) {
-  const [cmsSubtab, setCmsSubtab] = useState<'cards' | 'hero' | 'secciones' | 'carousel'>('cards');
+  const [cmsSubtab, setCmsSubtab] = useState<'cards' | 'hero' | 'secciones' | 'carousel' | 'faq'>('cards');
   const [cards, setCards] = useState<FrontendCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -365,11 +366,25 @@ export default function AdminFrontendCmsView({ onNotice }: Props) {
           <span>🎬</span>
           <span>Carrousel Multimedia (Slider)</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setCmsSubtab('faq')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            cmsSubtab === 'faq'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+          }`}
+        >
+          <span>❓</span>
+          <span>Preguntas Frecuentes (FAQ)</span>
+        </button>
       </div>
 
       {cmsSubtab === 'hero' && <AdminHeroWysiwygEditor onNotice={onNotice} />}
       {cmsSubtab === 'secciones' && <AdminSeccionesVisibilidadView onNotice={onNotice} />}
       {cmsSubtab === 'carousel' && <AdminCarouselView onNotice={onNotice} />}
+      {cmsSubtab === 'faq' && <AdminFaqCmsView onNotice={onNotice} />}
 
       {cmsSubtab === 'cards' && (
         <div className="space-y-6">

@@ -4,6 +4,7 @@ import {
   getHeroConfigFromDb,
   getSeccionesVisibilidadFromDb,
   getCarouselSlidesFromDb,
+  getFaqItemsFromDb,
 } from './admin/frontend-cms.routes';
 
 const router = Router();
@@ -91,6 +92,36 @@ router.get('/carousel', async (_req: Request, res: Response): Promise<void> => {
     });
   } catch (error: any) {
     console.error('Error en GET /api/frontend/carousel:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * GET /api/frontend/faq
+ * Endpoint público consumido por la página de Contacto / Preguntas Frecuentes
+ */
+router.get('/faq', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const faqs = await getFaqItemsFromDb();
+    const activeFaqs = faqs
+      .filter((f) => {
+        const esInactivo =
+          (f as any).activo === false ||
+          (f as any).activo === 'false' ||
+          (f as any).activo === 0 ||
+          (f as any).activo === '0';
+        return !esInactivo;
+      })
+      .sort((a, b) => (a.orden || 0) - (b.orden || 0));
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.json({
+      ok: true,
+      faqs: activeFaqs,
+      total: activeFaqs.length,
+    });
+  } catch (error: any) {
+    console.error('Error en GET /api/frontend/faq:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
   }
 });
