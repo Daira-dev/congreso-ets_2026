@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe Oficial de Auditoría de Seguridad | Congreso ETS 2026</title>
+    <style>
+        :root {
+            --primary: #003865;
+            --primary-light: #005691;
+            --accent: #f59e0b;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --bg-light: #f8fafc;
+            --danger: #dc2626;
+            --danger-bg: #fef2f2;
+            --danger-border: #fecaca;
+            --warning: #ea580c;
+            --warning-bg: #fff7ed;
+            --warning-border: #ffedd5;
+            --medium: #ca8a04;
+            --medium-bg: #fefce8;
+            --medium-border: #fef08a;
+            --info: #2563eb;
+            --info-bg: #eff6ff;
+            --info-border: #bfdbfe;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: var(--text);
+            background-color: #ffffff;
+            line-height: 1.55;
+            padding: 30px;
+            font-size: 13px;
+        }
+
+        @media print {
+            body {
+                padding: 15px;
+                font-size: 12px;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+            .avoid-break {
+                page-break-inside: avoid;
+            }
+            a {
+                text-decoration: none;
+                color: inherit;
+            }
+        }
+
+        .header-institutional {
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .header-title h1 {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+        }
+
+        .header-title h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary-light);
+        }
+
+        .header-meta {
+            text-align: right;
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .badge-confidential {
+            display: inline-block;
+            background: #fee2e2;
+            color: #991b1b;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .summary-card {
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .metric-box {
+            background: #ffffff;
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .metric-count {
+            font-size: 26px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .count-crit { color: var(--danger); }
+        .count-high { color: var(--warning); }
+        .count-med { color: var(--medium); }
+        .count-low { color: var(--info); }
+
+        table.summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 12px;
+        }
+
+        table.summary-table th {
+            background: #f1f5f9;
+            color: var(--primary);
+            text-align: left;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 10.5px;
+        }
+
+        table.summary-table td {
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .sev-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sev-crit { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+        .sev-high { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
+        .sev-med { background: var(--medium-bg); color: var(--medium); border: 1px solid var(--medium-border); }
+        .sev-low { background: var(--info-bg); color: var(--info); border: 1px solid var(--info-border); }
+
+        .vuln-item {
+            margin-bottom: 22px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .vuln-header {
+            padding: 10px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .vuln-header-crit { background: var(--danger-bg); border-left: 5px solid var(--danger); }
+        .vuln-header-high { background: var(--warning-bg); border-left: 5px solid var(--warning); }
+        .vuln-header-med { background: var(--medium-bg); border-left: 5px solid var(--medium); }
+        .vuln-header-low { background: var(--info-bg); border-left: 5px solid var(--info); }
+
+        .vuln-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .vuln-cwe {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: monospace;
+            font-weight: 600;
+        }
+
+        .vuln-body {
+            padding: 14px;
+            background: #ffffff;
+        }
+
+        .vuln-row {
+            margin-bottom: 8px;
+        }
+
+        .vuln-label {
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        .code-box {
+            background: #0f172a;
+            color: #f8fafc;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 11px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 6px 0;
+            border-left: 3px solid var(--primary-light);
+        }
+
+        .remediation-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-left: 4px solid #16a34a;
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .remediation-title {
+            font-weight: 700;
+            color: #15803d;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+        }
+
+        .footer-note {
+            margin-top: 30px;
+            border-top: 1px solid var(--border);
+            padding-top: 14px;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- MEMBRETE OFICIAL -->
+    <div class="header-institutional">
+        <div class="header-title">
+            <span class="badge-confidential">Confidencial · Uso Técnico Interno</span>
+            <h1>Informe Oficial de Auditoría de Seguridad</h1>
+            <h2>Congreso de Educación Técnica Superior 2026 (DETS · GCABA)</h2>
+        </div>
+        <div class="header-meta">
+            <strong>Fecha de Emisión:</strong> 31 de Octubre de 2026<br>
+            <strong>Metodología:</strong> Árbitro Adversarial (Método Gauntlet v2)<br>
+            <strong>Ámbito:</strong> Backend Express API, PostgreSQL, Frontend Next.js<br>
+            <strong>Estado:</strong> Hallazgos Validados para Remediación
+        </div>
+    </div>
+
+    <!-- RESUMEN EJECUTIVO -->
+    <div class="summary-card avoid-break">
+        <h3 style="color: var(--primary); font-size: 15px; margin-bottom: 6px;">1. Resumen Ejecutivo de la Auditoría</h3>
+        <p style="color: var(--text-muted); font-size: 12px;">
+            Se completó un escaneo transversal de seguridad sobre la arquitectura completa de la plataforma del Congreso ETS 2026. La evaluación auditó la integridad de autenticación, control de acceso basado en roles (RBAC/BOLA), sanitización de entradas, persistencia de medios, cifrado simétrico y normativas de protección de datos personales (Ley Nacional 25.326). Se identificaron <strong>10 vulnerabilidades</strong> que deben corregirse secuencialmente.
+        </p>
+
+        <div class="summary-grid">
+            <div class="metric-box">
+                <div class="metric-count count-crit">4</div>
+                <div class="metric-label count-crit">Críticas</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-count count-high">3</div>
+                <div class="metric-label count-high">Altas</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-count count-med">2</div>
+                <div class="metric-label count-med">Medias</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-count count-low">1</div>
+                <div class="metric-label count-low">Bajas</div>
+            </div>
+        </div>
+
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">ID</th>
+                    <th style="width: 85px;">Severidad</th>
+                    <th>Vulnerabilidad Detectada</th>
+                    <th>Componente Afectado</th>
+                    <th style="width: 140px;">CWE / Categoría</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>SEC-01</strong></td>
+                    <td><span class="sev-badge sev-crit">Crítica</span></td>
+                    <td>Mutación de Roles y Catálogos Expuestos sin Autenticación</td>
+                    <td><code>backend/routes/admin/catalogos.routes.ts</code></td>
+                    <td>CWE-284 / Escalada de Privilegios</td>
+                </tr>
+                <tr>
+                    <td><strong>SEC-02</strong></td>
+                    <td><span class="sev-badge sev-crit">Crítica</span></td>
+                    <td>Cancelación Forzada de Vacantes Confirmadas sin Token/OTP</td>
+                    <td><code>backend/routes/usuario.routes.ts</code></td>
+                    <td>CWE-639 / BOLA (Inseguridad Lógica)</td>
+                </tr>
+                <tr>
+                    <td><strong>SEC-03</strong></td>
+                    <td><span class="sev-badge sev-crit">Crítica</span></td>
+                    <td>Endpoints Operativos de Acreditación y Feed en Vivo sin Auth</td>
+                    <td><code>backend/routes/operator.routes.ts</code></td>
+                    <td>CWE-306 / Missing Authentication</td>
+                </tr>
+                <tr>
+                    <td><strong>SEC-04</strong></td>
+                    <td><span class="sev-badge sev-crit">Crítica</span></td>
+                    <td>Emisión Forzada de Certificados y Descarga Masiva de Planillas PDF</td>
+                    <td><code>certificados.routes.ts</code> & <code>actividades.routes.ts</code></td>
+                    <td>CWE-200 / Fuga Masiva de PII</td>
+                </tr>
+                <tr>
+                    <td><strong>SEC-05</strong></td>
+                    <td><span class="sev-badge sev-high">Alta</span></td>
+                    <td>Claves Secretas de Firma JWT y Cifrado AES Hardcodeadas</td>
+                    <td><code>lib/authService.ts</code> & <code>lib/cryptoQR.ts</code></td>
+                    <td>CWE-798 / Hardcoded Credentials</td>
+                </tr>
+                <tr>
+                    <td><strong>SEC-06</strong></td>
+                    <td><span class="sev-badge sev-high">Alta</span></td>
+                    <td>Fuga de Contraseñas de Correo SMTP en Endpoint General</td>
+                    <td><code>routes/admin/configuracion.routes.ts</code></td>
+                    <td>CWE-522 / Credenciales Expuestas</td>
+                </tr>
+                <tr>
+                    <td><strong>SEC-07</strong></td>
+                    <td><span class="sev-badge sev-high">Alta</span></td>
+                    <td>Exposición de Token QR en Intentos Duplicados de Inscripción (409)</td>
+                    <td><code>backend/routes/registro.routes.ts</code></td>
+                    <td>CWE-200 / Fuga de Credencial QR</td>
+                </tr>
+                <tr>
+                    <td><strong>SEC-08</strong></td>
+                    <td><span class="sev-badge sev-med">Media</span></td>
+                    <td>Configuración Permisiva de CORS con Credenciales Habilitadas</td>
+                    <td><code>backend/src/server.ts</code></td>
+                    <td>CWE-942 / CORS Misconfiguration</td>
+                </tr>
+                <tr>
+                    <td><strong>SEC-09</strong></td>
+                    <td><span class="sev-badge sev-med">Media</span></td>
+                    <td>Subida de Archivos SVG sin Sanitización y Validación MIME Débil</td>
+                    <td><code>routes/materiales.routes.ts</code> & <code>frontend-cms</code></td>
+                    <td>CWE-434 / Stored XSS Potencial</td>
+                </tr>
+                <tr>
+                    <td><strong>SEC-10</strong></td>
+                    <td><span class="sev-badge sev-low">Baja</span></td>
+                    <td>Ausencia de Rate Limiting en Login y Consulta de Certificados</td>
+                    <td><code>routes/auth.routes.ts</code> & <code>certificados.routes.ts</code></td>
+                    <td>CWE-307 / Fuerza Bruta</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- SECCIÓN VULNERABILIDADES CRÍTICAS -->
+    <div class="page-break"></div>
+    <h3 style="color: var(--primary); font-size: 16px; margin-bottom: 14px; border-bottom: 2px solid var(--danger); padding-bottom: 4px;">
+        2. Análisis Técnico Detallado de Vulnerabilidades Críticas
+    </h3>
+
+    <!-- SEC-01 -->
+    <div class="vuln-item avoid-break">
+        <div class="vuln-header vuln-header-crit">
+            <span class="vuln-title">SEC-01: Mutación de Roles y Catálogos Expuestos sin Autenticación</span>
+            <span class="vuln-cwe">CWE-284 / CWE-269 · CRÍTICA</span>
+        </div>
+        <div class="vuln-body">
+            <div class="vuln-row">
+                <span class="vuln-label">Ubicación y Archivos Afectados</span>
+                <code>backend/src/routes/admin/catalogos.routes.ts</code> (Líneas 11-130)
+            </div>
+            <div class="vuln-row">
+                <span class="vuln-label">Descripción Técnica</span>
+                <p>El router montado en <code>/api/admin/catalogos</code> carece de validación de sesión o jerarquía en sus métodos de mutación. Un actor anónimo puede enviar un <code>POST /roles</code> o <code>PUT /roles/:id</code> para crear o alterar roles existentes, asignándoles <code>jerarquia: 5</code> (Superadmin) y permisos completos en formato JSON. Adicionalmente, el endpoint <code>GET /</code> expone los nombres, correos institucionales y números de DNI de todos los disertantes y autoridades registradas.</p>
+            </div>
+            <div class="code-box">
+router.post('/roles', async (req: Request, res: Response) => { ... }); // Sin requireHierarchy
+router.put('/roles/:id', async (req: Request, res: Response) => { ... }); // Sin requireHierarchy
+            </div>
+            <div class="remediation-box">
+                <div class="remediation-title">Plan de Remediación Obligatorio</div>
+                Aplicar <code>requireHierarchy(5)</code> en todos los endpoints de creación, modificación y eliminación de roles y catálogos, y <code>requireHierarchy(3)</code> en la consulta general <code>GET /</code>.
+            </div>
+        </div>
+    </div>
+
+    <!-- SEC-02 -->
+    <div class="vuln-item avoid-break">
+        <div class="vuln-header vuln-header-crit">
+            <span class="vuln-title">SEC-02: Cancelación Forzada de Vacantes Confirmadas sin Token/OTP</span>
+            <span class="vuln-cwe">CWE-639 / CWE-862 · CRÍTICA</span>
+        </div>
+        <div class="vuln-body">
+            <div class="vuln-row">
+                <span class="vuln-label">Ubicación y Archivos Afectados</span>
+                <code>backend/src/routes/usuario.routes.ts</code> (Líneas 17-65)
+            </div>
+            <div class="vuln-row">
+                <span class="vuln-label">Descripción Técnica</span>
+                <p>El endpoint público <code>POST /api/usuario/cancelar</code> ejecuta la baja voluntaria e inmediata de un asistente confirmado con solo recibir su <code>dni_pasaporte</code> en el cuerpo de la petición. No valida credenciales de sesión, token de firma digital ni código OTP por correo electrónico. Un atacante que conozca o itere números de DNI puede expulsar masivamente a los participantes confirmados del evento y gatillar ascensos no deseados de la lista de espera.</p>
+            </div>
+            <div class="remediation-box">
+                <div class="remediation-title">Plan de Remediación Obligatorio</div>
+                Exigir validación de titularidad: o bien requerir el token QR firmado emitido al participante, o implementar un mecanismo de token temporal un solo uso (OTP) despachado al correo registrado del participante para confirmar la baja.
+            </div>
+        </div>
+    </div>
+
+    <!-- SEC-03 -->
+    <div class="vuln-item avoid-break">
+        <div class="vuln-header vuln-header-crit">
+            <span class="vuln-title">SEC-03: Endpoints Operativos de Acreditación y Feed en Vivo sin Auth</span>
+            <span class="vuln-cwe">CWE-306 / CWE-287 · CRÍTICA</span>
+        </div>
+        <div class="vuln-body">
+            <div class="vuln-row">
+                <span class="vuln-label">Ubicación y Archivos Afectados</span>
+                <code>backend/src/routes/operator.routes.ts</code> (Líneas 12-160)
+            </div>
+            <div class="vuln-row">
+                <span class="vuln-label">Descripción Técnica</span>
+                <p>El router completo <code>/api/operator</code> se ejecuta sin exigir autenticación ni comprobar jerarquía operativa. Los endpoints <code>POST /acreditar</code>, <code>POST /acreditar-batch</code> y <code>POST /walk-in</code> aceptan un parámetro <code>operador_id</code> inyectado directamente en el cuerpo JSON sin contrastarlo con una sesión real. El endpoint <code>GET /recent</code> publica en vivo los datos privados (DNI, nombre, foto) de los últimos acreditados, y <code>GET /config</code> expone a los operadores del sistema.</p>
+            </div>
+            <div class="remediation-box">
+                <div class="remediation-title">Plan de Remediación Obligatorio</div>
+                Proteger todo el módulo con <code>router.use(requireHierarchy(3))</code>. Obtener la identidad del operador estrictamente desde el token de sesión (<code>req.operator.sub</code>), suprimiendo la aceptación de <code>operador_id</code> en el body.
+            </div>
+        </div>
+    </div>
+
+    <!-- SEC-04 -->
+    <div class="vuln-item avoid-break">
+        <div class="vuln-header vuln-header-crit">
+            <span class="vuln-title">SEC-04: Emisión Forzada de Certificados y Descarga Masiva de Planillas PDF</span>
+            <span class="vuln-cwe">CWE-200 / CWE-862 · CRÍTICA</span>
+        </div>
+        <div class="vuln-body">
+            <div class="vuln-row">
+                <span class="vuln-label">Ubicación y Archivos Afectados</span>
+                <code>backend/src/routes/certificados.routes.ts</code> (Líneas 408-445) & <code>backend/src/routes/actividades.routes.ts</code> (Líneas 197-215)
+            </div>
+            <div class="vuln-row">
+                <span class="vuln-label">Descripción Técnica</span>
+                <p>El endpoint <code>POST /api/certificados</code> permite a cualquier usuario no autenticado forzar la emisión y registro en base de datos de diplomas con horas cátedra oficiales para cualquier DNI. Simultáneamente, el endpoint <code>GET /api/actividades/:id/planilla-pdf</code> genera en PDF la planilla oficial de sala conteniendo la nómina completa de asistentes inscriptos con sus nombres, apellidos, correos y números de documento sin requerir credenciales de operador.</p>
+            </div>
+            <div class="remediation-box">
+                <div class="remediation-title">Plan de Remediación Obligatorio</div>
+                Incorporar <code>requireHierarchy(4)</code> en la emisión forzada de certificados (<code>POST /api/certificados</code>) y <code>requireHierarchy(3)</code> en la generación de planillas de asistencia en sala (<code>GET /:id/planilla-pdf</code>).
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN VULNERABILIDADES ALTAS Y MEDIAS -->
+    <div class="page-break"></div>
+    <h3 style="color: var(--primary); font-size: 16px; margin-bottom: 14px; border-bottom: 2px solid var(--warning); padding-bottom: 4px;">
+        3. Análisis Técnico de Vulnerabilidades de Severidad Alta y Media
+    </h3>
+
+    <!-- SEC-05 -->
+    <div class="vuln-item avoid-break">
+        <div class="vuln-header vuln-header-high">
+            <span class="vuln-title">SEC-05: Claves Secretas de Firma JWT y Cifrado AES Hardcodeadas como Fallback</span>
+            <span class="vuln-cwe">CWE-798 / CWE-321 · ALTA</span>
+        </div>
+        <div class="vuln-body">
+            <div class="vuln-row">
+                <span class="vuln-label">Ubicación y Archivos Afectados</span>
+                <code>backend/src/lib/authService.ts</code> (Líneas 17-18) & <code>backend/src/lib/cryptoQR.ts</code> (Línea 7)
+            </div>
+            <div class="vuln-row">
+                <span class="vuln-label">Descripción Técnica</span>
+                <p>Existe una constante estática compartida en el repositorio (<code>'e4b7c1a89f2d3e4b5a6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a'</code>) que se utiliza si <code>process.env.ENCRYPTION_KEY</code> no está presente. Si un despliegue omite dicha variable, un tercero puede forjar tokens JWT con rol Superadmin o emitir códigos QR falsificados indetectables para los molinetes.</p>
+            </div>
+            <div class="remediation-box">
+                <div class="remediation-title">Plan de Remediación Obligatorio</div>
+                Eliminar el valor de reserva estático. El servidor debe abortar su inicio (<code>process.exit(1)</code>) si <code>ENCRYPTION_KEY</code> no está provisto en el entorno con exactamente 32 bytes (64 caracteres hexadecimales).
+            </div>
+        </div>
+    </div>
+
+    <!-- SEC-06 -->
+    <div class="vuln-item avoid-break">
+        <div class="vuln-header vuln-header-high">
+            <span class="vuln-title">SEC-06: Fuga de Contraseñas de Correo SMTP en Endpoint General de Configuración</span>
+            <span class="vuln-cwe">CWE-522 · ALTA</span>
+        </div>
+        <div class="vuln-body">
+            <div class="vuln-row">
+                <span class="vuln-label">Ubicación y Archivos Afectados</span>
+                <code>backend/src/routes/admin/configuracion.routes.ts</code> (Líneas 24-35)
+            </div>
+            <div class="vuln-row">
+                <span class="vuln-label">Descripción Técnica</span>
+                <p>Mientras que el endpoint especializado <code>GET /api/admin/configuracion/mail</code> enmascara las claves con viñetas (<code>••••••••••••</code>), el endpoint genérico <code>GET /api/admin/configuracion</code> efectúa un <code>SELECT clave, valor FROM configuraciones_sistema</code> sin exclusiones, devolviendo en texto plano la contraseña de aplicación de Google Workspace almacenada en la clave <code>cuentas_correo</code>.</p>
+            </div>
+            <div class="remediation-box">
+                <div class="remediation-title">Plan de Remediación Obligatorio</div>
+                Excluir explícitamente del listado general las claves que contengan credenciales o secretos (<code>cuentas_correo</code>, <code>vapid_keys</code>, tokens) o sanitizar sus valores antes de transmitirlos.
+            </div>
+        </div>
+    </div>
+
+    <!-- SEC-07 -->
+    <div class="vuln-item avoid-break">
+        <div class="vuln-header vuln-header-high">
+            <span class="vuln-title">SEC-07: Exposición de Token QR en Intentos Duplicados de Inscripción (409)</span>
+            <span class="vuln-cwe">CWE-200 · ALTA</span>
+        </div>
+        <div class="vuln-body">
+            <div class="vuln-row">
+                <span class="vuln-label">Ubicación y Archivos Afectados</span>
+                <code>backend/src/routes/registro.routes.ts</code> (Líneas 83-99)
+            </div>
+            <div class="vuln-row">
+                <span class="vuln-label">Descripción Técnica</span>
+                <p>Al intentar registrar un DNI ya inscripto en la plataforma, la API responde con código HTTP 409 incluyendo en el JSON el <code>usuario_id</code> y el <code>qr_token</code> del usuario original. Esto permite a cualquier persona obtener la credencial criptográfica de acceso de un asistente simplemente enviando su DNI en el formulario público.</p>
+            </div>
+            <div class="remediation-box">
+                <div class="remediation-title">Plan de Remediación Obligatorio</div>
+                Eliminar <code>qr_token</code> y <code>usuario_id</code> de la respuesta con error 409. El servidor debe retornar únicamente un mensaje notificando que el participante ya se encuentra registrado.
+            </div>
+        </div>
+    </div>
+
+    <!-- SEC-08 -->
+    <div class="vuln-item avoid-break">
+        <div class="vuln-header vuln-header-med">
+            <span class="vuln-title">SEC-08: Configuración Permisiva de CORS con Credenciales Habilitadas</span>
+            <span class="vuln-cwe">CWE-942 · MEDIA</span>
+        </div>
+        <div class="vuln-body">
+            <div class="vuln-row">
+                <span class="vuln-label">Ubicación y Archivos Afectados</span>
+                <code>backend/src/server.ts</code> (Líneas 48-68)
+            </div>
+            <div class="vuln-row">
+                <span class="vuln-label">Descripción Técnica</span>
+                <p>El verificador de origen de CORS posee una rama condicional <code>else { callback(null, true); }</code> combinada con <code>credentials: true</code>, lo que permite efectivamente el acceso desde cualquier origen arbitrario. Además, <code>origin.includes('railway.app')</code> autoriza peticiones originadas desde cualquier aplicación ajena alojada en Railway.</p>
+            </div>
+            <div class="remediation-box">
+                <div class="remediation-title">Plan de Remediación Obligatorio</div>
+                Restringir los orígenes mediante una lista blanca estricta con coincidencia exacta (<code>whitelist</code>) y retornar <code>callback(new Error('CORS origin denied'))</code> ante cualquier origen no autorizado.
+            </div>
+        </div>
+    </div>
+
+    <!-- SEC-09 -->
+    <div class="vuln-item avoid-break">
+        <div class="vuln-header vuln-header-med">
+            <span class="vuln-title">SEC-09: Subida de Archivos SVG sin Sanitización y Validación MIME Débil</span>
+            <span class="vuln-cwe">CWE-434 / CWE-79 · MEDIA</span>
+        </div>
+        <div class="vuln-body">
+            <div class="vuln-row">
+                <span class="vuln-label">Ubicación y Archivos Afectados</span>
+                <code>backend/src/routes/materiales.routes.ts</code> (Líneas 455-475) & <code>admin/frontend-cms.routes.ts</code> (Línea 678)
+            </div>
+            <div class="vuln-row">
+                <span class="vuln-label">Descripción Técnica</span>
+                <p>Se admite la subida de archivos vectoriales <code>.svg</code> servidos estáticamente sin sanitizar su contenido XML. Un vector SVG que contenga código JavaScript embebido (<code>&lt;script&gt;</code> o atributos de evento) puede ejecutarse en el navegador del usuario al abrir la imagen en el mismo origen.</p>
+            </div>
+            <div class="remediation-box">
+                <div class="remediation-title">Plan de Remediación Obligatorio</div>
+                Sanitizar los archivos SVG antes de persistirlos en disco o forzar cabeceras <code>Content-Security-Policy: default-src 'none'</code> y <code>Content-Disposition: attachment</code> en los directorios de subidas estáticas.
+            </div>
+        </div>
+    </div>
+
+    <!-- SEC-10 -->
+    <div class="vuln-item avoid-break">
+        <div class="vuln-header vuln-header-low">
+            <span class="vuln-title">SEC-10: Ausencia de Rate Limiting en Login y Consulta de Certificados</span>
+            <span class="vuln-cwe">CWE-307 · BAJA</span>
+        </div>
+        <div class="vuln-body">
+            <div class="vuln-row">
+                <span class="vuln-label">Ubicación y Archivos Afectados</span>
+                <code>backend/src/routes/auth.routes.ts</code> (Línea 9) & <code>backend/src/routes/certificados.routes.ts</code> (Línea 184)
+            </div>
+            <div class="vuln-row">
+                <span class="vuln-label">Descripción Técnica</span>
+                <p>El endpoint <code>POST /api/admin/auth/login</code> no implementa limitador de tasa de peticiones (rate limit), facilitando ataques de fuerza bruta contra cuentas de operadores. De igual forma, la consulta pública de diplomas por DNI carece del limitador existente en la consulta de credenciales.</p>
+            </div>
+            <div class="remediation-box">
+                <div class="remediation-title">Plan de Remediación Obligatorio</div>
+                Incorporar middleware <code>rateLimit</code>: ventana de 15 minutos con máximo 5 intentos fallidos para el endpoint de login y 30 consultas por minuto para certificados.
+            </div>
+        </div>
+    </div>
+
+    <!-- HOJA DE RUTA -->
+    <div class="avoid-break" style="margin-top: 24px; padding: 16px; background: var(--bg-light); border: 1px solid var(--border); border-radius: 8px;">
+        <h3 style="color: var(--primary); font-size: 14px; margin-bottom: 8px;">4. Hoja de Ruta de Remediación Secuencial</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+            Conforme a las directivas del Método Gauntlet v2, las correcciones se implementarán de forma ordenada comenzando por las vulnerabilidades críticas:
+        </p>
+        <ol style="padding-left: 20px; font-size: 12px; line-height: 1.8;">
+            <li><strong>Paso 1:</strong> Blindaje de <code>catalogos.routes.ts</code> (Protección RBAC nivel 5 en roles y nivel 3 en catálogo).</li>
+            <li><strong>Paso 2:</strong> Incorporación de verificación OTP / Token en cancelación de usuarios (<code>usuario.routes.ts</code>).</li>
+            <li><strong>Paso 3:</strong> Autenticación obligatoria y extracción de operador en <code>operator.routes.ts</code>.</li>
+            <li><strong>Paso 4:</strong> Protección de emisión de certificados y descarga de planillas de asistencia en sala.</li>
+            <li><strong>Paso 5:</strong> Erradicación de claves secretas hardcodeadas con fail-safe de inicio.</li>
+            <li><strong>Paso 6 a 10:</strong> Corrección de fugas en configuración SMTP, DNI 409, reglas CORS, sanitización de SVG y Rate Limiting.</li>
+        </ol>
+    </div>
+
+    <!-- FIRMA AUDITORÍA -->
+    <div class="footer-note">
+        <strong>Árbitro Adversarial · Auditoría de Sistemas DETS</strong><br>
+        Dirección de Educación Técnica Superior &bull; Ministerio de Educación &bull; GCABA &bull; Documento Oficial
+    </div>
+
+</body>
+</html>

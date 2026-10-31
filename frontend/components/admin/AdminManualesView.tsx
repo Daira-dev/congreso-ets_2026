@@ -101,6 +101,26 @@ export default function AdminManualesView() {
         'Módulo 6: Configuración del Sistema (Claves CMS, Push y Bitácora Forense)',
       ],
     },
+    {
+      id: 'seguridad',
+      title: 'Informe Oficial de Auditoría de Seguridad',
+      badge: 'Árbitro Adversarial · 10 Hallazgos',
+      badgeColor: 'bg-rose-100 text-rose-800 border-rose-300',
+      desc: 'Evaluación técnica integral sobre vectores de ataque, vulnerabilidades de autorización (RBAC / BOLA), fuga de datos personales (PII), endpoints desprotegidos y hoja de ruta de remediación para blindaje en producción.',
+      filename: 'informe_auditoria_seguridad.html',
+      url: '/manuales/informe_auditoria_seguridad.html',
+      size: '336 KB (PDF Oficial) / 8 Páginas',
+      pagesApprox: '8 Páginas / 10 Hallazgos',
+      targetAudience: 'Auditores de Seguridad, Administradores del Sistema y Equipo de Desarrollo Senior',
+      highlights: [
+        'SEC-01: Blindaje RBAC y Catálogos Administrativos',
+        'SEC-02: Protección contra Cancelación Forzada de Vacantes',
+        'SEC-03: Autenticación Obligatoria en Puestos de Acceso (Operadores)',
+        'SEC-04: Restricción de Diplomas y Planillas de Asistencia en Sala',
+        'SEC-05 & 06: Erradicación de Secretos Hardcodeados y Fugas SMTP',
+        'SEC-07 a 10: Tokens QR 409, Reglas CORS, Sanitización SVG y Rate Limiting',
+      ],
+    },
   ];
 
   // Función para abrir la vista previa / documento oficial en una nueva pestaña (sin disparar impresión automática)
