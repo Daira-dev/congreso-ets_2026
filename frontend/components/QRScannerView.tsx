@@ -201,7 +201,10 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({
     const token = (tokenParaProcesar || tokenInput).trim();
     if (!token) return;
 
-    if (token.length < 10) {
+    // Detectar si es un DNI numérico/alfanumérico manual (ej. 42111222) o un token QR criptográfico AES
+    const esDniManual = token.length < 30 && !token.includes('=') && !token.includes(':');
+
+    if (!esDniManual && token.length < 10) {
       playAudioFeedback('error');
       setLastResult({
         status: 'REJECTED',
@@ -219,7 +222,8 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({
     // Si estamos fuera de línea, guardar en IndexedDB
     if (!isOnline) {
       await queueAcreditacion({
-        qr_token: token.trim(),
+        qr_token: esDniManual ? undefined : token.trim(),
+        dni_pasaporte: esDniManual ? token.trim() : undefined,
         punto_acceso_id: puntoAccesoId,
         tipo_acreditacion_id: tipoAcreditacionId,
         actividad_id: requiereAct ? (actividadId || undefined) : undefined,
@@ -237,12 +241,20 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({
 
     try {
       const payload: any = {
-        qr_token: token.trim(),
         punto_acceso_id: puntoAccesoId,
         tipo_acreditacion_id: tipoAcreditacionId,
         operador_id: operadorId,
         tipo_movimiento: modoControl,
       };
+
+      if (esDniManual) {
+        payload.dni_pasaporte = token.trim();
+        payload.es_manual = true;
+        payload.motivo_manual = 'Ingreso manual por DNI en mostrador';
+      } else {
+        payload.qr_token = token.trim();
+      }
+
       if (requiereAct && actividadId) {
         payload.actividad_id = actividadId;
       }

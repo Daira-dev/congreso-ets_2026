@@ -53,18 +53,11 @@ export default function Creditos() {
                     </div>
 
                     {/* Tarjeta 2 - IFTS 15 */}
-
                     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5 md:p-6 text-left transition-shadow hover:shadow-md flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
-                        {/* Placeholder sin logo */}
-                        <div className="w-16 h-16 bg-gray-100 rounded-md border border-gray-200 flex-shrink-0 flex items-center justify-center text-gray-400 text-xs font-semibold overflow-hidden">
-                            <span className="uppercase tracking-wider">Logo</span>
+                        <div className="w-16 h-16 bg-blue-50/80 text-[var(--color-azul-oscuro)] rounded-xl border border-blue-200/60 flex-shrink-0 flex flex-col items-center justify-center font-bold text-xs shadow-xs">
+                            <span className="text-[10px] text-gray-500 font-medium">IFTS</span>
+                            <span className="text-lg leading-none font-extrabold text-[var(--color-azul-claro)]">15</span>
                         </div>
-                        {/* Descomentar para poner el logo correcto
-                        <Image
-                            src={logoIfts15}
-                            alt="Logo IFTS Nº 15"
-                            className="w-16 h-16 shrink-0 object-contain rounded-md"
-                        />*/}
 
                         <div className="flex-1 w-full">
                             <h3 className="font-bold text-[var(--color-azul-claro)] text-base md:text-lg border-b border-gray-100 pb-3 mb-3">
@@ -81,16 +74,10 @@ export default function Creditos() {
 
                     {/* Tarjeta 3 - IFTS 27 */}
                     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5 md:p-6 text-left transition-shadow hover:shadow-md flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
-                        {/* Placeholder sin logo*/}
-                        <div className="w-16 h-16 bg-gray-100 rounded-md border border-gray-200 flex-shrink-0 flex items-center justify-center text-gray-400 text-xs font-semibold overflow-hidden">
-                            <span className="uppercase tracking-wider">Logo</span>
+                        <div className="w-16 h-16 bg-blue-50/80 text-[var(--color-azul-oscuro)] rounded-xl border border-blue-200/60 flex-shrink-0 flex flex-col items-center justify-center font-bold text-xs shadow-xs">
+                            <span className="text-[10px] text-gray-500 font-medium">IFTS</span>
+                            <span className="text-lg leading-none font-extrabold text-[var(--color-azul-claro)]">27</span>
                         </div>
-                        {/* Descomentar para poner el logo correcto
-                        <Image
-                            src={logoIfts27}
-                            alt="Logo IFTS Nº 27"
-                            className="w-16 h-16 shrink-0 object-contain rounded-md"
-                        />*/}
 
                         <div className="flex-1 w-full">
                             <h3 className="font-bold text-[var(--color-azul-claro)] text-base md:text-lg border-b border-gray-100 pb-3 mb-3">
@@ -99,7 +86,7 @@ export default function Creditos() {
                             <div className="text-sm text-gray-600 flex flex-col gap-2">
                                 <p className="font-medium text-[var(--color-azul-oscuro)] flex items-center">
                                     <span className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2 flex-shrink-0"></span>
-                                    Estudiantes participantes de la roducción de recursos.
+                                    Estudiantes participantes de la producción de recursos.
                                 </p>
                             </div>
                         </div>
@@ -107,9 +94,9 @@ export default function Creditos() {
 
                     {/* Tarjeta 4 - Otros equipos */}
                     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5 md:p-6 text-left transition-shadow hover:shadow-md flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
-                        {/* Placeholder Genérico / Sin Logo */}
-                        <div className="w-16 h-16 bg-gray-50 rounded-md border border-gray-100 flex-shrink-0 flex items-center justify-center text-gray-300 text-[10px] font-semibold overflow-hidden text-center leading-tight">
-                            <span>OTROS</span>
+                        <div className="w-16 h-16 bg-slate-100 text-slate-700 rounded-xl border border-slate-200 flex-shrink-0 flex flex-col items-center justify-center font-bold text-xs shadow-xs">
+                            <span className="text-[10px] text-gray-500 font-medium">RED</span>
+                            <span className="text-sm leading-none font-extrabold text-slate-700">DETS</span>
                         </div>
 
                         <div className="flex-1 w-full">
@@ -119,7 +106,7 @@ export default function Creditos() {
                             <div className="text-sm text-gray-600 flex flex-col gap-2">
                                 <p className="font-medium text-[var(--color-azul-oscuro)] flex items-center">
                                     <span className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2 flex-shrink-0"></span>
-                                    Otros participantes.
+                                    Comunidad educativa de los Institutos de Formación Técnica Superior y equipos técnicos del Ministerio de Educación.
                                 </p>
                             </div>
                         </div>

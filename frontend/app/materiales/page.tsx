@@ -217,7 +217,7 @@ export default function Materiales() {
                             Materiales y novedades
                         </h1>
 
-                        <p className="mt-5 max-w-2xl text-lg leading-relaxed text-azul-oscuro/70">
+                        <p suppressHydrationWarning className="mt-5 max-w-2xl text-lg leading-relaxed text-azul-oscuro/70">
                             Accedé a los recursos, publicaciones, fotos, videos y documentos oficiales del Congreso de Educación Técnica Superior.
                         </p>
                     </div>

@@ -107,7 +107,8 @@ export function useOfflineAcreditacion() {
   }, [updatePendingCount, syncAcreditaciones]);
 
   const queueAcreditacion = async (data: {
-    qr_token: string;
+    qr_token?: string;
+    dni_pasaporte?: string;
     tipo_acreditacion_id: number;
     punto_acceso_id: number;
     actividad_id?: number | null;

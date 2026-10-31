@@ -200,7 +200,7 @@ export default function Contacto() {
     }, [faqList, selectedCategoria]);
 
     return (
-        <div className="min-h-screen bg-white pt-24" id="faq">
+        <div className="min-h-screen bg-white pt-24" id="faq" suppressHydrationWarning>
             <title>Contacto | DETS 2026</title>
             <Header />
 
@@ -254,7 +254,7 @@ export default function Contacto() {
                 )}
 
                 {/* Desplegables de Preguntas */}
-                <div className="w-full space-y-4">
+                <div className="w-full space-y-4" suppressHydrationWarning>
                     {visibleFaqs.map((faq) => {
                         const isOpen = openId === faq.id;
                         const hasEnlaces = faq.enlaces && faq.enlaces.length > 0;

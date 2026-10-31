@@ -266,12 +266,15 @@ export default function FormularioInscripcion() {
         {/* Identificación */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+            <label htmlFor="dniPasaporte" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
               DNI o Pasaporte <span className="text-red-500">*</span>
             </label>
             <input
+              id="dniPasaporte"
+              name="dniPasaporte"
               type="text"
               required
+              autoComplete="off"
               placeholder="Ej: 38123456"
               value={dniPasaporte}
               onChange={(e) => setDniPasaporte(e.target.value.replace(/[^A-Za-z0-9_-]/g, ''))}
@@ -281,12 +284,15 @@ export default function FormularioInscripcion() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+            <label htmlFor="celular" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
               Teléfono Celular <span className="text-red-500">*</span>
             </label>
             <input
+              id="celular"
+              name="celular"
               type="tel"
               required
+              autoComplete="tel"
               placeholder="Ej: +54 9 11 5555-5555"
               value={celular}
               onChange={(e) => setCelular(e.target.value)}
@@ -299,12 +305,15 @@ export default function FormularioInscripcion() {
         {/* Nombres y Apellidos */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+            <label htmlFor="nombre" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
               Nombre <span className="text-red-500">*</span>
             </label>
             <input
+              id="nombre"
+              name="nombre"
               type="text"
               required
+              autoComplete="given-name"
               placeholder="Como figurará en tu certificado"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
@@ -313,12 +322,15 @@ export default function FormularioInscripcion() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+            <label htmlFor="apellido" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
               Apellido <span className="text-red-500">*</span>
             </label>
             <input
+              id="apellido"
+              name="apellido"
               type="text"
               required
+              autoComplete="family-name"
               placeholder="Como figurará en tu certificado"
               value={apellido}
               onChange={(e) => setApellido(e.target.value)}
@@ -329,12 +341,15 @@ export default function FormularioInscripcion() {
 
         {/* Correo Electrónico */}
         <div>
-          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+          <label htmlFor="email" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
             Correo Electrónico <span className="text-red-500">*</span>
           </label>
           <input
+            id="email"
+            name="email"
             type="email"
             required
+            autoComplete="email"
             placeholder="tunombre@institucion.edu.ar o personal"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
