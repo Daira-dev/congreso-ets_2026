@@ -12,9 +12,10 @@ export interface SeccionVisibilidad {
 
 interface Props {
   onNotice: (msg: string) => void;
+  onNavigateToVideo?: () => void;
 }
 
-export default function AdminSeccionesVisibilidadView({ onNotice }: Props) {
+export default function AdminSeccionesVisibilidadView({ onNotice, onNavigateToVideo }: Props) {
   const [secciones, setSecciones] = useState<SeccionVisibilidad[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -221,66 +222,108 @@ export default function AdminSeccionesVisibilidadView({ onNotice }: Props) {
 
       {/* TARJETAS DE SECCIONES CON ACCIONES EXPLÍCITAS Y SWITCH */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {secciones.map((sec) => (
-          <div
-            key={sec.key}
-            className={`p-5 rounded-2xl border transition-all flex flex-col justify-between gap-4 ${
-              sec.enabled
-                ? 'bg-white border-emerald-200 shadow-xs ring-1 ring-emerald-100'
-                : 'bg-gray-50/90 border-gray-300 opacity-75'
-            }`}
-          >
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <h3 className="font-bold text-base text-gray-900">{sec.nombre}</h3>
-                <span
-                  className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
+        {secciones.map((sec) => {
+          const isVideoSec = sec.key === 'experiencia';
+
+          return (
+            <div
+              key={sec.key}
+              className={`p-5 rounded-2xl border transition-all flex flex-col justify-between gap-4 ${
+                isVideoSec
+                  ? sec.enabled
+                    ? 'bg-amber-50/40 border-amber-300 shadow-sm ring-2 ring-amber-200'
+                    : 'bg-amber-50/20 border-amber-200'
+                  : sec.enabled
+                  ? 'bg-white border-emerald-200 shadow-xs ring-1 ring-emerald-100'
+                  : 'bg-gray-50/90 border-gray-300 opacity-75'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-base text-gray-900">{sec.nombre}</h3>
+                    {isVideoSec && (
+                      <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md">
+                        Spot Oficial
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
+                      sec.enabled
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}
+                  >
+                    {sec.enabled ? '🟢 SECCIÓN MOSTRADA' : '🔴 SECCIÓN OCULTA'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 leading-relaxed">{sec.descripcion}</p>
+
+                {isVideoSec && !sec.enabled && (
+                  <div className="mt-3 p-2.5 bg-amber-100/70 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-center justify-between gap-2">
+                    <span>🎬 <strong>El Video Institucional está actualmente oculto.</strong></span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSeccion(sec.key, true)}
+                      className="px-3 py-1 bg-amber-400 hover:bg-amber-500 text-gray-900 font-bold rounded-lg text-xs cursor-pointer shadow-xs transition"
+                    >
+                      🔄 Recuperar Video Institucional
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between pt-3 border-t border-gray-100 gap-2">
+                {/* Botón de acción directo para mostrar/ocultar sección completa */}
+                <button
+                  type="button"
+                  onClick={() => toggleSeccion(sec.key)}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
                     sec.enabled
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-red-100 text-red-800'
+                      ? 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                   }`}
                 >
-                  {sec.enabled ? '🟢 SECCIÓN MOSTRADA' : '🔴 SECCIÓN OCULTA'}
-                </span>
-              </div>
-              <p className="text-xs text-gray-600 leading-relaxed">{sec.descripcion}</p>
-            </div>
+                  {sec.enabled ? (
+                    <>
+                      <span>👁️‍🗨️</span> Ocultar sección completa
+                    </>
+                  ) : (
+                    <>
+                      <span>👁️</span> Mostrar sección completa
+                    </>
+                  )}
+                </button>
 
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100 gap-3">
-              {/* Botón de acción directo para mostrar/ocultar sección completa */}
-              <button
-                type="button"
-                onClick={() => toggleSeccion(sec.key)}
-                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
-                  sec.enabled
-                    ? 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                }`}
-              >
-                {sec.enabled ? (
-                  <>
-                    <span>👁️‍🗨️</span> Ocultar sección completa
-                  </>
-                ) : (
-                  <>
-                    <span>👁️</span> Mostrar sección completa
-                  </>
+                {/* Si es el video institucional y existe el handler de navegación, mostrar botón de editor con el mismo amarillo */}
+                {isVideoSec && onNavigateToVideo && (
+                  <button
+                    type="button"
+                    onClick={onNavigateToVideo}
+                    className="py-2 px-3 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-500 text-gray-900 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    title="Editar URL de YouTube/Vimeo, título y previsualización"
+                  >
+                    <span>🎬</span> Editar Video Institucional
+                  </button>
                 )}
-              </button>
 
-              {/* Switch complementario */}
-              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0" title={sec.enabled ? 'Click para ocultar' : 'Click para mostrar'}>
-                <input
-                  type="checkbox"
-                  checked={sec.enabled}
-                  onChange={() => toggleSeccion(sec.key)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-              </label>
+                {/* Switch complementario */}
+                <div className="flex items-center justify-end">
+                  <label className="relative inline-flex items-center cursor-pointer flex-shrink-0" title={sec.enabled ? 'Click para ocultar' : 'Click para mostrar'}>
+                    <input
+                      type="checkbox"
+                      checked={sec.enabled}
+                      onChange={() => toggleSeccion(sec.key)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

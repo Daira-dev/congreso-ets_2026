@@ -5,6 +5,7 @@ import {
   getSeccionesVisibilidadFromDb,
   getCarouselSlidesFromDb,
   getFaqItemsFromDb,
+  getVideoInstitucionalFromDb,
 } from './admin/frontend-cms.routes';
 
 const router = Router();
@@ -122,6 +123,21 @@ router.get('/faq', async (_req: Request, res: Response): Promise<void> => {
     });
   } catch (error: any) {
     console.error('Error en GET /api/frontend/faq:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * GET /api/frontend/video-institucional
+ * Retorna la configuración dinámica del video institucional y sección experiencia
+ */
+router.get('/video-institucional', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const videoConfig = await getVideoInstitucionalFromDb();
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.json({ ok: true, video: videoConfig });
+  } catch (error: any) {
+    console.error('Error en GET /api/frontend/video-institucional:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
   }
 });

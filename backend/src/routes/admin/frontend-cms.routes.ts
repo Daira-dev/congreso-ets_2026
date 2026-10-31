@@ -82,8 +82,22 @@ export const DEFAULT_SECCIONES_VISIBILIDAD: SeccionVisibilidad[] = [
   { key: 'sobre_congreso', nombre: 'El Congreso & Carrusel', descripcion: 'Presentación institucional y carrusel multimedia interactivo', enabled: true },
   { key: 'modalidades', nombre: 'Actividades & Modalidades', descripcion: 'Tarjetas de modalidades formativas (Aula abierta, stands, etc.)', enabled: true },
   { key: 'programa', nombre: 'Programa del Congreso', descripcion: 'Cronograma interactivo de ponencias, horarios y filtros de salas', enabled: true },
-  { key: 'experiencia', nombre: 'Experiencia & Ubicación', descripcion: 'Spot audiovisual en video y mapa de la sede Polo Saavedra', enabled: true },
+  { key: 'experiencia', nombre: '🎬 Video Institucional (Sumate a la experiencia ETS)', descripcion: 'Sección con el video institucional oficial de YouTube/Vimeo y bienvenida audiovisual del Congreso', enabled: true },
 ];
+
+export interface FrontendVideoInstitucionalConfig {
+  titulo: string;
+  subtitulo?: string;
+  videoUrl: string;
+  activo: boolean;
+}
+
+export const DEFAULT_VIDEO_INSTITUCIONAL: FrontendVideoInstitucionalConfig = {
+  titulo: 'Sumate a la experiencia ETS',
+  subtitulo: 'Conocé la propuesta formativa y el espíritu del Congreso de Educación Técnica Superior',
+  videoUrl: 'https://www.youtube.com/embed/fFaAyN6sBus?si=7NMzlsDyW2jo-esW',
+  activo: true,
+};
 
 export interface CarouselSlide {
   id: string;
@@ -382,13 +396,61 @@ export async function getSeccionesVisibilidadFromDb(): Promise<SeccionVisibilida
     if (res.rows.length > 0 && res.rows[0].valor) {
       const parsed = typeof res.rows[0].valor === 'string' ? JSON.parse(res.rows[0].valor) : res.rows[0].valor;
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        // Asegurar que la sección experiencia lleve la identificación explícita de Video Institucional
+        const normalized = parsed.map((s: SeccionVisibilidad) => {
+          if (s.key === 'experiencia') {
+            return {
+              ...s,
+              nombre: '🎬 Video Institucional (Sumate a la experiencia ETS)',
+              descripcion: 'Sección con el video institucional oficial de YouTube/Vimeo y bienvenida audiovisual del Congreso',
+            };
+          }
+          return s;
+        });
+        return normalized;
       }
     }
   } catch (err) {
     console.error('Error leyendo frontend_secciones_visibilidad:', err);
   }
   return DEFAULT_SECCIONES_VISIBILIDAD;
+}
+
+/**
+ * Obtiene la configuración del video institucional
+ */
+export async function getVideoInstitucionalFromDb(): Promise<FrontendVideoInstitucionalConfig> {
+  try {
+    const res = await query(
+      `SELECT valor FROM configuraciones_sistema WHERE clave = 'frontend_video_institucional_cms' LIMIT 1`
+    );
+    if (res.rows.length > 0 && res.rows[0].valor) {
+      const parsed = typeof res.rows[0].valor === 'string' ? JSON.parse(res.rows[0].valor) : res.rows[0].valor;
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...DEFAULT_VIDEO_INSTITUCIONAL,
+          ...parsed,
+        };
+      }
+    }
+  } catch (err) {
+    console.error('Error leyendo frontend_video_institucional_cms:', err);
+  }
+  return DEFAULT_VIDEO_INSTITUCIONAL;
+}
+
+/**
+ * Persiste la configuración del video institucional
+ */
+export async function saveVideoInstitucionalToDb(config: FrontendVideoInstitucionalConfig): Promise<void> {
+  const jsonVal = JSON.stringify(config);
+  await query(
+    `INSERT INTO configuraciones_sistema (clave, valor, descripcion, categoria, actualizado_en)
+     VALUES ('frontend_video_institucional_cms', $1, 'Configuración del video institucional y sección experiencia en portal público', 'FRONTEND', NOW())
+     ON CONFLICT (clave)
+     DO UPDATE SET valor = $1, actualizado_en = NOW()`,
+    [jsonVal]
+  );
 }
 
 /**
@@ -1235,6 +1297,110 @@ router.post('/faq/reset', requireHierarchy(5), async (_req: AuthenticatedRequest
     });
   } catch (error: any) {
     console.error('Error en POST /api/admin/frontend-cms/faq/reset:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/frontend-cms/video-institucional
+ * Retorna la configuración completa del video institucional y sección experiencia
+ */
+router.get('/video-institucional', requireHierarchy(3), async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const videoConfig = await getVideoInstitucionalFromDb();
+    res.json({ ok: true, video: videoConfig });
+  } catch (error: any) {
+    console.error('Error en GET /api/admin/frontend-cms/video-institucional:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * PUT /api/admin/frontend-cms/video-institucional
+ * Guarda la configuración del video institucional y actualiza la visibilidad de la sección
+ */
+router.put('/video-institucional', requireHierarchy(3), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { titulo, subtitulo, videoUrl, activo } = req.body;
+
+    if (!titulo || typeof titulo !== 'string') {
+      res.status(400).json({ ok: false, error: 'ERR_VALIDATION', message: 'El título del video es obligatorio.' });
+      return;
+    }
+    if (!videoUrl || typeof videoUrl !== 'string') {
+      res.status(400).json({ ok: false, error: 'ERR_VALIDATION', message: 'La URL del video es obligatoria.' });
+      return;
+    }
+
+    const newConfig: FrontendVideoInstitucionalConfig = {
+      titulo: titulo.trim(),
+      subtitulo: typeof subtitulo === 'string' ? subtitulo.trim() : '',
+      videoUrl: videoUrl.trim(),
+      activo: activo !== false,
+    };
+
+    await saveVideoInstitucionalToDb(newConfig);
+
+    // Sincronizar también con la visibilidad de secciones si 'activo' se especifica
+    try {
+      const secciones = await getSeccionesVisibilidadFromDb();
+      const updatedSecciones = secciones.map((s) => {
+        if (s.key === 'experiencia') {
+          return { ...s, enabled: newConfig.activo };
+        }
+        return s;
+      });
+      await query(
+        `UPDATE configuraciones_sistema SET valor = $1, actualizado_en = NOW() WHERE clave = 'frontend_secciones_visibilidad'`,
+        [JSON.stringify(updatedSecciones)]
+      );
+    } catch (syncErr) {
+      console.warn('Advertencia sincronizando visibilidad de sección experiencia:', syncErr);
+    }
+
+    res.json({
+      ok: true,
+      mensaje: 'Video institucional guardado exitosamente.',
+      video: newConfig,
+    });
+  } catch (error: any) {
+    console.error('Error en PUT /api/admin/frontend-cms/video-institucional:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/frontend-cms/video-institucional/reset
+ * Restablece el video institucional al spot oficial predeterminado
+ */
+router.post('/video-institucional/reset', requireHierarchy(4), async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    await saveVideoInstitucionalToDb(DEFAULT_VIDEO_INSTITUCIONAL);
+
+    // Reactivar en visibilidad de secciones
+    try {
+      const secciones = await getSeccionesVisibilidadFromDb();
+      const updatedSecciones = secciones.map((s) => {
+        if (s.key === 'experiencia') {
+          return { ...s, enabled: true };
+        }
+        return s;
+      });
+      await query(
+        `UPDATE configuraciones_sistema SET valor = $1, actualizado_en = NOW() WHERE clave = 'frontend_secciones_visibilidad'`,
+        [JSON.stringify(updatedSecciones)]
+      );
+    } catch (syncErr) {
+      console.warn('Advertencia sincronizando visibilidad:', syncErr);
+    }
+
+    res.json({
+      ok: true,
+      mensaje: 'Video institucional restablecido a los valores oficiales predeterminados.',
+      video: DEFAULT_VIDEO_INSTITUCIONAL,
+    });
+  } catch (error: any) {
+    console.error('Error en POST /api/admin/frontend-cms/video-institucional/reset:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
   }
 });

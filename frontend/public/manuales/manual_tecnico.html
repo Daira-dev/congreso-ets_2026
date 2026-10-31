@@ -1190,9 +1190,10 @@ npm run test:criticos
             <p>Se utiliza la tabla <code>configuraciones_sistema</code> de PostgreSQL como almacén clave-valor con tipado JSONB y auditoría de timestamps:</p>
             <pre><code>-- Claves del CMS Frontend en configuraciones_sistema
 'frontend_hero_cms'                -- { titulo_superior, fecha_texto, cta_principal, ... }
-'frontend_secciones_visibilidad'   -- [ { id, titulo, id_dom, visible, orden }, ... ]
+'frontend_secciones_visibilidad'   -- [ { key, nombre, descripcion, enabled }, ... ]
 'frontend_carousel_cms'            -- [ { id, titulo, imagen_url, video_url, activo, ... }, ... ]
-'frontend_faq_cms'                 -- [ { id, pregunta, respuesta, activo, enlaces, archivos, multimedia }, ... ]</code></pre>
+'frontend_faq_cms'                 -- [ { id, pregunta, respuesta, activo, enlaces, archivos, multimedia }, ... ]
+'frontend_video_institucional_cms' -- { titulo, subtitulo, videoUrl, activo }</code></pre>
 
             <h3>17.2 Endpoints y Ciclo de Vida Reactivo</h3>
             <p>Los endpoints administrativos bajo <code>/api/admin/frontend-cms/*</code> aplican el middleware de jerarquía <code>requireHierarchy(4)</code>. Los endpoints públicos bajo <code>/api/frontend/*</code> emiten cabeceras obligatorias:</p>
