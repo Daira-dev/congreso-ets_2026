@@ -6,6 +6,7 @@ import {
   getCarouselSlidesFromDb,
   getFaqItemsFromDb,
   getVideoInstitucionalFromDb,
+  getAvisosConfigFromDb,
 } from './admin/frontend-cms.routes';
 
 const router = Router();
@@ -138,6 +139,21 @@ router.get('/video-institucional', async (_req: Request, res: Response): Promise
     res.json({ ok: true, video: videoConfig });
   } catch (error: any) {
     console.error('Error en GET /api/frontend/video-institucional:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * GET /api/frontend/avisos
+ * Retorna la configuración dinámica del anuncio "Avisos en Vivo del Congreso ETS 2026"
+ */
+router.get('/avisos', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const avisosConfig = await getAvisosConfigFromDb();
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.json({ ok: true, avisos: avisosConfig });
+  } catch (error: any) {
+    console.error('Error en GET /api/frontend/avisos:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
   }
 });

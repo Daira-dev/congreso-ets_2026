@@ -1193,7 +1193,8 @@ npm run test:criticos
 'frontend_secciones_visibilidad'   -- [ { key, nombre, descripcion, enabled }, ... ]
 'frontend_carousel_cms'            -- [ { id, titulo, imagen_url, video_url, activo, ... }, ... ]
 'frontend_faq_cms'                 -- [ { id, pregunta, respuesta, activo, enlaces, archivos, multimedia }, ... ]
-'frontend_video_institucional_cms' -- { titulo, subtitulo, videoUrl, activo }</code></pre>
+'frontend_video_institucional_cms' -- { titulo, subtitulo, videoUrl, activo }
+'frontend_avisos_cms'              -- { titulo, descripcion, botonTexto, icono, activo }</code></pre>
 
             <h3>17.2 Endpoints y Ciclo de Vida Reactivo</h3>
             <p>Los endpoints administrativos bajo <code>/api/admin/frontend-cms/*</code> aplican el middleware de jerarquía <code>requireHierarchy(4)</code>. Los endpoints públicos bajo <code>/api/frontend/*</code> emiten cabeceras obligatorias:</p>

@@ -99,6 +99,22 @@ export const DEFAULT_VIDEO_INSTITUCIONAL: FrontendVideoInstitucionalConfig = {
   activo: true,
 };
 
+export interface FrontendAvisosConfig {
+  titulo: string;
+  descripcion: string;
+  botonTexto: string;
+  icono: string;
+  activo: boolean;
+}
+
+export const DEFAULT_AVISOS_CONFIG: FrontendAvisosConfig = {
+  titulo: 'Avisos en Vivo del Congreso ETS 2026',
+  descripcion: 'Activa las notificaciones oficiales para recibir alertas de cambios de sala, horarios e inicio de charlas en tu dispositivo.',
+  botonTexto: 'Activar Notificaciones',
+  icono: '🔔',
+  activo: true,
+};
+
 export interface CarouselSlide {
   id: string;
   tipo: 'imagen' | 'video';
@@ -447,6 +463,43 @@ export async function saveVideoInstitucionalToDb(config: FrontendVideoInstitucio
   await query(
     `INSERT INTO configuraciones_sistema (clave, valor, descripcion, categoria, actualizado_en)
      VALUES ('frontend_video_institucional_cms', $1, 'Configuración del video institucional y sección experiencia en portal público', 'FRONTEND', NOW())
+     ON CONFLICT (clave)
+     DO UPDATE SET valor = $1, actualizado_en = NOW()`,
+    [jsonVal]
+  );
+}
+
+/**
+ * Obtiene la configuración de la barra de anuncios "Avisos en Vivo"
+ */
+export async function getAvisosConfigFromDb(): Promise<FrontendAvisosConfig> {
+  try {
+    const res = await query(
+      `SELECT valor FROM configuraciones_sistema WHERE clave = 'frontend_avisos_cms' LIMIT 1`
+    );
+    if (res.rows.length > 0 && res.rows[0].valor) {
+      const parsed = typeof res.rows[0].valor === 'string' ? JSON.parse(res.rows[0].valor) : res.rows[0].valor;
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...DEFAULT_AVISOS_CONFIG,
+          ...parsed,
+        };
+      }
+    }
+  } catch (err) {
+    console.error('Error leyendo frontend_avisos_cms:', err);
+  }
+  return DEFAULT_AVISOS_CONFIG;
+}
+
+/**
+ * Persiste la configuración de la barra de anuncios "Avisos en Vivo"
+ */
+export async function saveAvisosConfigToDb(config: FrontendAvisosConfig): Promise<void> {
+  const jsonVal = JSON.stringify(config);
+  await query(
+    `INSERT INTO configuraciones_sistema (clave, valor, descripcion, categoria, actualizado_en)
+     VALUES ('frontend_avisos_cms', $1, 'Configuración del anuncio Avisos en Vivo en el portal público', 'FRONTEND', NOW())
      ON CONFLICT (clave)
      DO UPDATE SET valor = $1, actualizado_en = NOW()`,
     [jsonVal]
@@ -1401,6 +1454,106 @@ router.post('/video-institucional/reset', requireHierarchy(4), async (_req: Auth
     });
   } catch (error: any) {
     console.error('Error en POST /api/admin/frontend-cms/video-institucional/reset:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/frontend-cms/avisos
+ * Retorna la configuración completa del anuncio "Avisos en Vivo"
+ */
+router.get('/avisos', requireHierarchy(3), async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const avisos = await getAvisosConfigFromDb();
+    res.json({ ok: true, avisos });
+  } catch (error: any) {
+    console.error('Error en GET /api/admin/frontend-cms/avisos:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * PUT /api/admin/frontend-cms/avisos
+ * Actualiza los textos, ícono y visibilidad del anuncio "Avisos en Vivo"
+ */
+router.put('/avisos', requireHierarchy(3), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { titulo, descripcion, botonTexto, icono, activo } = req.body;
+
+    if (!titulo || typeof titulo !== 'string') {
+      res.status(400).json({ ok: false, error: 'ERR_VALIDATION', message: 'El título del anuncio es obligatorio.' });
+      return;
+    }
+
+    const newConfig: FrontendAvisosConfig = {
+      titulo: titulo.trim(),
+      descripcion: typeof descripcion === 'string' ? descripcion.trim() : '',
+      botonTexto: typeof botonTexto === 'string' && botonTexto.trim() ? botonTexto.trim() : 'Activar Notificaciones',
+      icono: typeof icono === 'string' && icono.trim() ? icono.trim() : '🔔',
+      activo: activo !== false,
+    };
+
+    await saveAvisosConfigToDb(newConfig);
+
+    // Sincronizar automáticamente con la clave de visibilidad de secciones
+    try {
+      const secciones = await getSeccionesVisibilidadFromDb();
+      const updatedSecciones = secciones.map((s) => {
+        if (s.key === 'avisos') {
+          return { ...s, enabled: newConfig.activo };
+        }
+        return s;
+      });
+      await query(
+        `UPDATE configuraciones_sistema SET valor = $1, actualizado_en = NOW() WHERE clave = 'frontend_secciones_visibilidad'`,
+        [JSON.stringify(updatedSecciones)]
+      );
+    } catch (syncErr) {
+      console.warn('Advertencia sincronizando visibilidad de sección avisos:', syncErr);
+    }
+
+    res.json({
+      ok: true,
+      mensaje: 'Anuncio "Avisos en Vivo" actualizado exitosamente.',
+      avisos: newConfig,
+    });
+  } catch (error: any) {
+    console.error('Error en PUT /api/admin/frontend-cms/avisos:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/frontend-cms/avisos/reset
+ * Restablece el anuncio "Avisos en Vivo" a la plantilla oficial por defecto
+ */
+router.post('/avisos/reset', requireHierarchy(4), async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    await saveAvisosConfigToDb(DEFAULT_AVISOS_CONFIG);
+
+    try {
+      const secciones = await getSeccionesVisibilidadFromDb();
+      const updatedSecciones = secciones.map((s) => {
+        if (s.key === 'avisos') {
+          return { ...s, enabled: true };
+        }
+        return s;
+      });
+      await query(
+        `UPDATE configuraciones_sistema SET valor = $1, actualizado_en = NOW() WHERE clave = 'frontend_secciones_visibilidad'`,
+        [JSON.stringify(updatedSecciones)]
+      );
+    } catch (syncErr) {
+      console.warn('Advertencia sincronizando visibilidad:', syncErr);
+    }
+
+    res.json({
+      ok: true,
+      mensaje: 'Anuncio "Avisos en Vivo" restablecido a los valores oficiales predeterminados.',
+      avisos: DEFAULT_AVISOS_CONFIG,
+    });
+  } catch (error: any) {
+    console.error('Error en POST /api/admin/frontend-cms/avisos/reset:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
   }
 });

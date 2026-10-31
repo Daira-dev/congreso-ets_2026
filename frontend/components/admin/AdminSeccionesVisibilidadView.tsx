@@ -13,9 +13,14 @@ export interface SeccionVisibilidad {
 interface Props {
   onNotice: (msg: string) => void;
   onNavigateToVideo?: () => void;
+  onNavigateToAvisos?: () => void;
 }
 
-export default function AdminSeccionesVisibilidadView({ onNotice, onNavigateToVideo }: Props) {
+export default function AdminSeccionesVisibilidadView({
+  onNotice,
+  onNavigateToVideo,
+  onNavigateToAvisos,
+}: Props) {
   const [secciones, setSecciones] = useState<SeccionVisibilidad[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -224,6 +229,7 @@ export default function AdminSeccionesVisibilidadView({ onNotice, onNavigateToVi
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {secciones.map((sec) => {
           const isVideoSec = sec.key === 'experiencia';
+          const isAvisosSec = sec.key === 'avisos';
 
           return (
             <div
@@ -233,6 +239,10 @@ export default function AdminSeccionesVisibilidadView({ onNotice, onNavigateToVi
                   ? sec.enabled
                     ? 'bg-amber-50/40 border-amber-300 shadow-sm ring-2 ring-amber-200'
                     : 'bg-amber-50/20 border-amber-200'
+                  : isAvisosSec
+                  ? sec.enabled
+                    ? 'bg-blue-50/40 border-blue-300 shadow-sm ring-2 ring-blue-200'
+                    : 'bg-blue-50/20 border-blue-200'
                   : sec.enabled
                   ? 'bg-white border-emerald-200 shadow-xs ring-1 ring-emerald-100'
                   : 'bg-gray-50/90 border-gray-300 opacity-75'
@@ -245,6 +255,11 @@ export default function AdminSeccionesVisibilidadView({ onNotice, onNavigateToVi
                     {isVideoSec && (
                       <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md">
                         Spot Oficial
+                      </span>
+                    )}
+                    {isAvisosSec && (
+                      <span className="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md">
+                        Banner Push
                       </span>
                     )}
                   </div>
@@ -269,6 +284,19 @@ export default function AdminSeccionesVisibilidadView({ onNotice, onNavigateToVi
                       className="px-3 py-1 bg-amber-400 hover:bg-amber-500 text-gray-900 font-bold rounded-lg text-xs cursor-pointer shadow-xs transition"
                     >
                       🔄 Recuperar Video Institucional
+                    </button>
+                  </div>
+                )}
+
+                {isAvisosSec && !sec.enabled && (
+                  <div className="mt-3 p-2.5 bg-blue-100/70 border border-blue-300 rounded-xl text-xs text-blue-900 flex items-center justify-between gap-2">
+                    <span>📢 <strong>El banner de Avisos en Vivo está actualmente oculto.</strong></span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSeccion(sec.key, true)}
+                      className="px-3 py-1 bg-amber-400 hover:bg-amber-500 text-gray-900 font-bold rounded-lg text-xs cursor-pointer shadow-xs transition"
+                    >
+                      🔄 Mostrar Avisos en Vivo
                     </button>
                   </div>
                 )}
@@ -305,6 +333,18 @@ export default function AdminSeccionesVisibilidadView({ onNotice, onNavigateToVi
                     title="Editar URL de YouTube/Vimeo, título y previsualización"
                   >
                     <span>🎬</span> Editar Video Institucional
+                  </button>
+                )}
+
+                {/* Si es avisos y existe el handler de navegación, mostrar botón de editor con el mismo amarillo */}
+                {isAvisosSec && onNavigateToAvisos && (
+                  <button
+                    type="button"
+                    onClick={onNavigateToAvisos}
+                    className="py-2 px-3 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-500 text-gray-900 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    title="Editar textos, ícono y llamada a la acción de Avisos en Vivo"
+                  >
+                    <span>📢</span> Editar Avisos en Vivo
                   </button>
                 )}
 

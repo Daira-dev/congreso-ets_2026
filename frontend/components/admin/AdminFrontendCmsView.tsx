@@ -8,6 +8,7 @@ import AdminSeccionesVisibilidadView from './AdminSeccionesVisibilidadView';
 import AdminCarouselView from './AdminCarouselView';
 import AdminFaqCmsView from './AdminFaqCmsView';
 import AdminVideoInstitucionalView from './AdminVideoInstitucionalView';
+import AdminAvisosCmsView from './AdminAvisosCmsView';
 
 interface FrontendCard {
   id: number | string;
@@ -43,7 +44,7 @@ const BUILTIN_PDFS = [
 ];
 
 export default function AdminFrontendCmsView({ onNotice }: Props) {
-  const [cmsSubtab, setCmsSubtab] = useState<'cards' | 'hero' | 'secciones' | 'carousel' | 'faq' | 'video'>('cards');
+  const [cmsSubtab, setCmsSubtab] = useState<'cards' | 'hero' | 'secciones' | 'carousel' | 'faq' | 'video' | 'avisos'>('cards');
   const [cards, setCards] = useState<FrontendCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -383,6 +384,19 @@ export default function AdminFrontendCmsView({ onNotice }: Props) {
 
         <button
           type="button"
+          onClick={() => setCmsSubtab('avisos')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            cmsSubtab === 'avisos'
+              ? 'bg-amber-400 hover:bg-amber-500 text-gray-900 shadow-xs'
+              : 'bg-white hover:bg-amber-50 text-gray-700 border border-gray-200'
+          }`}
+        >
+          <span>📢</span>
+          <span>Avisos en Vivo</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setCmsSubtab('faq')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
             cmsSubtab === 'faq'
@@ -400,10 +414,12 @@ export default function AdminFrontendCmsView({ onNotice }: Props) {
         <AdminSeccionesVisibilidadView
           onNotice={onNotice}
           onNavigateToVideo={() => setCmsSubtab('video')}
+          onNavigateToAvisos={() => setCmsSubtab('avisos')}
         />
       )}
       {cmsSubtab === 'carousel' && <AdminCarouselView onNotice={onNotice} />}
       {cmsSubtab === 'video' && <AdminVideoInstitucionalView onNotice={onNotice} />}
+      {cmsSubtab === 'avisos' && <AdminAvisosCmsView onNotice={onNotice} />}
       {cmsSubtab === 'faq' && <AdminFaqCmsView onNotice={onNotice} />}
 
       {cmsSubtab === 'cards' && (

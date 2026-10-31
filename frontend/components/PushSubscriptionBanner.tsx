@@ -12,6 +12,27 @@ export default function PushSubscriptionBanner({ usuarioId }: Props) {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  const [avisosConfig, setAvisosConfig] = useState({
+    titulo: 'Avisos en Vivo del Congreso ETS 2026',
+    descripcion: 'Activa las notificaciones oficiales para recibir alertas de cambios de sala, horarios e inicio de charlas en tu dispositivo.',
+    botonTexto: 'Activar Notificaciones',
+    icono: '🔔',
+    activo: true,
+  });
+
+  const fetchAvisosConfig = async () => {
+    try {
+      const res = await fetch('/api/frontend/avisos', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && data.avisos) {
+          setAvisosConfig(data.avisos);
+        }
+      }
+    } catch {
+      // Ignorar fallback
+    }
+  };
 
   async function checkExistingSubscription() {
     try {
@@ -32,6 +53,16 @@ export default function PushSubscriptionBanner({ usuarioId }: Props) {
       setIsSupported(true);
       checkExistingSubscription();
     }
+    fetchAvisosConfig();
+
+    const handleAvisosUpdate = () => fetchAvisosConfig();
+    window.addEventListener('avisos-updated', handleAvisosUpdate);
+    window.addEventListener('focus', handleAvisosUpdate);
+
+    return () => {
+      window.removeEventListener('avisos-updated', handleAvisosUpdate);
+      window.removeEventListener('focus', handleAvisosUpdate);
+    };
   }, []);
 
   function urlBase64ToUint8Array(base64String: string) {
@@ -224,20 +255,20 @@ export default function PushSubscriptionBanner({ usuarioId }: Props) {
     }
   }
 
-  if (!isSupported || isSubscribed) {
+  if (!isSupported || isSubscribed || avisosConfig.activo === false) {
     return null;
   }
 
   return (
     <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-3.5 rounded-xl shadow-md my-4 flex flex-col sm:flex-row items-center justify-between gap-3 border border-blue-700/50">
       <div className="flex items-center gap-3">
-        <span className="text-2xl animate-bounce">🔔</span>
+        <span className="text-2xl animate-bounce">{avisosConfig.icono || '🔔'}</span>
         <div>
           <h4 className="text-xs font-bold uppercase tracking-wider text-blue-200">
-            Avisos en Vivo del Congreso ETS 2026
+            {avisosConfig.titulo || 'Avisos en Vivo del Congreso ETS 2026'}
           </h4>
           <p className="text-xs text-blue-100">
-            Activa las notificaciones oficiales para recibir alertas de cambios de sala, horarios e inicio de charlas en tu dispositivo.
+            {avisosConfig.descripcion || 'Activa las notificaciones oficiales para recibir alertas de cambios de sala, horarios e inicio de charlas en tu dispositivo.'}
           </p>
         </div>
       </div>
@@ -246,9 +277,9 @@ export default function PushSubscriptionBanner({ usuarioId }: Props) {
         <button
           onClick={handleSubscribe}
           disabled={loading}
-          className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+          className="px-4 py-2 bg-amber-400 hover:bg-amber-500 disabled:opacity-50 text-slate-950 font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
         >
-          {loading ? '⏳ Activando...' : 'Activar Notificaciones'}
+          {loading ? '⏳ Activando...' : avisosConfig.botonTexto || 'Activar Notificaciones'}
         </button>
       </div>
 
