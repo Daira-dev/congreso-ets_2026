@@ -1,12 +1,6 @@
-import { Suspense } from "react";
 import Header from "../components/Header/Header";
-import Hero from "@/components/Hero/Hero";
-import SobreCongreso from "@/components/Congreso/SobreCongreso";
-import SectionCongreso from "@/components/SectionCongreso/SectionCongreso";
-import SectionExperiencia from "@/components/SectionExperiencia/SectionExperiencia";
-import SectionPrograma from "@/components/SectionPrograma/SectionPrograma";
 import Footer from "@/components/Footer/Footer";
-import PushSubscriptionBanner from "@/components/PushSubscriptionBanner";
+import PublicSectionsContainer from "@/components/PublicSectionsContainer";
 
 export const metadata = {
   title: "Inicio | DETS 2026",
@@ -46,34 +40,14 @@ async function getSeccionesVisibilidad() {
 
 export default async function Home() {
   const secciones = await getSeccionesVisibilidad();
-  const isEnabled = (key: string) =>
-    secciones.find((s: any) => s.key === key)?.enabled !== false;
 
   return (
     <div className="pt-24">
       {/* 1. NAV / HEADER: Estrictamente fijo e inmutable */}
       <Header />
 
-      {/* 2. SECCIONES INTERMEDIAS: Visibilidad dinámica granular */}
-      {isEnabled('hero') && <Hero />}
-
-      {isEnabled('avisos') && (
-        <div className="max-w-7xl mx-auto px-4">
-          <PushSubscriptionBanner />
-        </div>
-      )}
-
-      {isEnabled('sobre_congreso') && <SobreCongreso />}
-
-      {isEnabled('modalidades') && (
-        <Suspense fallback={<div>Cargando actividades...</div>}>
-          <SectionCongreso />
-        </Suspense>
-      )}
-
-      {isEnabled('programa') && <SectionPrograma />}
-
-      {isEnabled('experiencia') && <SectionExperiencia />}
+      {/* 2. SECCIONES INTERMEDIAS: Visibilidad dinámica granular e inmediata */}
+      <PublicSectionsContainer initialSecciones={secciones} />
 
       {/* 3. FOOTER: Estrictamente fijo e inmutable */}
       <Footer />

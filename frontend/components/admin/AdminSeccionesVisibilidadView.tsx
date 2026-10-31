@@ -41,11 +41,64 @@ export default function AdminSeccionesVisibilidadView({ onNotice }: Props) {
     loadSecciones();
   }, []);
 
-  const toggleSeccion = (key: string) => {
-    setSecciones((prev) =>
-      prev.map((s) => (s.key === key ? { ...s, enabled: !s.enabled } : s))
-    );
-    setHasChanges(true);
+  const toggleSeccion = async (key: string, forceState?: boolean) => {
+    const updated = secciones.map((s) => {
+      if (s.key === key) {
+        return { ...s, enabled: forceState !== undefined ? forceState : !s.enabled };
+      }
+      return s;
+    });
+
+    setSecciones(updated);
+    setHasChanges(false);
+
+    // Guardado inmediato en base de datos para impacto instantáneo
+    try {
+      const res = await fetch('/api/admin/frontend-cms/secciones', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secciones: updated }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        window.dispatchEvent(new CustomEvent('secciones-updated'));
+        const target = updated.find((s) => s.key === key);
+        const estadoTxt = target?.enabled ? 'visible en el portal público' : 'completamente oculta del portal público';
+        onNotice(`Sección "${target?.nombre}" ahora está ${estadoTxt}.`);
+      }
+    } catch (err: any) {
+      console.error('Error guardando sección:', err);
+    }
+  };
+
+  const setAllSecciones = async (enabled: boolean) => {
+    const updated = secciones.map((s) => ({ ...s, enabled }));
+    setSecciones(updated);
+    setHasChanges(false);
+
+    try {
+      const res = await fetch('/api/admin/frontend-cms/secciones', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secciones: updated }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        window.dispatchEvent(new CustomEvent('secciones-updated'));
+        Swal.fire({
+          icon: 'success',
+          title: enabled ? 'Todas las Secciones Visibles' : 'Todas las Secciones Ocultas',
+          text: enabled
+            ? 'Todas las secciones intermedias ahora se muestran en el portal público.'
+            : 'Todas las secciones intermedias han sido ocultadas del portal público.',
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        onNotice(enabled ? 'Todas las secciones ahora son visibles.' : 'Todas las secciones han sido ocultadas.');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
   };
 
   const saveSecciones = async () => {
@@ -59,6 +112,7 @@ export default function AdminSeccionesVisibilidadView({ onNotice }: Props) {
       const data = await res.json();
       if (data.ok) {
         setHasChanges(false);
+        window.dispatchEvent(new CustomEvent('secciones-updated'));
         Swal.fire({
           icon: 'success',
           title: 'Visibilidad Actualizada',
@@ -88,8 +142,8 @@ export default function AdminSeccionesVisibilidadView({ onNotice }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* ENCABEZADO Y ACCIÓN DE GUARDADO */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      {/* ENCABEZADO Y ACCIONES PRINCIPALES */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <div className="flex items-center gap-3">
             <span className="p-2.5 bg-purple-50 text-purple-700 rounded-xl text-xl">👁️</span>
@@ -98,25 +152,53 @@ export default function AdminSeccionesVisibilidadView({ onNotice }: Props) {
                 Visibilidad Dinámica de Secciones Públicas
               </h2>
               <p className="text-sm text-gray-500 mt-0.5">
-                Habilitá o deshabilitá de forma granular cada sección intermedia del layout público.
+                Activá o desactivá secciones completas del portal público con impacto instantáneo en el DOM.
               </p>
             </div>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={saveSecciones}
-          disabled={saving}
-          className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition flex items-center gap-2 cursor-pointer"
-        >
-          <span>💾</span> {saving ? 'Guardando...' : 'Guardar Visibilidad de Secciones'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition flex items-center gap-1.5 cursor-pointer"
+            title="Abrir portal público en nueva pestaña"
+          >
+            <span>🌐</span> Ver Portal en Vivo
+          </a>
+
+          <button
+            type="button"
+            onClick={() => setAllSecciones(true)}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>👁️</span> Mostrar Todas
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAllSecciones(false)}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>👁️‍🗨️</span> Ocultar Todas
+          </button>
+
+          <button
+            type="button"
+            onClick={saveSecciones}
+            disabled={saving}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>💾</span> {saving ? 'Guardando...' : 'Guardar Todo'}
+          </button>
+        </div>
       </div>
 
       {hasChanges && (
         <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-xl flex items-center justify-between text-xs text-amber-800">
-          <span>⚠️ Tenés modificaciones pendientes de confirmación. Presioná <strong>&quot;Guardar Visibilidad de Secciones&quot;</strong> para persistirlas.</span>
+          <span>⚠️ Tenés modificaciones pendientes de confirmación. Presioná <strong>&quot;Guardar Todo&quot;</strong> para persistirlas.</span>
           <button
             type="button"
             onClick={saveSecciones}
@@ -131,48 +213,72 @@ export default function AdminSeccionesVisibilidadView({ onNotice }: Props) {
       <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-xl text-xs text-blue-900 flex items-start gap-3">
         <span className="text-lg">ℹ️</span>
         <div>
-          <strong className="block font-bold mb-0.5">Regla Institucional de Layout:</strong>
-          Las secciones intermedias pueden encenderse o apagarse con impacto inmediato en el DOM.
-          La <strong>Barra de Navegación (NAV)</strong> y el <strong>Pie de Página (FOOTER)</strong> se mantienen fijos permanentemente por integridad institucional y legal.
+          <strong className="block font-bold mb-0.5">Control de Visibilidad de Secciones Completas:</strong>
+          Al presionar <strong>Ocultar</strong> o <strong>Mostrar</strong>, la sección intermedia completa se remueve o añade al DOM del portal público de forma inmediata.
+          La <strong>Barra de Navegación (NAV)</strong> y el <strong>Pie de Página (FOOTER)</strong> permanecen siempre fijos por integridad institucional.
         </div>
       </div>
 
-      {/* TARJETAS DE SECCIONES CON SWITCH */}
+      {/* TARJETAS DE SECCIONES CON ACCIONES EXPLÍCITAS Y SWITCH */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {secciones.map((sec) => (
           <div
             key={sec.key}
-            className={`p-5 rounded-2xl border transition-all flex items-center justify-between gap-4 ${
+            className={`p-5 rounded-2xl border transition-all flex flex-col justify-between gap-4 ${
               sec.enabled
-                ? 'bg-white border-gray-200 shadow-xs'
-                : 'bg-gray-50/80 border-gray-200 opacity-60'
+                ? 'bg-white border-emerald-200 shadow-xs ring-1 ring-emerald-100'
+                : 'bg-gray-50/90 border-gray-300 opacity-75'
             }`}
           >
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm text-gray-900">{sec.nombre}</h3>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <h3 className="font-bold text-base text-gray-900">{sec.nombre}</h3>
                 <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
                     sec.enabled
                       ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-gray-200 text-gray-600'
+                      : 'bg-red-100 text-red-800'
                   }`}
                 >
-                  {sec.enabled ? '🟢 Visible en el DOM' : '⚪ Oculto en el DOM'}
+                  {sec.enabled ? '🟢 SECCIÓN MOSTRADA' : '🔴 SECCIÓN OCULTA'}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">{sec.descripcion}</p>
+              <p className="text-xs text-gray-600 leading-relaxed">{sec.descripcion}</p>
             </div>
 
-            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
-              <input
-                type="checkbox"
-                checked={sec.enabled}
-                onChange={() => toggleSeccion(sec.key)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-            </label>
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100 gap-3">
+              {/* Botón de acción directo para mostrar/ocultar sección completa */}
+              <button
+                type="button"
+                onClick={() => toggleSeccion(sec.key)}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
+                  sec.enabled
+                    ? 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                }`}
+              >
+                {sec.enabled ? (
+                  <>
+                    <span>👁️‍🗨️</span> Ocultar sección completa
+                  </>
+                ) : (
+                  <>
+                    <span>👁️</span> Mostrar sección completa
+                  </>
+                )}
+              </button>
+
+              {/* Switch complementario */}
+              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0" title={sec.enabled ? 'Click para ocultar' : 'Click para mostrar'}>
+                <input
+                  type="checkbox"
+                  checked={sec.enabled}
+                  onChange={() => toggleSeccion(sec.key)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
           </div>
         ))}
       </div>

@@ -49,7 +49,7 @@ router.get('/cards', async (_req: Request, res: Response): Promise<void> => {
 router.get('/hero', async (_req: Request, res: Response): Promise<void> => {
   try {
     const hero = await getHeroConfigFromDb();
-    res.setHeader('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.json({ ok: true, hero });
   } catch (error: any) {
     console.error('Error en GET /api/frontend/hero:', error);
@@ -64,7 +64,7 @@ router.get('/hero', async (_req: Request, res: Response): Promise<void> => {
 router.get('/secciones', async (_req: Request, res: Response): Promise<void> => {
   try {
     const secciones = await getSeccionesVisibilidadFromDb();
-    res.setHeader('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.json({ ok: true, secciones });
   } catch (error: any) {
     console.error('Error en GET /api/frontend/secciones:', error);
@@ -83,7 +83,7 @@ router.get('/carousel', async (_req: Request, res: Response): Promise<void> => {
       .filter((s) => s.activo !== false)
       .sort((a, b) => a.orden - b.orden);
 
-    res.setHeader('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.json({
       ok: true,
       slides: activeSlides,
