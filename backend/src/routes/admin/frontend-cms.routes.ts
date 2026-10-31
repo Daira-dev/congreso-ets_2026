@@ -309,19 +309,31 @@ router.put('/cards', requireHierarchy(4), async (req: AuthenticatedRequest, res:
       return;
     }
 
-    // Normalizar orden y campos
-    const sanitizedCards: FrontendCard[] = cards.map((c, index) => ({
-      id: c.id || index + 1,
-      title: String(c.title || '').trim(),
-      description: String(c.description || '').trim(),
-      image: String(c.image || '/assets/icons/card1.svg').trim(),
-      builtinKey: c.builtinKey || undefined,
-      pdfUrl: c.pdfUrl ? String(c.pdfUrl).trim() : '',
-      badge: c.badge ? String(c.badge).trim() : '',
-      colorAccent: c.colorAccent || '#1D3343',
-      activo: c.activo !== false,
-      orden: typeof c.orden === 'number' ? c.orden : index + 1,
-    }));
+    // Normalizar orden y campos con validación booleana estricta de activo
+    const sanitizedCards: FrontendCard[] = cards.map((c, index) => {
+      const esInactivo =
+        (c as any).activo === false ||
+        (c as any).activo === 'false' ||
+        (c as any).activo === 0 ||
+        (c as any).activo === '0' ||
+        (c as any).visible === false ||
+        (c as any).visible === 'false' ||
+        (c as any).estado === 'oculto' ||
+        (c as any).estado === 'inactivo';
+
+      return {
+        id: c.id || index + 1,
+        title: String(c.title || '').trim(),
+        description: String(c.description || '').trim(),
+        image: String(c.image || '/assets/icons/card1.svg').trim(),
+        builtinKey: c.builtinKey || undefined,
+        pdfUrl: c.pdfUrl ? String(c.pdfUrl).trim() : '',
+        badge: c.badge ? String(c.badge).trim() : '',
+        colorAccent: c.colorAccent || '#1D3343',
+        activo: !esInactivo,
+        orden: typeof c.orden === 'number' ? c.orden : index + 1,
+      };
+    });
 
     await query(
       `INSERT INTO configuraciones_sistema (clave, valor, descripcion, categoria, actualizado_en)

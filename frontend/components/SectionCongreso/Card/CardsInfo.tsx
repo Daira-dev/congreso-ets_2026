@@ -66,7 +66,8 @@ const CardsInfo = () => {
         }
     ];
 
-    const [cardsData, setCardsData] = useState<any[]>(DEFAULT_CARDS);
+    const [cardsData, setCardsData] = useState<any[]>([]);
+    const [cardsLoaded, setCardsLoaded] = useState(false);
 
     useEffect(() => {
         const previewId = searchParams?.get('preview_id');
@@ -82,26 +83,46 @@ const CardsInfo = () => {
             .catch(console.error);
 
         // Cargar tarjetas dinámicas del CMS
-        fetch('/api/frontend/cards')
-            .then(res => res.json())
-            .then(data => {
-                if (data.ok && Array.isArray(data.cards) && data.cards.length > 0) {
-                    // Mapear íconos integrados si corresponde
-                    const iconMap: Record<string, any> = {
-                        card1: imgCard1,
-                        card2: imgCard2,
-                        card3: imgCard3,
-                        card4: imgCard4,
-                        card5: imgCard5,
-                    };
-                    const resolved = data.cards.map((c: any) => ({
-                        ...c,
-                        image: (c.builtinKey && iconMap[c.builtinKey]) || c.image || imgCard1,
-                    }));
-                    setCardsData(resolved);
-                }
-            })
-            .catch(console.error);
+        const cargarTarjetas = () => {
+            fetch('/api/frontend/cards', { cache: 'no-store' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.ok && Array.isArray(data.cards)) {
+                        // Mapear íconos integrados si corresponde
+                        const iconMap: Record<string, any> = {
+                            card1: imgCard1,
+                            card2: imgCard2,
+                            card3: imgCard3,
+                            card4: imgCard4,
+                            card5: imgCard5,
+                        };
+                        const resolved = data.cards
+                            .filter((c: any) => c.activo !== false && (c as any).visible !== false)
+                            .map((c: any) => ({
+                                ...c,
+                                image: (c.builtinKey && iconMap[c.builtinKey]) || c.image || imgCard1,
+                            }));
+                        setCardsData(resolved);
+                        setCardsLoaded(true);
+                    } else {
+                        setCardsLoaded(true);
+                    }
+                })
+                .catch((err) => {
+                    console.error('Error cargando tarjetas:', err);
+                    setCardsData(DEFAULT_CARDS);
+                    setCardsLoaded(true);
+                });
+        };
+
+        cargarTarjetas();
+
+        const handleCardsUpdated = () => {
+            cargarTarjetas();
+        };
+
+        window.addEventListener('cards-updated', handleCardsUpdated);
+        return () => window.removeEventListener('cards-updated', handleCardsUpdated);
     }, [searchParams]);
 
     const formatearFecha = (fechaStr: string) => {
@@ -211,49 +232,60 @@ const CardsInfo = () => {
 
                 {/* SECCION DE CARDS Y CARRUSEL */}
                 <div className="relative max-w-6xl w-full mx-auto px-4 pb-16">
-                    
-                    {/* Contenedor del Carrusel */}
-                    <div 
-                        ref={carouselRef}
-                        onMouseDown={handleMouseDown}
-                        onMouseLeave={handleMouseLeave}
-                        onMouseUp={handleMouseUp}
-                        onMouseMove={handleMouseMove}
-                        onScroll={handleScroll}
-                        className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-6 pt-4 pb-8 [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing select-none"
-                        style={{ scrollbarWidth: 'none' }}
-                    >
-                        {cardsData.map((card, index) => (
+                    {cardsData.length === 0 ? (
+                        <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50/70 my-4">
+                            <p className="text-gray-500 text-sm font-semibold">
+                                Actualmente no hay modalidades de participación activas para mostrar.
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Contenedor del Carrusel */}
                             <div 
-                                key={index} 
-                                className="w-[290px] sm:w-[330px] shrink-0 snap-center flex flex-col"
+                                ref={carouselRef}
+                                onMouseDown={handleMouseDown}
+                                onMouseLeave={handleMouseLeave}
+                                onMouseUp={handleMouseUp}
+                                onMouseMove={handleMouseMove}
+                                onScroll={handleScroll}
+                                className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-6 pt-4 pb-8 [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing select-none"
+                                style={{ scrollbarWidth: 'none' }}
                             >
-                                <Card 
-                                    cardImg={card.image} 
-                                    title={card.title} 
-                                    description={card.description}
-                                    pdfUrl={card.pdfUrl}
-                                    badge={card.badge}
-                                />
+                                {cardsData.map((card, index) => (
+                                    <div 
+                                        key={card.id ?? index} 
+                                        className="w-[290px] sm:w-[330px] shrink-0 snap-center flex flex-col"
+                                    >
+                                        <Card 
+                                            cardImg={card.image} 
+                                            title={card.title} 
+                                            description={card.description}
+                                            pdfUrl={card.pdfUrl}
+                                            badge={card.badge}
+                                        />
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
 
-                    {/* PUNTOS */}
-                    <div className="flex justify-center items-center gap-2 sm:gap-3 mt-2">
-                        {cardsData.map((_, index) => (
-                            <button
-                                key={index}
-                                onClick={() => scrollToCard(index)}
-                                className={`transition-all duration-300 rounded-full ${
-                                    activeIndex === index 
-                                        ? "w-8 sm:w-10 h-2.5 sm:h-3 bg-[#1D3343]" // Azul Oscuro para el activo
-                                        : "w-2.5 sm:w-3 h-2.5 sm:h-3 bg-gray-300 hover:bg-[#035C80]" // Azul Claro en hover
-                                }`}
-                                aria-label={`Ir a la tarjeta ${index + 1}`}
-                            />
-                        ))}
-                    </div>
+                            {/* PUNTOS */}
+                            {cardsData.length > 1 && (
+                                <div className="flex justify-center items-center gap-2 sm:gap-3 mt-2">
+                                    {cardsData.map((_, index) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => scrollToCard(index)}
+                                            className={`transition-all duration-300 rounded-full ${
+                                                activeIndex === index 
+                                                    ? "w-8 sm:w-10 h-2.5 sm:h-3 bg-[#1D3343]" // Azul Oscuro para el activo
+                                                    : "w-2.5 sm:w-3 h-2.5 sm:h-3 bg-gray-300 hover:bg-[#035C80]" // Azul Claro en hover
+                                            }`}
+                                            aria-label={`Ir a la tarjeta ${index + 1}`}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
 
                 {/* MISCELANEA BARRA OSCURA */}

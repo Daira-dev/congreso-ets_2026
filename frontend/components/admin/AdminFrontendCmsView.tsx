@@ -212,6 +212,7 @@ export default function AdminFrontendCmsView({ onNotice }: Props) {
       if (data.ok) {
         setCards(data.cards);
         setHasChanges(false);
+        window.dispatchEvent(new CustomEvent('cards-updated'));
         Swal.fire({
           icon: 'success',
           title: '¡Guardado Exitoso!',
@@ -250,6 +251,7 @@ export default function AdminFrontendCmsView({ onNotice }: Props) {
           if (data.ok) {
             setCards(data.cards);
             setHasChanges(false);
+            window.dispatchEvent(new CustomEvent('cards-updated'));
             Swal.fire('Restablecido', 'Las tarjetas oficiales han sido restauradas.', 'success');
             onNotice('Tarjetas oficiales restauradas exitosamente.');
           }

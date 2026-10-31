@@ -16,10 +16,21 @@ router.get('/cards', async (_req: Request, res: Response): Promise<void> => {
   try {
     const cards = await getFrontendCardsFromDb();
     const activeCards = cards
-      .filter((c) => c.activo !== false)
+      .filter((c) => {
+        const esInactivo =
+          (c as any).activo === false ||
+          (c as any).activo === 'false' ||
+          (c as any).activo === 0 ||
+          (c as any).activo === '0' ||
+          (c as any).visible === false ||
+          (c as any).visible === 'false' ||
+          (c as any).estado === 'oculto' ||
+          (c as any).estado === 'inactivo';
+        return !esInactivo;
+      })
       .sort((a, b) => (a.orden || 0) - (b.orden || 0));
 
-    res.setHeader('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.json({
       ok: true,
       cards: activeCards,
