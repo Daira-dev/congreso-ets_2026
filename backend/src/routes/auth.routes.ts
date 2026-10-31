@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import { query } from '../lib/db';
 import { loginSchema } from '../lib/schemas';
 import { verifyPassword, signSessionToken, SESSION_COOKIE_NAME } from '../lib/authService';
@@ -6,7 +7,20 @@ import { AuthenticatedRequest, requireHierarchy } from '../middlewares/authMiddl
 
 const router = Router();
 
-router.post('/login', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// Blindaje SEC-10: Limitador de tasa contra fuerza bruta en login administrativo
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: process.env.NODE_ENV === 'test' ? 1000 : 10, // Máximo 10 intentos por ventana
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    ok: false,
+    error: 'ERR_RATE_LIMIT_EXCEEDED',
+    message: 'Demasiados intentos de acceso desde esta dirección IP. Por favor, aguarda 15 minutos antes de volver a intentar.',
+  },
+});
+
+router.post('/login', loginLimiter, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const parsed = loginSchema.safeParse(req.body);
 

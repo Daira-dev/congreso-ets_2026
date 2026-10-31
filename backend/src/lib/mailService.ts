@@ -807,6 +807,40 @@ export async function sendCertificateEmail(params: {
 }
 
 /**
+ * 6. Correo de Código OTP de Seguridad para Cancelación Voluntaria de Vacante
+ */
+export async function sendCancellationOtpEmail(params: {
+  to: string;
+  nombre: string;
+  apellido: string;
+  dni: string;
+  otpCode: string;
+}): Promise<SendResult> {
+  const html = await wrapInstitutionalTemplate(`
+    <h2 style="color: #dc2626; margin-top: 0;">Código de Verificación de Baja</h2>
+    <p>Estimado/a <strong>${params.nombre} ${params.apellido}</strong>,</p>
+    <p>Hemos recibido una solicitud para cancelar su vacante en el <strong>1er Congreso de Educación Técnica Superior (ETS 2026)</strong> para el DNI <strong>${params.dni}</strong>.</p>
+    
+    <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 24px 0; text-align: center;">
+      <p style="margin: 0 0 8px 0; font-size: 13px; color: #991b1b; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Su Código de Seguridad OTP (Válido por 10 minutos):</p>
+      <div style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #b91c1c; font-family: monospace; background: #ffffff; display: inline-block; padding: 8px 24px; border-radius: 6px; border: 1px dashed #f87171;">
+        ${params.otpCode}
+      </div>
+    </div>
+
+    <p style="font-size: 13px; color: #64748b; line-height: 1.6;">
+      <strong>¿No solicitó esta cancelación?</strong> Si usted no inició esta gestión, ignore este correo. Su lugar en el congreso permanece completamente seguro y asegurado; nadie puede liberar su vacante sin este código privado ni su credencial digital.
+    </p>
+  `);
+
+  return sendEmail({
+    to: params.to,
+    subject: '🔐 Código de Confirmación de Baja de Vacante – Congreso ETS 2026',
+    html,
+  });
+}
+
+/**
  * ============================================================================
  * COLA ASÍNCRONA RESILIENTE DE CORREOS CON REINTENTOS EXPONENCIALES
  * ============================================================================

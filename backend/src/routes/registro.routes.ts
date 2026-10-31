@@ -82,19 +82,13 @@ router.post('/', registroLimiter, async (req: Request, res: Response): Promise<v
 
     if (existingDni.rows.length > 0) {
       const uExistente = existingDni.rows[0];
-      const qrToken = encryptQRPayload({
-        u: uExistente.id,
-        d: dni_pasaporte,
-        t: Date.now(),
-      });
 
+      // Blindaje SEC-07: Prohibir retorno de qr_token y usuario_id en 409 para evitar suplantación
       res.status(409).json({
         ok: false,
         error: 'ERR_DNI_ALREADY_EXISTS',
-        message: `El DNI ${dni_pasaporte} ya se encuentra registrado para esta edición con estado: ${uExistente.estado_codigo}`,
-        usuario_id: uExistente.id,
+        message: `El DNI ${dni_pasaporte} ya se encuentra registrado para esta edición con estado: ${uExistente.estado_codigo}. Si necesitas consultar tu credencial digital, por favor ingresa con tu documento en la sección oficial "Mi Credencial".`,
         estado: uExistente.estado_codigo,
-        qr_token: qrToken,
       });
       return;
     }

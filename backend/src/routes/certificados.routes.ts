@@ -1,11 +1,24 @@
 import { Router, Request, Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import { randomBytes } from 'crypto';
 import { query } from '../lib/db';
 import { generateCertificatePdf } from '../lib/certificatePdfService';
 import { dniSchema, certificadoEmisionSchema } from '../lib/schemas';
-import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+import { AuthenticatedRequest, requireHierarchy } from '../middlewares/authMiddleware';
 
 const router = Router();
+
+// Blindaje SEC-10: Rate limiter contra scraping masivo de certificados por DNI
+const certificadosLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: process.env.NODE_ENV === 'test' ? 1000 : 30, // Máximo 30 consultas por minuto
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'ERR_RATE_LIMIT_EXCEEDED',
+    message: 'Has superado el límite de consultas de certificados por minuto. Por favor, aguarda un momento.',
+  },
+});
 
 /**
  * GET /api/certificados/validar/:codigo
@@ -181,7 +194,7 @@ router.get('/download/:codigo', async (req: Request, res: Response): Promise<voi
  * GET /api/certificados?dni=...
  * Consulta o emisión de certificado oficial de asistencia / expositor por DNI
  */
-router.get('/', async (req: Request, res: Response): Promise<void> => {
+router.get('/', certificadosLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
     const rawDni = req.query.dni as string;
     const rawEventoId = req.query.evento_id as string;
@@ -406,9 +419,9 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 
 /**
  * POST /api/certificados
- * Emisión administrativa manual/forzada de certificados
+ * Emisión administrativa manual/forzada de certificados (Requiere rol Verificador/Admin Nivel 4+)
  */
-router.post('/', async (req: Request, res: Response): Promise<void> => {
+router.post('/', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const parsed = certificadoEmisionSchema.safeParse(req.body);
 

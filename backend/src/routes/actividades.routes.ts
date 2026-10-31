@@ -192,9 +192,9 @@ router.post('/', requireHierarchy(4), async (req: AuthenticatedRequest, res: Res
 
 /**
  * GET /api/actividades/:id/planilla-pdf
- * Descarga la Planilla Oficial de Asistencia en Sala en formato PDF
+ * Descarga la Planilla Oficial de Asistencia en Sala en formato PDF (Requiere Operador/Admin Nivel 3+)
  */
-router.get('/:id/planilla-pdf', async (req: Request, res: Response): Promise<void> => {
+router.get('/:id/planilla-pdf', requireHierarchy(3), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const actividadId = parseInt(req.params.id, 10);
     if (isNaN(actividadId)) {

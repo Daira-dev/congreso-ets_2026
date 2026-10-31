@@ -43,23 +43,45 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Configuración CORS
+// Configuración CORS estricta y segura (Blindaje SEC-08)
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:4000',
+  'http://127.0.0.1:4000',
+  CORS_ORIGIN,
+].filter(Boolean);
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Permitir peticiones sin origen (curl, health checks, proxy BFF) o desde localhost / Railway
-      if (
-        !origin ||
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1') ||
-        origin.includes('railway.app') ||
-        origin.includes('railway.internal') ||
-        origin === CORS_ORIGIN
-      ) {
-        callback(null, true);
-      } else {
-        callback(null, true);
+      // Permitir peticiones sin origen (curl, server-to-server, health checks internos)
+      if (!origin) {
+        return callback(null, true);
       }
+
+      // Comprobar coincidencia exacta en lista blanca
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      try {
+        const parsedUrl = new URL(origin);
+        const hostname = parsedUrl.hostname;
+
+        // Comprobar dominios de desarrollo y dominios institucionales autorizados
+        if (
+          hostname === 'localhost' ||
+          hostname === '127.0.0.1' ||
+          hostname.endsWith('.bue.edu.ar') ||
+          hostname.endsWith('.buenosaires.gob.ar')
+        ) {
+          return callback(null, true);
+        }
+      } catch (_) {}
+
+      // Denegar cualquier otro origen no autorizado
+      return callback(new Error(`Bloqueado por política de CORS: El origen "${origin}" no está autorizado.`));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -77,7 +99,15 @@ const imagenesMaterialesDir = path.resolve(__dirname, '../../imagenes_de_materia
 if (!fs.existsSync(imagenesMaterialesDir)) {
   fs.mkdirSync(imagenesMaterialesDir, { recursive: true });
 }
-app.use('/imagenes_de_materiales', express.static(imagenesMaterialesDir));
+app.use(
+  '/imagenes_de_materiales',
+  (_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'");
+    next();
+  },
+  express.static(imagenesMaterialesDir)
+);
 
 // Inyección de contexto de sesión
 app.use(authenticateOperator);

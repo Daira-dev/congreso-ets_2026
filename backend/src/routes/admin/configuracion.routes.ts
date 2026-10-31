@@ -28,7 +28,34 @@ router.get('/', requireHierarchy(4), async (_req: AuthenticatedRequest, res: Res
        FROM configuraciones_sistema 
        ORDER BY clave ASC`
     );
-    res.json({ ok: true, configuracion: result.rows });
+
+    // Blindaje SEC-06: Sanitizar y enmascarar credenciales SMTP en endpoint general
+    const sanitizedRows = result.rows.map((row: any) => {
+      if (row.clave === 'cuentas_correo' && row.valor) {
+        try {
+          const parsed = typeof row.valor === 'string' ? JSON.parse(row.valor) : row.valor;
+          if (parsed && typeof parsed === 'object') {
+            const masked = { ...parsed };
+            if (masked.cuenta_principal && masked.cuenta_principal.password) {
+              masked.cuenta_principal = {
+                ...masked.cuenta_principal,
+                password: '••••••••••••',
+              };
+            }
+            if (masked.cuenta_secundaria && masked.cuenta_secundaria.password) {
+              masked.cuenta_secundaria = {
+                ...masked.cuenta_secundaria,
+                password: '••••••••••••',
+              };
+            }
+            return { ...row, valor: masked };
+          }
+        } catch (_) {}
+      }
+      return row;
+    });
+
+    res.json({ ok: true, configuracion: sanitizedRows });
   } catch (error: any) {
     console.error('Error en GET /api/admin/configuracion:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });

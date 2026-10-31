@@ -14,8 +14,18 @@ export interface SessionPayload {
 
 export const SESSION_COOKIE_NAME = 'congreso_session';
 
-const SECRET_KEY_HEX =
-  process.env.ENCRYPTION_KEY || 'e4b7c1a89f2d3e4b5a6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a';
+/**
+ * Obtiene la clave de firma verificando que esté configurada en el entorno (Blindaje SEC-05)
+ */
+function getSecretKeyHex(): string {
+  const key = process.env.ENCRYPTION_KEY;
+  if (!key || key.length !== 64) {
+    throw new Error(
+      'FATAL DE SEGURIDAD: La variable de entorno ENCRYPTION_KEY es obligatoria y debe contener exactamente 32 bytes en formato hexadecimal (64 caracteres).'
+    );
+  }
+  return key;
+}
 
 /**
  * Genera un hash criptográfico seguro para contraseñas usando scrypt
@@ -53,7 +63,7 @@ async function getCryptoSubtleKey(): Promise<any> {
   const encoder = new TextEncoder();
   return subtle.importKey(
     'raw',
-    encoder.encode(SECRET_KEY_HEX),
+    encoder.encode(getSecretKeyHex()),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign', 'verify']

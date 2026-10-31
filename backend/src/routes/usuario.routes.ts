@@ -1,17 +1,132 @@
 import { Router, Request, Response } from 'express';
-import { withTransaction } from '../lib/db';
+import { randomInt } from 'crypto';
+import { query, withTransaction } from '../lib/db';
+import { decryptQRPayload } from '../lib/cryptoQR';
+import { sendCancellationOtpEmail } from '../lib/mailService';
 import { z } from 'zod';
 
 const router = Router();
 
+// Store en memoria para códigos OTP temporales de cancelación (TTL 10 min)
+interface OtpEntry {
+  code: string;
+  expiresAt: number;
+  attempts: number;
+}
+const otpStore = new Map<string, OtpEntry>();
+
+// Limpieza periódica de OTPs expirados cada 5 minutos
+setInterval(() => {
+  const now = Date.now();
+  for (const [dni, entry] of otpStore.entries()) {
+    if (entry.expiresAt < now) {
+      otpStore.delete(dni);
+    }
+  }
+}, 5 * 60 * 1000);
+
+const solicitarOtpSchema = z.object({
+  dni_pasaporte: z.string().min(5).max(25),
+});
+
 const cancelarSchema = z.object({
   dni_pasaporte: z.string().min(5).max(25),
   motivo: z.string().max(300).optional(),
+  qr_token: z.string().optional(),
+  otp_code: z.string().optional(),
+});
+
+/**
+ * POST /api/usuario/solicitar-cancelacion-otp
+ * Genera un código de seguridad OTP de 6 dígitos y lo envía al correo del titular de la vacante.
+ */
+router.post('/solicitar-cancelacion-otp', async (req: Request, res: Response) => {
+  try {
+    const parsed = solicitarOtpSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        error: 'ERR_VALIDATION',
+        message: 'DNI o Pasaporte inválido.',
+      });
+    }
+
+    const { dni_pasaporte } = parsed.data;
+
+    // Buscar al usuario
+    const userRes = await query(
+      `SELECT u.id, u.nombre, u.apellido, u.email, ei.codigo AS estado_codigo
+       FROM usuarios u
+       JOIN estados_inscripcion ei ON u.estado_inscripcion_id = ei.id
+       WHERE u.dni_pasaporte = $1
+       ORDER BY u.actualizado_en DESC
+       LIMIT 1`,
+      [dni_pasaporte.trim()]
+    );
+
+    // Respuesta genérica de seguridad ante DNI no existente para evitar enumeración
+    if (userRes.rowCount === 0) {
+      return res.json({
+        ok: true,
+        success: true,
+        message: 'Si el DNI posee una vacante activa, se ha remitido un código de verificación de 6 dígitos a su casilla registrada.',
+      });
+    }
+
+    const usuario = userRes.rows[0];
+
+    if (usuario.estado_codigo === 'CANCELADO') {
+      return res.status(400).json({
+        ok: false,
+        error: 'ERR_ALREADY_CANCELLED',
+        message: 'La inscripción asociada a este documento ya se encuentra cancelada.',
+      });
+    }
+
+    // Generar código OTP criptográficamente seguro de 6 dígitos
+    const otpCode = randomInt(100000, 999999).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutos de validez
+
+    otpStore.set(dni_pasaporte.trim().toUpperCase(), {
+      code: otpCode,
+      expiresAt,
+      attempts: 0,
+    });
+
+    // Enviar código al correo del usuario
+    await sendCancellationOtpEmail({
+      to: usuario.email,
+      nombre: usuario.nombre,
+      apellido: usuario.apellido,
+      dni: dni_pasaporte.trim(),
+      otpCode,
+    }).catch((err) => {
+      console.error('Error enviando correo OTP de cancelación:', err);
+    });
+
+    // Enmascarar correo para confirmación visual al usuario
+    const [localPart, domain] = usuario.email.split('@');
+    const maskedEmail = `${localPart.slice(0, 2)}•••@${domain}`;
+
+    return res.json({
+      ok: true,
+      success: true,
+      message: `Se ha remitido un código de verificación de 6 dígitos a su casilla de correo registrada (${maskedEmail}).`,
+    });
+  } catch (error: any) {
+    console.error('Error en POST /api/usuario/solicitar-cancelacion-otp:', error);
+    return res.status(500).json({
+      ok: false,
+      error: 'ERR_INTERNAL',
+      message: 'Error al procesar la solicitud del código de seguridad.',
+    });
+  }
 });
 
 /**
  * POST /api/usuario/cancelar
  * Permite al usuario autogestionar la cancelación de su vacante desde la PWA / Credencial.
+ * Exige validación de identidad obligatoria: credencial digital QR o código OTP enviado al correo.
  * Si estaba CONFIRMADO, promueve automáticamente al primer aspirante de LISTA_ESPERA (FIFO).
  */
 router.post('/cancelar', async (req: Request, res: Response) => {
@@ -25,18 +140,86 @@ router.post('/cancelar', async (req: Request, res: Response) => {
       });
     }
 
-    const { dni_pasaporte, motivo } = parsed.data;
+    const { dni_pasaporte, motivo, qr_token, otp_code } = parsed.data;
+    const cleanDni = dni_pasaporte.trim().toUpperCase();
+
+    // 1. VALIDACIÓN ESTRICTA DE IDENTIDAD (SEC-02)
+    let identidadVerificada = false;
+    let metodoValidacion = '';
+
+    if (qr_token && typeof qr_token === 'string' && qr_token.trim()) {
+      try {
+        const payload = decryptQRPayload(qr_token.trim());
+        if (payload.d.toUpperCase() === cleanDni) {
+          identidadVerificada = true;
+          metodoValidacion = 'CREDENCIAL_QR_PWA';
+        } else {
+          return res.status(403).json({
+            error: 'ERR_INVALID_QR_TOKEN',
+            message: 'La credencial digital escaneada no corresponde al DNI que solicita la cancelación.',
+          });
+        }
+      } catch (err: any) {
+        return res.status(403).json({
+          error: 'ERR_INVALID_QR_TOKEN',
+          message: 'La credencial digital es inválida o ha expirado.',
+        });
+      }
+    } else if (otp_code && typeof otp_code === 'string' && otp_code.trim()) {
+      const entry = otpStore.get(cleanDni);
+      if (!entry) {
+        return res.status(400).json({
+          error: 'ERR_OTP_NOT_FOUND',
+          message: 'No hay ninguna solicitud de cancelación activa para este DNI o el código ha expirado.',
+        });
+      }
+
+      if (entry.expiresAt < Date.now()) {
+        otpStore.delete(cleanDni);
+        return res.status(400).json({
+          error: 'ERR_OTP_EXPIRED',
+          message: 'El código de seguridad ha expirado. Por favor, solicita uno nuevo.',
+        });
+      }
+
+      if (entry.attempts >= 3) {
+        otpStore.delete(cleanDni);
+        return res.status(429).json({
+          error: 'ERR_OTP_MAX_ATTEMPTS',
+          message: 'Superaste el límite máximo de intentos fallidos. Solicita un nuevo código.',
+        });
+      }
+
+      if (entry.code !== otp_code.trim()) {
+        entry.attempts += 1;
+        return res.status(400).json({
+          error: 'ERR_INVALID_OTP',
+          message: `Código de verificación incorrecto. Intentos restantes: ${3 - entry.attempts}`,
+        });
+      }
+
+      identidadVerificada = true;
+      metodoValidacion = 'CODIGO_OTP_EMAIL';
+      otpStore.delete(cleanDni); // Invalidar código de un solo uso
+    }
+
+    if (!identidadVerificada) {
+      return res.status(401).json({
+        error: 'ERR_AUTHENTICATION_REQUIRED',
+        message: 'Para cancelar su vacante debe presentar su credencial digital QR o ingresar el código OTP enviado a su correo electrónico.',
+      });
+    }
 
     const result = await withTransaction(async (client) => {
-      // 1. Buscar al usuario y su estado actual
+      // 2. Buscar al usuario y su estado actual
       const userRes = await client.query(
         `SELECT u.id, u.nombre, u.apellido, u.email, u.evento_id, ei.codigo AS estado_codigo
          FROM usuarios u
          JOIN estados_inscripcion ei ON u.estado_inscripcion_id = ei.id
-         WHERE u.dni_pasaporte = $1
+         WHERE UPPER(u.dni_pasaporte) = $1
          ORDER BY u.actualizado_en DESC
          LIMIT 1`,
-        [dni_pasaporte]
+        [cleanDni]
       );
 
       if (userRes.rowCount === 0) {
@@ -63,7 +246,7 @@ router.post('/cancelar', async (req: Request, res: Response) => {
 
       const estabaConfirmado = usuario.estado_codigo === 'CONFIRMADO';
 
-      // 2. Pasar al usuario a estado CANCELADO
+      // 3. Pasar al usuario a estado CANCELADO
       await client.query(
         `UPDATE usuarios
          SET estado_inscripcion_id = (SELECT id FROM estados_inscripcion WHERE codigo = 'CANCELADO'),
@@ -80,7 +263,8 @@ router.post('/cancelar', async (req: Request, res: Response) => {
           usuario.id,
           JSON.stringify({
             dni_pasaporte,
-            motivo: motivo || 'Cancelación voluntaria solicitada por el usuario desde PWA',
+            motivo: motivo || 'Cancelación voluntaria solicitada por el usuario',
+            metodo_validacion: metodoValidacion,
             estaba_confirmado: estabaConfirmado,
           }),
         ]
@@ -88,7 +272,7 @@ router.post('/cancelar', async (req: Request, res: Response) => {
 
       let usuarioPromovido = null;
 
-      // 3. Si el usuario estaba CONFIRMADO, promover automáticamente al primer aspirante de LISTA_ESPERA (no sancionado)
+      // 4. Si el usuario estaba CONFIRMADO, promover automáticamente al primer aspirante de LISTA_ESPERA (FIFO)
       if (estabaConfirmado) {
         const waitIdRes = await client.query(
           `SELECT id FROM estados_inscripcion WHERE codigo = 'LISTA_ESPERA'`
@@ -131,6 +315,7 @@ router.post('/cancelar', async (req: Request, res: Response) => {
                   motivo: `Vacante liberada por auto-baja de usuario ${dni_pasaporte}`,
                   promovido: `${aspirante.nombre} ${aspirante.apellido}`,
                   dni: aspirante.dni_pasaporte,
+                  metodo_baja_origen: metodoValidacion,
                 }),
               ]
             );

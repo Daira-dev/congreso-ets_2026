@@ -4,10 +4,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const ALGORITHM = 'aes-256-cbc';
-const DEFAULT_KEY_HEX = 'e4b7c1a89f2d3e4b5a6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a';
 
 function getEncryptionKey(): Buffer {
-  const keyHex = process.env.ENCRYPTION_KEY || DEFAULT_KEY_HEX;
+  const keyHex = process.env.ENCRYPTION_KEY;
+  if (!keyHex || keyHex.length !== 64) {
+    throw new Error(
+      'FATAL DE SEGURIDAD: La variable ENCRYPTION_KEY es obligatoria y debe ser de exactamente 32 bytes (64 caracteres hexadecimales).'
+    );
+  }
   const keyBuffer = Buffer.from(keyHex, 'hex');
   if (keyBuffer.length !== 32) {
     throw new Error(

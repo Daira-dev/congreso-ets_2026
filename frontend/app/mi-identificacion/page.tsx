@@ -265,6 +265,7 @@ function MiIdentificaciónContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           dni_pasaporte: usuario.dni_pasaporte,
+          qr_token: qrToken,
           motivo: 'Cancelación voluntaria solicitada desde la identificacion digital PWA',
         }),
       });

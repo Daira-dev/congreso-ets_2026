@@ -1,15 +1,19 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { query, withTransaction } from '../lib/db';
 import { acreditarSchema, batchAcreditarSchema, walkInRegisterSchema } from '../lib/schemas';
 import { decryptQRPayload, encryptQRPayload } from '../lib/cryptoQR';
+import { AuthenticatedRequest, requireHierarchy } from '../middlewares/authMiddleware';
 
 const router = Router();
+
+// Blindaje SEC-03: Todo el módulo operativo de acreditación exige sesión de Operador (Nivel 3+)
+router.use(requireHierarchy(3));
 
 /**
  * GET /api/operator/config
  * Devuelve operadores activos, puntos de acceso y tipos de acreditación
  */
-router.get('/config', async (_req: Request, res: Response): Promise<void> => {
+router.get('/config', async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const [operadoresRes, puntosRes, tiposRes, actividadesRes] = await Promise.all([
       query(`
@@ -54,7 +58,7 @@ router.get('/config', async (_req: Request, res: Response): Promise<void> => {
  * GET /api/operator/recent
  * Ticker en vivo de las últimas 10 acreditaciones
  */
-router.get('/recent', async (_req: Request, res: Response): Promise<void> => {
+router.get('/recent', async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const recentRes = await query(`
       SELECT 
@@ -96,7 +100,7 @@ router.get('/recent', async (_req: Request, res: Response): Promise<void> => {
  * POST /api/operator/acreditar
  * Validación de credencial QR, control Anti-Passback bidireccional y registro de acceso
  */
-router.post('/acreditar', async (req: Request, res: Response): Promise<void> => {
+router.post('/acreditar', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const parsed = acreditarSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -118,6 +122,9 @@ router.post('/acreditar', async (req: Request, res: Response): Promise<void> => 
       es_manual,
       motivo_manual,
     } = parsed.data;
+
+    // Identidad del operador estrictamente desde la sesión autenticada
+    const operadorId = req.operator?.sub || operador_id || 1;
 
     let usuarioId: string | null = null;
     let dniFinal: string | null = null;
@@ -233,7 +240,6 @@ router.post('/acreditar', async (req: Request, res: Response): Promise<void> => 
       }
     }
 
-    const operadorId = operador_id || 1;
     const tipoMovimiento = (parsed.data as any).tipo_movimiento || 'INGRESO';
 
     // Anti-Passback
@@ -317,7 +323,7 @@ router.post('/acreditar', async (req: Request, res: Response): Promise<void> => 
  * POST /api/operator/acreditar-batch
  * Sincronización en lote para terminales offline (IndexedDB)
  */
-router.post('/acreditar-batch', async (req: Request, res: Response): Promise<void> => {
+router.post('/acreditar-batch', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const parsed = batchAcreditarSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -328,6 +334,7 @@ router.post('/acreditar-batch', async (req: Request, res: Response): Promise<voi
     const { acreditaciones } = parsed.data;
     let procesados = 0;
     let errores = 0;
+    const currentOpId = req.operator?.sub || 1;
 
     await withTransaction(async (client) => {
       for (const item of acreditaciones) {
@@ -339,7 +346,7 @@ router.post('/acreditar-batch', async (req: Request, res: Response): Promise<voi
             ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [
               payload.u,
-              item.operador_id || 1,
+              currentOpId,
               item.tipo_acreditacion_id,
               item.actividad_id || null,
               item.punto_acceso_id,
@@ -370,7 +377,7 @@ router.post('/acreditar-batch', async (req: Request, res: Response): Promise<voi
  * POST /api/operator/walk-in
  * Alta rápida de mostrador para asistentes espontáneos in situ.
  */
-router.post('/walk-in', async (req: Request, res: Response): Promise<void> => {
+router.post('/walk-in', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const parsed = walkInRegisterSchema.safeParse(req.body);
 
@@ -391,6 +398,8 @@ router.post('/walk-in', async (req: Request, res: Response): Promise<void> => {
     } = parsed.data;
 
     const targetEventoId = evento_id || 1;
+    const currentOpId = req.operator?.sub || 1;
+    const currentOpActor = req.operator?.email || 'OPERADOR_MOSTRADOR';
 
     // Invocación a registrar_usuario_seguro con superadmin_override = true para asegurar confirmación in situ
     const regRes = await query(
@@ -420,15 +429,16 @@ router.post('/walk-in', async (req: Request, res: Response): Promise<void> => {
     await query(
       `INSERT INTO acreditaciones (
         usuario_id, operador_id, tipo_acreditacion_id, actividad_id, punto_acceso_id, es_manual, motivo_manual, tipo_movimiento, timestamp_acreditacion
-      ) VALUES ($1, 1, 1, NULL, $2, TRUE, 'Acreditación Rápida de Mostrador (Walk-in)', 'INGRESO', NOW())`,
-      [usuarioId, punto_acceso_id]
+      ) VALUES ($1, $2, 1, NULL, $3, TRUE, 'Acreditación Rápida de Mostrador (Walk-in)', 'INGRESO', NOW())`,
+      [usuarioId, currentOpId, punto_acceso_id]
     );
 
     // Auditoría
     await query(
       `INSERT INTO logs_auditoria (evento, actor_usuario, usuario_afectado_id, detalles, timestamp)
-       VALUES ('ACREDITACION_WALK_IN', 'OPERADOR_MOSTRADOR', $1, $2, NOW())`,
+       VALUES ('ACREDITACION_WALK_IN', $1, $2, $3, NOW())`,
       [
+        currentOpActor,
         usuarioId,
         JSON.stringify({
           dni_pasaporte,

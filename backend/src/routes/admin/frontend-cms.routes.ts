@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { query } from '../../lib/db';
 import { AuthenticatedRequest, requireHierarchy } from '../../middlewares/authMiddleware';
+import { validateMagicBytes, sanitizeSvg } from '../../lib/fileSecurity';
 
 export interface FrontendCard {
   id: number | string;
@@ -688,7 +689,26 @@ router.post('/upload', requireHierarchy(3), async (req: AuthenticatedRequest, re
 
     // Extraer base64 puro
     const base64Data = fileBase64.replace(/^data:[^;]+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
+    let buffer = Buffer.from(base64Data, 'base64');
+
+    // Blindaje SEC-09: Verificación de Magic Bytes y Sanitización de SVG (Stored XSS prevention)
+    if (!validateMagicBytes(buffer, ext)) {
+      res.status(400).json({
+        ok: false,
+        error: 'ERR_INVALID_FILE_CONTENT',
+        message: `El contenido binario del archivo no coincide con su extensión declarada ("${ext}").`,
+      });
+      return;
+    }
+
+    if (ext === '.svg') {
+      const sanitized = sanitizeSvg(buffer);
+      if (!sanitized.valid || !sanitized.sanitizedBuffer) {
+        res.status(400).json({ ok: false, error: 'ERR_INVALID_SVG', message: sanitized.error || 'Archivo SVG malformado o inseguro.' });
+        return;
+      }
+      buffer = Buffer.from(sanitized.sanitizedBuffer as any);
+    }
 
     // Directorio de destino: frontend/public/uploads/
     const uploadsDir = path.resolve(__dirname, '../../../../frontend/public/uploads');

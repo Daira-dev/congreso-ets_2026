@@ -3,9 +3,13 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const connectionString =
-  process.env.DATABASE_URL ||
-  'postgresql://congreso_app:V-129057-t@localhost:5433/congreso_ets2026';
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error(
+    'FATAL DE SEGURIDAD: La variable de entorno DATABASE_URL es obligatoria para establecer conexión con PostgreSQL.'
+  );
+}
 
 const isCloudDb = connectionString.includes('sslmode=require') || connectionString.includes('rlwy.net') || connectionString.includes('railway');
 

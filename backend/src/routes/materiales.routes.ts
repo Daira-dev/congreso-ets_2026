@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { query } from '../lib/db';
 import { AuthenticatedRequest, requireHierarchy } from '../middlewares/authMiddleware';
+import { validateMagicBytes, sanitizeSvg } from '../lib/fileSecurity';
 
 const router = Router();
 
@@ -474,7 +475,25 @@ router.post('/upload-imagen', requireHierarchy(4), async (req: AuthenticatedRequ
     }
 
     const base64Data = fileBase64.replace(/^data:[^;]+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
+    let buffer = Buffer.from(base64Data, 'base64');
+
+    // Blindaje SEC-09: Verificación de Magic Bytes y Sanitización de SVG (Stored XSS prevention)
+    if (!validateMagicBytes(buffer, ext)) {
+      res.status(400).json({
+        success: false,
+        error: `El contenido binario del archivo no coincide con su extensión declarada ("${ext}").`,
+      });
+      return;
+    }
+
+    if (ext === '.svg') {
+      const sanitized = sanitizeSvg(buffer);
+      if (!sanitized.valid || !sanitized.sanitizedBuffer) {
+        res.status(400).json({ success: false, error: sanitized.error || 'Archivo SVG malformado o inseguro.' });
+        return;
+      }
+      buffer = Buffer.from(sanitized.sanitizedBuffer as any);
+    }
 
     // Directorios de persistencia física: imagenes_de_materiales/
     const rootDir = path.resolve(__dirname, '../../../imagenes_de_materiales');
