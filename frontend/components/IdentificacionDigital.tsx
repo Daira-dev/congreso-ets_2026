@@ -15,19 +15,38 @@ interface IdentificaciónProps {
   };
   qr_token: string;
   plantilla?: any;
+  politica?: any;
 }
 
-export const IdentificacionDigital: React.FC<IdentificaciónProps> = ({ usuario, qr_token, plantilla: propPlantilla }) => {
+const parseBool = (val: any, defaultVal = true): boolean => {
+  if (val === undefined || val === null) return defaultVal;
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'string') return val.trim().toLowerCase() !== 'false' && val.trim() !== '0';
+  if (typeof val === 'number') return val !== 0;
+  return Boolean(val);
+};
+
+export const IdentificacionDigital: React.FC<IdentificaciónProps> = ({
+  usuario,
+  qr_token,
+  plantilla: propPlantilla,
+  politica: propPolitica,
+}) => {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [fetchedPlantilla, setFetchedPlantilla] = useState<any>(null);
+  const [fetchedPolitica, setFetchedPolitica] = useState<any>(null);
 
   useEffect(() => {
     let isMounted = true;
     fetch('/api/identificacion/plantilla', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
-        if (isMounted && data?.plantilla) {
+        if (!isMounted) return;
+        if (data?.plantilla) {
           setFetchedPlantilla(data.plantilla);
+        }
+        if (data?.politica_acreditacion) {
+          setFetchedPolitica(data.politica_acreditacion);
         }
       })
       .catch(() => {});
@@ -37,6 +56,10 @@ export const IdentificacionDigital: React.FC<IdentificaciónProps> = ({ usuario,
   }, []);
 
   const activePlantilla = fetchedPlantilla || propPlantilla || null;
+  const activePolitica = fetchedPolitica || propPolitica || null;
+  const exigirDniFisico = parseBool(activePolitica?.exigir_dni_fisico, true);
+  const mostrarFoto = parseBool(activePolitica?.mostrar_foto_operador, true);
+  const relojAnimado = parseBool(activePolitica?.reloj_animado_credencial, true);
   const widgets: any[] = Array.isArray(activePlantilla?.widgets) ? activePlantilla.widgets : [];
 
   const headerBadgeWidget =
@@ -179,36 +202,40 @@ export const IdentificacionDigital: React.FC<IdentificaciónProps> = ({ usuario,
         </div>
 
         {/* Marca de agua viva con segundero en tiempo real (Anti-captura digital en pantalla) */}
-        <div className="mb-2 no-print">
-          <div className="live-watermark text-primary">
-            <i className="bx bx-time-five bx-spin"></i>
-            <span>EN VIVO: {currentTime}</span>
+        {relojAnimado && (
+          <div className="mb-2 no-print">
+            <div className="live-watermark text-primary">
+              <i className="bx bx-time-five bx-spin"></i>
+              <span>EN VIVO: {currentTime}</span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Foto del Participante */}
-        <div className="mb-2">
-          {usuario.foto_url ? (
-            <img
-              src={usuario.foto_url}
-              alt="Foto oficial"
-              className="rounded-circle shadow"
-              style={{
-                width: '100px',
-                height: '100px',
-                objectFit: 'cover',
-                border: '3px solid #005691',
-              }}
-            />
-          ) : (
-            <div
-              className="rounded-circle bg-light d-inline-flex align-items-center justify-content-center shadow-sm"
-              style={{ width: '100px', height: '100px', border: '3px solid #cbd5e1' }}
-            >
-              <i className="bx bx-user fs-1 text-secondary"></i>
-            </div>
-          )}
-        </div>
+        {mostrarFoto && (
+          <div className="mb-2">
+            {usuario.foto_url ? (
+              <img
+                src={usuario.foto_url}
+                alt="Foto oficial"
+                className="rounded-circle shadow"
+                style={{
+                  width: '100px',
+                  height: '100px',
+                  objectFit: 'cover',
+                  border: '3px solid #005691',
+                }}
+              />
+            ) : (
+              <div
+                className="rounded-circle bg-light d-inline-flex align-items-center justify-content-center shadow-sm"
+                style={{ width: '100px', height: '100px', border: '3px solid #cbd5e1' }}
+              >
+                <i className="bx bx-user fs-1 text-secondary"></i>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Datos del Participante */}
         <h2 className="h5 fw-bold text-dark mb-0">
@@ -267,12 +294,14 @@ export const IdentificacionDigital: React.FC<IdentificaciónProps> = ({ usuario,
         </div>
 
         <div
-          className="alert alert-info py-2 px-3 small mb-3 text-start no-print"
+          className={`alert ${exigirDniFisico ? 'alert-info' : 'alert-success'} py-2 px-3 small mb-3 text-start no-print`}
           style={{ fontSize: '0.8rem' }}
         >
-          <i className="bx bx-info-circle me-1"></i>
-          <strong>Control en Puerta:</strong> Exhibí esta pantalla activa junto a tu DNI físico en el
-          ingreso al Auditorio Polo Saavedra.
+          <i className={`bx ${exigirDniFisico ? 'bx-info-circle' : 'bx-check-shield'} me-1`}></i>
+          <strong>Control en Puerta:</strong>{' '}
+          {exigirDniFisico
+            ? 'Exhibí esta pantalla activa junto a tu DNI físico en el ingreso al Auditorio Polo Saavedra.'
+            : 'Exhibí únicamente esta identificación activa en el ingreso al Auditorio Polo Saavedra (No se exige DNI físico).'}
         </div>
 
         <button
@@ -289,7 +318,9 @@ export const IdentificacionDigital: React.FC<IdentificaciónProps> = ({ usuario,
         <div style={{ borderTop: '1px solid #cbd5e1', width: '75%', margin: '0 auto 6px auto' }}></div>
         <div style={{ fontSize: '7.5pt', color: '#475569', lineHeight: '1.4' }}>
           <strong>Instrucciones para el Asistente:</strong><br />
-          1. Presentá esta identificacion física o en tu teléfono junto con tu DNI físico en los molinetes de ingreso.<br />
+          1. {exigirDniFisico
+            ? 'Presentá esta identificacion física o en tu teléfono junto con tu DNI físico en los molinetes de ingreso.'
+            : 'Presentá únicamente esta identificacion física o en tu teléfono en los molinetes de ingreso (No se exige DNI físico).'}<br />
           2. El código QR es personal e intransferible y registra tus ingresos y egresos al auditorio.<br />
           3. Las asistencias registradas habilitan automáticamente tu constancia de asistencia oficial.
         </div>

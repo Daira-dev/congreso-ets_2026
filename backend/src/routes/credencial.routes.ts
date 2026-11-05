@@ -21,17 +21,44 @@ const credencialLimiter = rateLimit({
 });
 
 /**
+ * Helper para obtener plantilla y política de acreditación desde configuraciones_sistema
+ */
+async function getCredencialConfigs() {
+  let plantilla: any = null;
+  let politica_acreditacion: any = {
+    exigir_dni_fisico: true,
+    mostrar_foto_operador: true,
+    reloj_animado_credencial: true,
+  };
+
+  try {
+    const cfgRes = await query(
+      `SELECT clave, valor FROM configuraciones_sistema WHERE clave IN ('plantilla_identificacion_digital', 'politica_acreditacion')`
+    );
+    for (const row of cfgRes.rows) {
+      const parsedVal = typeof row.valor === 'string' ? JSON.parse(row.valor) : row.valor;
+      if (row.clave === 'plantilla_identificacion_digital') {
+        plantilla = parsedVal;
+      } else if (row.clave === 'politica_acreditacion' && parsedVal && typeof parsedVal === 'object') {
+        politica_acreditacion = {
+          ...politica_acreditacion,
+          ...parsedVal,
+        };
+      }
+    }
+  } catch (_) {}
+
+  return { plantilla, politica_acreditacion };
+}
+
+/**
  * GET /api/credencial/plantilla
- * Obtiene la plantilla configurada en configuraciones_sistema (plantilla_identificacion_digital)
+ * Obtiene la plantilla y la política de acreditación configuradas en configuraciones_sistema
  */
 router.get('/plantilla', async (_req: Request, res: Response): Promise<void> => {
   try {
-    const tplRes = await query(
-      `SELECT valor FROM configuraciones_sistema WHERE clave = 'plantilla_identificacion_digital' LIMIT 1`
-    );
-    const rawVal = tplRes.rows[0]?.valor ?? null;
-    const plantilla = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
-    res.json({ ok: true, success: true, plantilla });
+    const { plantilla, politica_acreditacion } = await getCredencialConfigs();
+    res.json({ ok: true, success: true, plantilla, politica_acreditacion });
   } catch (error: any) {
     console.error('Error en GET /api/credencial/plantilla:', error);
     res.status(500).json({ ok: false, error: 'ERR_SERVER', message: 'Error al obtener plantilla de credencial.' });
@@ -156,14 +183,7 @@ router.get('/', credencialLimiter, async (req: Request, res: Response): Promise<
       });
     }
 
-    let plantilla: any = null;
-    try {
-      const tplRes = await query(
-        `SELECT valor FROM configuraciones_sistema WHERE clave = 'plantilla_identificacion_digital' LIMIT 1`
-      );
-      const rawVal = tplRes.rows[0]?.valor ?? null;
-      plantilla = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
-    } catch (_) {}
+    const { plantilla, politica_acreditacion } = await getCredencialConfigs();
 
     res.json({
       success: true,
@@ -184,6 +204,7 @@ router.get('/', credencialLimiter, async (req: Request, res: Response): Promise<
       qr_token: qrToken,
       qr_image: qrImageDataUrl,
       plantilla,
+      politica_acreditacion,
     });
   } catch (error: any) {
     console.error('Error en GET /api/credencial:', error);

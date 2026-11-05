@@ -22,12 +22,14 @@ function MiCredencialContent() {
   const [encuestaPendiente, setEncuestaPendiente] = useState<boolean>(false);
   const [isSurveyModalOpen, setIsSurveyModalOpen] = useState<boolean>(false);
   const [plantilla, setPlantilla] = useState<any>(null);
+  const [politica, setPolitica] = useState<any>(null);
 
   useEffect(() => {
     fetch('/api/credencial/plantilla', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {
         if (d?.plantilla) setPlantilla(d.plantilla);
+        if (d?.politica_acreditacion) setPolitica(d.politica_acreditacion);
       })
       .catch(() => {});
   }, []);
@@ -69,6 +71,8 @@ function MiCredencialContent() {
         setUsuario(u);
         setQrToken(token);
         setOfflineCached(false);
+        if (data.plantilla) setPlantilla(data.plantilla);
+        if (data.politica_acreditacion) setPolitica(data.politica_acreditacion);
 
         // Consultar estado de encuesta y certificado
         try {
@@ -451,6 +455,7 @@ function MiCredencialContent() {
               }}
               qr_token={qrToken || `token_${usuario.id}`}
               plantilla={plantilla}
+              politica={politica}
             />
 
             {/* Tarjeta de Diploma Oficial para Asistentes con Acreditación Presencial */}
