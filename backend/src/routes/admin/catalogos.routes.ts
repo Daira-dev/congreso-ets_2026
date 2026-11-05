@@ -1,20 +1,8 @@
 import { Router, Response } from 'express';
-import { query } from '../../lib/db';
+import { query, withTransaction } from '../../lib/db';
 import { AuthenticatedRequest, requireHierarchy } from '../../middlewares/authMiddleware';
 
 const router = Router();
-
-// Roles canónicos del sistema protegidos contra eliminación o degradación
-const ROLES_SISTEMA_PROTEGIDOS = [
-  'superadmin',
-  'administrador',
-  'operador',
-  'verificador',
-  'estudiante',
-  'docente',
-  'expositor',
-  'autoridad',
-];
 
 /**
  * GET /api/admin/catalogos
@@ -204,11 +192,11 @@ router.put('/roles/:id', requireHierarchy(5), async (req: AuthenticatedRequest, 
 
     // Auditoría forense
     await query(
-      `INSERT INTO logs_auditoria (tabla_afectada, registro_id, accion, usuario_responsable, datos_previos, datos_nuevos) 
+      `INSERT INTO logs_auditoria (tabla_afectada, registro_id, accion, usuario_responsable, detalles, datos_nuevos) 
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         'roles',
-        id,
+        String(id),
         'ROL_ACTUALIZADO',
         req.operator?.email || 'SUPERADMIN',
         JSON.stringify(currentRol),
@@ -225,7 +213,7 @@ router.put('/roles/:id', requireHierarchy(5), async (req: AuthenticatedRequest, 
 
 /**
  * DELETE /api/admin/catalogos/roles/:id
- * Elimina un rol institucional si no tiene dependencias activas. Exclusivo de Superadmin (Nivel 5).
+ * Elimina un rol institucional reasignando automáticamente sus dependencias si las tuviera. Exclusivo de Superadmin (Nivel 5).
  */
 router.delete('/roles/:id', requireHierarchy(5), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -243,64 +231,91 @@ router.delete('/roles/:id', requireHierarchy(5), async (req: AuthenticatedReques
 
     const rol = rolCheck.rows[0];
 
-    // Protección de roles esenciales del sistema
-    if (
-      rol.jerarquia >= 5 ||
-      ROLES_SISTEMA_PROTEGIDOS.includes(rol.nombre.toLowerCase().trim())
-    ) {
-      res.status(403).json({
-        ok: false,
-        message: `Acción bloqueada: El rol esencial del sistema "${rol.nombre}" no puede ser eliminado.`,
-      });
-      return;
+    // Solo impedir si es el único rol de nivel 5 (Superadmin) para no dejar al sistema sin administración
+    if (rol.jerarquia >= 5) {
+      const otherSuperRes = await query(
+        `SELECT COUNT(*)::int as c FROM roles WHERE jerarquia >= 5 AND id <> $1`,
+        [id]
+      );
+      if (otherSuperRes.rows[0].c === 0) {
+        res.status(403).json({
+          ok: false,
+          message: `Acción bloqueada: No se puede eliminar el único rol de nivel Superadmin ("${rol.nombre}") del sistema.`,
+        });
+        return;
+      }
     }
 
-    // Comprobar dependencias en usuarios
-    const inUseUsuarios = await query(`SELECT COUNT(*)::int as c FROM usuarios WHERE rol_principal_id = $1`, [id]);
-    if (inUseUsuarios.rows[0].c > 0) {
+    // Buscar un rol alternativo de jerarquía equivalente o más cercana para reasignar dependencias si existen
+    const fallbackRes = await query(
+      `SELECT id, nombre, jerarquia FROM roles WHERE id <> $1 ORDER BY ABS(jerarquia - $2) ASC, id ASC LIMIT 1`,
+      [id, rol.jerarquia]
+    );
+
+    if (fallbackRes.rows.length === 0) {
       res.status(409).json({
         ok: false,
-        message: `No se puede eliminar el rol porque está asignado a ${inUseUsuarios.rows[0].c} participante(s) en la base de datos.`,
+        message: 'No se puede eliminar el único rol existente en la base de datos.',
       });
       return;
     }
 
-    // Comprobar dependencias en operadores
-    const inUseOperadores = await query(`SELECT COUNT(*)::int as c FROM operadores WHERE rol_id = $1`, [id]);
-    if (inUseOperadores.rows[0].c > 0) {
-      res.status(409).json({
-        ok: false,
-        message: `No se puede eliminar el rol porque está asignado a ${inUseOperadores.rows[0].c} operador(es) del sistema.`,
-      });
-      return;
-    }
+    const fallbackRol = fallbackRes.rows[0];
 
-    // Comprobar dependencias en roles adicionales
-    const inUseAdicionales = await query(`SELECT COUNT(*)::int as c FROM usuario_roles_adicionales WHERE rol_id = $1`, [id]);
-    if (inUseAdicionales.rows[0].c > 0) {
-      res.status(409).json({
-        ok: false,
-        message: `No se puede eliminar el rol porque está asignado como rol adicional a ${inUseAdicionales.rows[0].c} usuario(s).`,
-      });
-      return;
-    }
+    const resultStats = await withTransaction(async (client) => {
+      const updUsers = await client.query(
+        `UPDATE usuarios SET rol_principal_id = $1 WHERE rol_principal_id = $2`,
+        [fallbackRol.id, id]
+      );
 
-    await query(`DELETE FROM roles WHERE id = $1`, [id]);
+      const updOps = await client.query(
+        `UPDATE operadores SET rol_id = $1 WHERE rol_id = $2`,
+        [fallbackRol.id, id]
+      );
 
-    // Auditoría forense
+      await client.query(
+        `UPDATE encuesta_respuestas SET rol_id = $1 WHERE rol_id = $2`,
+        [fallbackRol.id, id]
+      );
+
+      await client.query(`DELETE FROM usuario_roles_adicionales WHERE rol_id = $1`, [id]);
+
+      await client.query(`DELETE FROM roles WHERE id = $1`, [id]);
+
+      return {
+        usuariosReasignados: updUsers.rowCount || 0,
+        operadoresReasignados: updOps.rowCount || 0,
+      };
+    });
+
     await query(
-      `INSERT INTO logs_auditoria (tabla_afectada, registro_id, accion, usuario_responsable, datos_previos) 
-       VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO logs_auditoria (tabla_afectada, registro_id, accion, usuario_responsable, detalles, datos_nuevos) 
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         'roles',
-        id,
+        String(id),
         'ROL_ELIMINADO',
         req.operator?.email || 'SUPERADMIN',
         JSON.stringify(rol),
+        JSON.stringify({
+          rol_reasignado_id: fallbackRol.id,
+          rol_reasignado_nombre: fallbackRol.nombre,
+          usuarios_reasignados: resultStats.usuariosReasignados,
+          operadores_reasignados: resultStats.operadoresReasignados,
+        }),
       ]
     ).catch(() => {});
 
-    res.json({ ok: true, mensaje: `Rol institucional "${rol.nombre}" eliminado correctamente.` });
+    const totalReasignados = resultStats.usuariosReasignados + resultStats.operadoresReasignados;
+    const detalleReasignacion =
+      totalReasignados > 0
+        ? ` (${totalReasignados} registro(s) reasignados automáticamente a "${fallbackRol.nombre}")`
+        : '';
+
+    res.json({
+      ok: true,
+      mensaje: `Rol institucional "${rol.nombre}" eliminado correctamente${detalleReasignacion}.`,
+    });
   } catch (error: any) {
     console.error('Error en DELETE /api/admin/catalogos/roles/:id:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });

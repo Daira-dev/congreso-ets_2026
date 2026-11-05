@@ -1094,7 +1094,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       const res = await fetch(`/api/admin/catalogos/roles/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (res.ok && data.ok) {
-        onNotice('Rol eliminado correctamente.');
+        onNotice(data.mensaje || 'Rol eliminado correctamente.');
         loadAllData();
       } else {
         await Swal.fire({
