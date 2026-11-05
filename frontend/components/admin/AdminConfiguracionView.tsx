@@ -1344,32 +1344,100 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       {tab === 'backups' && (
         <div className="space-y-4">
           {/* Sub-navegación entre Copias Integrales y Dumps SQL */}
-          <div className="flex gap-2 border-b border-gray-200 pb-2">
+          <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
             <button
-              onClick={() => setBackupSubtab('integrales')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              type="button"
+              onClick={async () => {
+                const wasAlreadyActive = backupSubtab === 'integrales';
+                setBackupSubtab('integrales');
+                let currentList = backups;
+                try {
+                  const res = await fetch('/api/admin/backups');
+                  if (res.ok) {
+                    const data = await res.json();
+                    currentList = data.backups || [];
+                    setBackups(currentList);
+                  }
+                } catch (_) {}
+
+                if (!wasAlreadyActive) {
+                  onNotice(`📦 Vista de Copias Integrales (.ZIP) activa (${currentList.length} archivos disponibles).`);
+                  return;
+                }
+
+                const totalMb = (
+                  currentList.reduce((acc, item) => acc + (Number(item.sizeBytes) || 0), 0) /
+                  (1024 * 1024)
+                ).toFixed(2);
+                const latest = currentList[0];
+
+                const result = await Swal.fire({
+                  icon: 'info',
+                  title: '📦 Copias Integrales (.ZIP)',
+                  html: latest
+                    ? `<div style="text-align:left;font-size:0.88rem;line-height:1.6;">
+                        <p style="margin-bottom:8px;">Estado actual del repositorio de copias integrales en el servidor:</p>
+                        <ul style="padding-left:18px;margin-bottom:10px;">
+                          <li><strong>Total de archivos .ZIP:</strong> ${currentList.length}</li>
+                          <li><strong>Espacio total en disco:</strong> ${totalMb} MB</li>
+                          <li><strong>Última copia generada:</strong> <code style="font-size:0.78rem;">${latest.filename}</code></li>
+                          <li><strong>Fecha:</strong> ${new Date(latest.createdAt).toLocaleString('es-AR')}</li>
+                        </ul>
+                        <p style="margin:0;color:#475569;font-size:0.8rem;">Puedes descargar directamente la copia más reciente o generar un nuevo paquete .ZIP ahora.</p>
+                      </div>`
+                    : `<p style="font-size:0.88rem;">Actualmente no hay copias integrales (.ZIP) registradas. ¿Deseas generar la primera copia ahora?</p>`,
+                  showCancelButton: true,
+                  showDenyButton: Boolean(latest),
+                  confirmButtonText: '💾 Crear Nueva Copia (.ZIP)',
+                  denyButtonText: '📥 Descargar Última (.ZIP)',
+                  cancelButtonText: 'Cerrar',
+                  confirmButtonColor: '#2563eb',
+                  denyButtonColor: '#059669',
+                });
+
+                if (result.isConfirmed) {
+                  await handleCreateBackup();
+                } else if (result.isDenied && latest) {
+                  const link = document.createElement('a');
+                  link.href = `/api/admin/backups/descargar/${encodeURIComponent(latest.filename)}`;
+                  link.setAttribute('download', latest.filename);
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 backupSubtab === 'integrales'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-200'
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
               }`}
+              title="Ver historial, resumen de almacenamiento o descargar la última copia integral (.ZIP)"
             >
               📦 Copias Integrales (.ZIP) ({backups.length})
             </button>
             <button
-              onClick={() => setBackupSubtab('dumps')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              type="button"
+              onClick={() => {
+                setBackupSubtab('dumps');
+                loadSqlDumps();
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 backupSubtab === 'dumps'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-200'
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
               }`}
             >
               🗄️ Dumps de Base de Datos (.SQL) ({sqlDumps.length})
             </button>
             <button
-              onClick={() => setBackupSubtab('visitantes')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              type="button"
+              onClick={() => {
+                setBackupSubtab('visitantes');
+                loadVisitorBackups();
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 backupSubtab === 'visitantes'
-                  ? 'bg-red-600 text-white shadow-xs'
+                  ? 'bg-red-600 text-white shadow-xs ring-2 ring-red-200'
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
               }`}
             >
