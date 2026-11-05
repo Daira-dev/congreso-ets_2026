@@ -42,7 +42,7 @@ router.get('/', requireHierarchy(3), async (_req: AuthenticatedRequest, res: Res
       query(`SELECT id, codigo, descripcion, requiere_actividad FROM tipos_acreditacion ORDER BY id ASC`),
       query(`SELECT id, nombre, tipo_acreditacion_id, punto_acceso_id, cupo_maximo, disertante_nombre, disertante_usuario_id, catalogo_actividad_id FROM actividades WHERE activo = TRUE ORDER BY id ASC`),
       query(`SELECT id, codigo, nombre, descripcion, tipo_acreditacion_id, categoria_tematica_id, horas_catedra, activo FROM catalogo_actividades WHERE activo = TRUE ORDER BY codigo ASC`),
-      query(`SELECT id, nombre, descripcion, activo FROM categorias_tematicas WHERE activo = TRUE ORDER BY nombre ASC`),
+      query(`SELECT id, nombre, descripcion, activo FROM categorias_tematicas ORDER BY nombre ASC`),
       query(`
         SELECT DISTINCT u.id, u.nombre, u.apellido, u.email, u.dni_pasaporte, r.nombre AS rol_nombre,
                COALESCE(he.estado_homologacion, 'NO_REQUERIDO') AS homologacion_estado
@@ -523,14 +523,37 @@ router.put('/categorias-tematicas/:id', requireHierarchy(4), async (req: Authent
     }
 
     const { nombre, descripcion, activo } = req.body;
+    const cleanNombre = nombre && typeof nombre === 'string' && nombre.trim() ? nombre.trim() : null;
+
+    if (cleanNombre) {
+      const dupCheck = await query(
+        `SELECT id FROM categorias_tematicas WHERE LOWER(nombre) = LOWER($1) AND id <> $2`,
+        [cleanNombre, id]
+      );
+      if (dupCheck.rows.length > 0) {
+        res.status(409).json({
+          ok: false,
+          message: `Ya existe otra categoría temática con el nombre "${cleanNombre}".`,
+        });
+        return;
+      }
+    }
+
+    const hasDescUpdate = descripcion !== undefined;
+    const cleanDesc = hasDescUpdate ? (descripcion ? String(descripcion).trim() : null) : null;
+    const activoBool =
+      activo !== undefined
+        ? activo === true || activo === 'true'
+        : null;
+
     const upd = await query(
       `UPDATE categorias_tematicas 
        SET nombre = COALESCE($1, nombre), 
-           descripcion = COALESCE($2, descripcion), 
-           activo = COALESCE($3, activo) 
-       WHERE id = $4 
+           descripcion = CASE WHEN $2::boolean THEN $3 ELSE descripcion END, 
+           activo = COALESCE($4, activo) 
+       WHERE id = $5 
        RETURNING *`,
-      [nombre ? String(nombre).trim() : null, descripcion !== undefined ? (descripcion ? String(descripcion).trim() : null) : null, activo, id]
+      [cleanNombre, hasDescUpdate, cleanDesc, activoBool, id]
     );
 
     if (upd.rows.length === 0) {
@@ -547,6 +570,52 @@ router.put('/categorias-tematicas/:id', requireHierarchy(4), async (req: Authent
     res.json({ ok: true, mensaje: 'Categoría temática actualizada exitosamente.', categoria: upd.rows[0] });
   } catch (error: any) {
     console.error('Error en PUT /api/admin/catalogos/categorias-tematicas/:id:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/catalogos/categorias-tematicas/:id
+ */
+router.delete('/categorias-tematicas/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      res.status(400).json({ ok: false, message: 'ID de categoría temática inválido.' });
+      return;
+    }
+
+    const checkRes = await query(`SELECT * FROM categorias_tematicas WHERE id = $1`, [id]);
+    if (checkRes.rows.length === 0) {
+      res.status(404).json({ ok: false, message: 'Categoría temática no encontrada.' });
+      return;
+    }
+    const cat = checkRes.rows[0];
+
+    // Comprobar dependencias en catálogo de actividades
+    const inUseCat = await query(
+      `SELECT COUNT(*)::int as c FROM catalogo_actividades WHERE categoria_tematica_id = $1`,
+      [id]
+    );
+    if (inUseCat.rows[0].c > 0) {
+      res.status(409).json({
+        ok: false,
+        message: `No se puede eliminar la categoría "${cat.nombre}" porque está asignada a ${inUseCat.rows[0].c} actividad(es) del catálogo.`,
+      });
+      return;
+    }
+
+    await query(`DELETE FROM categorias_tematicas WHERE id = $1`, [id]);
+
+    await query(
+      `INSERT INTO logs_auditoria (tabla_afectada, registro_id, accion, usuario_responsable, datos_nuevos) 
+       VALUES ($1, $2, $3, $4, $5)`,
+      ['categorias_tematicas', id, 'CATEGORIA_TEMATICA_ELIMINADA', req.operator?.email || 'ADMIN', JSON.stringify(cat)]
+    ).catch(() => {});
+
+    res.json({ ok: true, mensaje: `Categoría temática "${cat.nombre}" eliminada correctamente.` });
+  } catch (error: any) {
+    console.error('Error en DELETE /api/admin/catalogos/categorias-tematicas/:id:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
   }
 });

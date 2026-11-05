@@ -226,7 +226,8 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
   // Categorías Temáticas
   const [categorias, setCategorias] = useState<CategoriaItem[]>([]);
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
-  const [catForm, setCatForm] = useState({ nombre: '', descripcion: '' });
+  const [currentCat, setCurrentCat] = useState<CategoriaItem | null>(null);
+  const [catForm, setCatForm] = useState({ nombre: '', descripcion: '', activo: true });
 
   // Copias de Seguridad (Backups)
   const [backups, setBackups] = useState<BackupItem[]>([]);
@@ -995,21 +996,71 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
   async function handleSaveCategoria(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const res = await fetch('/api/admin/catalogos/categorias-tematicas', {
-        method: 'POST',
+      const url = currentCat
+        ? `/api/admin/catalogos/categorias-tematicas/${currentCat.id}`
+        : '/api/admin/catalogos/categorias-tematicas';
+      const method = currentCat ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(catForm),
       });
-      if (res.ok) {
-        onNotice('Categoría temática creada.');
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        onNotice(currentCat ? 'Categoría temática actualizada con éxito.' : 'Categoría temática creada con éxito.');
         setIsCatModalOpen(false);
-        setCatForm({ nombre: '', descripcion: '' });
+        setCurrentCat(null);
+        setCatForm({ nombre: '', descripcion: '', activo: true });
         loadAllData();
+      } else {
+        await Swal.fire({
+          title: 'Error en Categoría Temática',
+          text: data.message || 'No se pudo guardar la categoría temática.',
+          icon: 'error',
+          confirmButtonColor: '#dc3545',
+        });
       }
     } catch {
       await Swal.fire({
         title: 'Error',
         text: 'Error al guardar categoría.',
+        icon: 'error',
+        confirmButtonColor: '#dc3545',
+      });
+    }
+  }
+
+  async function handleDeleteCategoria(id: number, nombre: string) {
+    const confirmRes = await Swal.fire({
+      title: '¿Eliminar categoría temática?',
+      text: `¿Seguro que deseas eliminar la categoría "${nombre}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
+    });
+    if (!confirmRes.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/admin/catalogos/categorias-tematicas/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        onNotice(data.mensaje || 'Categoría temática eliminada correctamente.');
+        loadAllData();
+      } else {
+        await Swal.fire({
+          title: 'Error al Eliminar Categoría',
+          text: data.message || 'No se puede eliminar la categoría temática.',
+          icon: 'error',
+          confirmButtonColor: '#dc3545',
+        });
+      }
+    } catch {
+      await Swal.fire({
+        title: 'Error de Conexión',
+        text: 'Error de conexión.',
         icon: 'error',
         confirmButtonColor: '#dc3545',
       });
@@ -1133,7 +1184,11 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
           )}
           {tab === 'categorias' && (
             <button
-              onClick={() => setIsCatModalOpen(true)}
+              onClick={() => {
+                setCurrentCat(null);
+                setCatForm({ nombre: '', descripcion: '', activo: true });
+                setIsCatModalOpen(true);
+              }}
               className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-xs"
             >
               ➕ Nueva Categoría
@@ -1318,6 +1373,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Descripción</th>
                 <th className="px-4 py-3 text-center">Estado</th>
+                <th className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -1332,6 +1388,32 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                     }`}>
                       {c.activo ? 'Vigente' : 'Inactiva'}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-1">
+                      <button
+                        onClick={() => {
+                          setCurrentCat(c);
+                          setCatForm({
+                            nombre: c.nombre,
+                            descripcion: c.descripcion || '',
+                            activo: Boolean(c.activo),
+                          });
+                          setIsCatModalOpen(true);
+                        }}
+                        title="Editar categoría temática"
+                        className="px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded text-xs font-semibold"
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCategoria(c.id, c.nombre)}
+                        title="Eliminar categoría temática"
+                        className="px-2 py-1 bg-red-50 text-red-700 hover:bg-red-100 rounded text-xs font-semibold"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -3457,11 +3539,13 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
         </div>
       )}
 
-      {/* MODAL CREAR CATEGORÍA TEMÁTICA */}
+      {/* MODAL CREAR / EDITAR CATEGORÍA TEMÁTICA */}
       {isCatModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-gray-900">➕ Nueva Categoría Temática</h3>
+            <h3 className="text-base font-bold text-gray-900">
+              {currentCat ? '✏️ Editar Categoría Temática' : '➕ Nueva Categoría Temática'}
+            </h3>
             <form onSubmit={handleSaveCategoria} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-gray-600">Nombre de la Categoría</label>
@@ -3484,10 +3568,23 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                   className="w-full mt-1 p-2 text-sm border rounded-lg"
                 />
               </div>
+              {currentCat && (
+                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={catForm.activo}
+                    onChange={(e) => setCatForm({ ...catForm, activo: e.target.checked })}
+                  />
+                  Categoría vigente (activa)
+                </label>
+              )}
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <button
                   type="button"
-                  onClick={() => setIsCatModalOpen(false)}
+                  onClick={() => {
+                    setIsCatModalOpen(false);
+                    setCurrentCat(null);
+                  }}
                   className="px-4 py-2 border rounded-lg text-sm text-gray-600"
                 >
                   Cancelar
@@ -3496,7 +3593,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                   type="submit"
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold"
                 >
-                  Guardar Categoría
+                  {currentCat ? 'Guardar Cambios' : 'Guardar Categoría'}
                 </button>
               </div>
             </form>
