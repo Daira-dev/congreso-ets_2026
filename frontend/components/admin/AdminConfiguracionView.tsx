@@ -105,6 +105,15 @@ interface PushStats {
   usuarios_vinculados: number;
   desglose_roles: Array<{ rol: string; total: string | number }>;
   vapid_public_key: string;
+  avisos_recientes?: Array<{
+    id: string;
+    title: string;
+    body: string;
+    url: string;
+    urgente: boolean;
+    segmento: string;
+    createdAt: string;
+  }>;
 }
 
 export default function AdminConfiguracionView({ onNotice }: Props) {
@@ -530,6 +539,104 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
     }
   }
 
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  async function subscribeCurrentBrowserToPush(silent = false): Promise<boolean> {
+    if (
+      typeof window === 'undefined' ||
+      !('serviceWorker' in navigator) ||
+      !('PushManager' in window) ||
+      !('Notification' in window)
+    ) {
+      if (!silent) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Navegador no compatible',
+          text: 'Este navegador no soporta suscripciones Web Push en segundo plano.',
+          confirmButtonColor: '#005691',
+        });
+      }
+      return false;
+    }
+
+    try {
+      let perm = Notification.permission;
+      if (perm === 'default') {
+        perm = await Notification.requestPermission();
+      }
+      if (perm !== 'granted') {
+        if (!silent) {
+          await Swal.fire({
+            icon: 'warning',
+            title: 'Permiso de Notificaciones Requerido',
+            text: 'Habilita el permiso de notificaciones en el candado 🔒 de la barra de direcciones para recibir alertas Push en este navegador.',
+            confirmButtonColor: '#005691',
+          });
+        }
+        return false;
+      }
+
+      const keyRes = await fetch('/api/push/public-key');
+      const keyData = await keyRes.json();
+      if (!keyRes.ok || !keyData.publicKey) return false;
+
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        const applicationServerKey = urlBase64ToUint8Array(keyData.publicKey);
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: applicationServerKey as any,
+        });
+      }
+
+      let targetUsuarioId: string | null = null;
+      const cached = localStorage.getItem('ets2026_credencial_cache');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed.usuario?.id) targetUsuarioId = parsed.usuario.id;
+        } catch (_) {}
+      }
+
+      const subJson = subscription.toJSON();
+      const saveRes = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: subscription.endpoint,
+          keys: {
+            p256dh: subJson.keys?.p256dh,
+            auth: subJson.keys?.auth,
+          },
+          usuario_id: targetUsuarioId,
+        }),
+      });
+
+      if (saveRes.ok) {
+        await loadPushStats();
+        if (!silent) {
+          onNotice('🔔 Este navegador quedó vinculado para recibir notificaciones Push en tiempo real.');
+        }
+        return true;
+      }
+    } catch (err) {
+      console.warn('No se pudo suscribir el navegador actual a Web Push:', err);
+    }
+    return false;
+  }
+
   async function handleBroadcastPush(e: React.FormEvent) {
     e.preventDefault();
     if (!pushForm.title.trim() || !pushForm.body.trim()) {
@@ -541,16 +648,28 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       });
       return;
     }
+
+    const rawUrl = pushForm.url.trim() || '/';
+    const normalizedUrl =
+      rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('/')
+        ? rawUrl
+        : `/${rawUrl}`;
+
     setIsBroadcastingPush(true);
     setPushBroadcastResult(null);
     try {
+      // Asegurar que el navegador actual esté suscrito si no hay dispositivos registrados aún
+      if ((pushStats?.total_dispositivos || 0) === 0) {
+        await subscribeCurrentBrowserToPush(true);
+      }
+
       const res = await fetch('/api/admin/push/broadcast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: pushForm.title,
-          body: pushForm.body,
-          url: pushForm.url,
+          title: pushForm.title.trim(),
+          body: pushForm.body.trim(),
+          url: normalizedUrl,
           urgente: pushForm.urgente,
           filtro: {
             rol_id: pushForm.rol_id,
@@ -560,7 +679,30 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       });
       const data = await res.json();
       if (res.ok && data.ok) {
-        onNotice(data.mensaje || 'Notificación push emitida exitosamente.');
+        const avisoRecord = data.detalle?.aviso || {
+          id: `push_${Date.now()}`,
+          title: pushForm.title.trim(),
+          body: pushForm.body.trim(),
+          url: normalizedUrl,
+          urgente: pushForm.urgente,
+          segmento: data.detalle?.segmento || 'TODOS',
+          createdAt: new Date().toISOString(),
+        };
+
+        // Difundir en tiempo real a todas las pestañas abiertas y almacenar último aviso para la URL de destino
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('ets2026_last_push_broadcast', JSON.stringify(avisoRecord));
+            sessionStorage.removeItem('ets2026_dismissed_pushes');
+            if ('BroadcastChannel' in window) {
+              const bc = new BroadcastChannel('ets2026_push_channel');
+              bc.postMessage(avisoRecord);
+              bc.close();
+            }
+          }
+        } catch (_) {}
+
+        onNotice(data.mensaje || `Notificación push despachada hacia ${normalizedUrl}.`);
         if (data.detalle) {
           setPushBroadcastResult(data.detalle);
         }
@@ -572,7 +714,28 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
           rol_id: null,
           solo_acreditados: false,
         });
-        loadPushStats();
+        await loadPushStats();
+
+        const swalRes = await Swal.fire({
+          icon: 'success',
+          title: '🔔 Notificación Push Despachada',
+          html: `<div style="text-align:left;font-size:0.86rem;line-height:1.55;">
+            <p style="margin-bottom:8px;">El aviso en tiempo real fue emitido y publicado en la URL configurada:</p>
+            <ul style="padding-left:18px;margin-bottom:10px;">
+              <li><strong>Título:</strong> ${avisoRecord.title}</li>
+              <li><strong>URL de Destino:</strong> <code>${normalizedUrl}</code></li>
+              <li><strong>Alcance:</strong> ${avisoRecord.segmento} (${data.detalle?.sent ?? 0} push Web + aviso activo en portal)</li>
+            </ul>
+          </div>`,
+          showCancelButton: true,
+          confirmButtonText: `🔗 Ver en ${normalizedUrl}`,
+          cancelButtonText: 'Cerrar',
+          confirmButtonColor: '#2563eb',
+        });
+
+        if (swalRes.isConfirmed && typeof window !== 'undefined') {
+          window.open(normalizedUrl, '_blank', 'noopener,noreferrer');
+        }
       } else {
         await Swal.fire({
           title: 'Error Push',
@@ -2975,10 +3138,21 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
         <div className="space-y-6">
           {/* Métricas de Dispositivos */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Dispositivos Suscritos</span>
-              <p className="text-3xl font-extrabold text-blue-700 mt-2">{pushStats?.total_dispositivos || 0}</p>
-              <span className="text-xs text-gray-500">Navegadores y teléfonos con push activo</span>
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Dispositivos Suscritos</span>
+                <p className="text-3xl font-extrabold text-blue-700 mt-2">{pushStats?.total_dispositivos || 0}</p>
+                <span className="text-xs text-gray-500">Navegadores y teléfonos con push activo</span>
+              </div>
+              <div className="mt-3 pt-2 border-t flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => subscribeCurrentBrowserToPush(false)}
+                  className="text-[11px] font-bold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md transition cursor-pointer"
+                >
+                  🔔 Suscribir este navegador
+                </button>
+              </div>
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
@@ -3142,8 +3316,8 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
             {pushBroadcastResult && (
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 mt-3 flex items-center justify-between">
                 <span>
-                  ✅ Broadcast completado: <strong>{pushBroadcastResult.sent}</strong> entregadas con éxito,{' '}
-                  <strong>{pushBroadcastResult.failed}</strong> fallidas de un total de {pushBroadcastResult.total}.
+                  ✅ Broadcast completado: <strong>{pushBroadcastResult.sent}</strong> entregadas por Web Push,{' '}
+                  <strong>{pushBroadcastResult.failed}</strong> fallidas de un total de {pushBroadcastResult.total} suscriptores (más publicación activa en URL de destino).
                 </span>
                 <button
                   type="button"
@@ -3152,6 +3326,50 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                 >
                   ✕
                 </button>
+              </div>
+            )}
+
+            {/* Historial de Avisos Push Activos en URLs */}
+            {pushStats?.avisos_recientes && pushStats.avisos_recientes.length > 0 && (
+              <div className="pt-4 border-t space-y-2.5">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600">
+                  📡 Últimos Avisos Push Despachados en Tiempo Real
+                </h4>
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {pushStats.avisos_recientes.slice(0, 5).map((av) => (
+                    <div
+                      key={av.id}
+                      className="p-3 rounded-lg border border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-gray-900 flex items-center gap-1.5">
+                          <span>{av.urgente ? '🚨' : '🔔'}</span>
+                          <span>{av.title}</span>
+                          <span className="text-[10px] font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
+                            {av.url}
+                          </span>
+                        </div>
+                        <p className="text-gray-600 text-[11px]">{av.body}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-gray-400">
+                          {new Date(av.createdAt).toLocaleTimeString('es-AR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        <a
+                          href={av.url || '/'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-[11px] transition"
+                        >
+                          Ver en URL ↗
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
