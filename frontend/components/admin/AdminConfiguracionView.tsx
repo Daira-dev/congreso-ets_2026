@@ -1701,7 +1701,9 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                               </span>
                             </td>
                             <td className="px-4 py-3 font-mono text-xs text-gray-700">
-                              {(d.sizeBytes / (1024 * 1024)).toFixed(2)} MB
+                              {d.sizeBytes >= 1024 * 1024
+                                ? `${(d.sizeBytes / (1024 * 1024)).toFixed(2)} MB`
+                                : `${Math.max(0.1, d.sizeBytes / 1024).toFixed(1)} KB`}
                             </td>
                             <td className="px-4 py-3 text-xs text-gray-500">
                               {new Date(d.createdAt).toLocaleString('es-AR', {
