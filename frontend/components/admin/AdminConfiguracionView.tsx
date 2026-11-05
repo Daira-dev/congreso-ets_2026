@@ -1378,25 +1378,6 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
 
           {backupSubtab === 'integrales' && (
             <>
-              <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <h4 className="text-sm font-bold text-blue-950 flex items-center gap-2">
-                    <span>🛡️</span> Resguardo Modular y Dumps Integrados (.ZIP)
-                  </h4>
-                  <p className="text-xs text-blue-800/90 mt-1 max-w-3xl">
-                    Cada backup integral empaqueta los datos segregados en tres módulos (<span className="font-bold">Operación</span>, <span className="font-bold">Configuración</span> y <span className="font-bold">Usuarios</span>),
-                    junto con el esquema DDL 3FN y los <span className="font-bold">Dumps SQL nativos de PostgreSQL</span> para recuperación ante desastres.
-                  </p>
-                </div>
-                <button
-                  onClick={handleCreateBackup}
-                  disabled={isCreatingBackup}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold shadow-sm whitespace-nowrap"
-                >
-                  {isCreatingBackup ? '⏳ Generando...' : '💾 Crear Copia Manual'}
-                </button>
-              </div>
-
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-sm">
