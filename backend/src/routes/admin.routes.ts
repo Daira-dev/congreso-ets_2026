@@ -63,7 +63,7 @@ router.get('/dashboard/gerencial', requireHierarchy(3), async (req: Authenticate
       targetEventoId = evRes.rows[0]?.id || 1;
     }
 
-    const [statsRes, rolesRes, puntosRes, ultimosIngresos] = await Promise.all([
+    const [statsRes, aforoConfigRes, rolesRes, puntosRes, ultimosIngresos] = await Promise.all([
       query(`
         SELECT 
           (SELECT COALESCE(cupo_maximo, 400) FROM eventos WHERE id = $1) as cupo_maximo,
@@ -76,6 +76,8 @@ router.get('/dashboard/gerencial', requireHierarchy(3), async (req: Authenticate
         JOIN estados_inscripcion ei ON u.estado_inscripcion_id = ei.id
         WHERE u.evento_id = $1
       `, [targetEventoId]),
+
+      query(`SELECT valor FROM configuraciones_sistema WHERE clave = 'aforo_maximo_confirmados' LIMIT 1`),
 
       query(`
         SELECT r.nombre, COUNT(u.id) as cantidad
@@ -111,7 +113,21 @@ router.get('/dashboard/gerencial', requireHierarchy(3), async (req: Authenticate
     ]);
 
     const stats = statsRes.rows[0] || {};
-    const cupoMaximo = parseInt(stats.cupo_maximo || '400', 10);
+    let cupoMaximo = parseInt(stats.cupo_maximo || '400', 10);
+    if (aforoConfigRes.rows.length > 0 && aforoConfigRes.rows[0].valor !== undefined) {
+      const rawVal = aforoConfigRes.rows[0].valor;
+      const extracted =
+        typeof rawVal === 'number'
+          ? rawVal
+          : Number(rawVal?.cupo ?? rawVal?.Cupo ?? rawVal?.aforo ?? rawVal?.Aforo ?? rawVal?.cupo_maximo ?? rawVal?.valor ?? rawVal);
+      if (Number.isFinite(extracted) && extracted > 0) {
+        const configCupo = Math.round(extracted);
+        if (cupoMaximo !== configCupo) {
+          cupoMaximo = configCupo;
+          await query(`UPDATE eventos SET cupo_maximo = $1 WHERE id = $2`, [configCupo, targetEventoId]).catch(() => {});
+        }
+      }
+    }
     const confirmados = parseInt(stats.confirmados || '0', 10);
 
     res.json({

@@ -13,6 +13,7 @@ router.get('/evento-activo', async (req: Request, res: Response): Promise<void> 
 
     let sql = `
       SELECT id, codigo, nombre, anio, fecha_inicio, fecha_fin, 
+              COALESCE(cupo_maximo, 400) AS cupo_maximo,
               sede_nombre, sede_direccion, sede_mapa_url
        FROM eventos 
        WHERE codigo = 'ETS_2026' OR activo = TRUE 
@@ -24,6 +25,7 @@ router.get('/evento-activo', async (req: Request, res: Response): Promise<void> 
     if (previewId) {
       sql = `
         SELECT id, codigo, nombre, anio, fecha_inicio, fecha_fin, 
+              COALESCE(cupo_maximo, 400) AS cupo_maximo,
               sede_nombre, sede_direccion, sede_mapa_url
         FROM eventos 
         WHERE id = $1
@@ -31,9 +33,23 @@ router.get('/evento-activo', async (req: Request, res: Response): Promise<void> 
       params = [parseInt(previewId, 10)];
     }
 
-    const evRes = await query(sql, params);
+    const [evRes, aforoConfigRes] = await Promise.all([
+      query(sql, params),
+      query(`SELECT valor FROM configuraciones_sistema WHERE clave = 'aforo_maximo_confirmados' LIMIT 1`),
+    ]);
     if (evRes.rows.length > 0) {
-      res.json({ ok: true, evento: evRes.rows[0] });
+      const ev = { ...evRes.rows[0] };
+      if (!previewId && aforoConfigRes.rows.length > 0 && aforoConfigRes.rows[0].valor !== undefined) {
+        const rawVal = aforoConfigRes.rows[0].valor;
+        const extracted =
+          typeof rawVal === 'number'
+            ? rawVal
+            : Number(rawVal?.cupo ?? rawVal?.Cupo ?? rawVal?.aforo ?? rawVal?.Aforo ?? rawVal?.cupo_maximo ?? rawVal?.valor ?? rawVal);
+        if (Number.isFinite(extracted) && extracted > 0) {
+          ev.cupo_maximo = Math.round(extracted);
+        }
+      }
+      res.json({ ok: true, evento: ev });
     } else {
       res.status(404).json({ ok: false, error: 'No hay eventos activos' });
     }
@@ -61,12 +77,30 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     const targetActividadId =
       rawActividadId && rawActividadId !== 'TODOS' ? parseInt(rawActividadId, 10) : null;
 
-    const evCupoRes = await query(
-      `SELECT id, codigo, nombre, COALESCE(cupo_maximo, 400) AS cupo_maximo FROM eventos WHERE id = $1`,
-      [targetEventoId]
-    );
+    const [evCupoRes, aforoConfigRes] = await Promise.all([
+      query(
+        `SELECT id, codigo, nombre, COALESCE(cupo_maximo, 400) AS cupo_maximo FROM eventos WHERE id = $1`,
+        [targetEventoId]
+      ),
+      query(`SELECT valor FROM configuraciones_sistema WHERE clave = 'aforo_maximo_confirmados' LIMIT 1`),
+    ]);
     const evento = evCupoRes.rows[0] || { cupo_maximo: 400, nombre: 'Congreso ETS 2026' };
-    const cupoMaximoEvento = Number(evento.cupo_maximo) || 400;
+    let cupoMaximoEvento = Number(evento.cupo_maximo) || 400;
+
+    if (aforoConfigRes.rows.length > 0 && aforoConfigRes.rows[0].valor !== undefined) {
+      const rawVal = aforoConfigRes.rows[0].valor;
+      const extracted =
+        typeof rawVal === 'number'
+          ? rawVal
+          : Number(rawVal?.cupo ?? rawVal?.Cupo ?? rawVal?.aforo ?? rawVal?.Aforo ?? rawVal?.cupo_maximo ?? rawVal?.valor ?? rawVal);
+      if (Number.isFinite(extracted) && extracted > 0) {
+        const configCupo = Math.round(extracted);
+        if (cupoMaximoEvento !== configCupo) {
+          cupoMaximoEvento = configCupo;
+          await query(`UPDATE eventos SET cupo_maximo = $1 WHERE id = $2`, [configCupo, targetEventoId]).catch(() => {});
+        }
+      }
+    }
 
     const statsQuery = `
       SELECT 

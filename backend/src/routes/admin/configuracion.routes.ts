@@ -76,19 +76,47 @@ router.put('/', requireHierarchy(5), async (req: AuthenticatedRequest, res: Resp
 
     const { clave, valor, descripcion } = parsed.data;
 
+    let valorFinal = valor;
+    let nuevoCupoAforo: number | null = null;
+
+    if (clave === 'aforo_maximo_confirmados') {
+      if (typeof valor === 'number' && Number.isFinite(valor) && valor > 0) {
+        nuevoCupoAforo = Math.round(valor);
+        valorFinal = { cupo: nuevoCupoAforo };
+      } else if (typeof valor === 'string' && !isNaN(Number(valor)) && Number(valor) > 0) {
+        nuevoCupoAforo = Math.round(Number(valor));
+        valorFinal = { cupo: nuevoCupoAforo };
+      } else if (valor && typeof valor === 'object') {
+        const rawCupo = (valor as any).cupo ?? (valor as any).Cupo ?? (valor as any).aforo ?? (valor as any).Aforo ?? (valor as any).cupo_maximo ?? (valor as any).valor;
+        if (rawCupo !== undefined && !isNaN(Number(rawCupo)) && Number(rawCupo) > 0) {
+          nuevoCupoAforo = Math.round(Number(rawCupo));
+          valorFinal = { ...(valor as object), cupo: nuevoCupoAforo };
+        }
+      }
+    }
+
     const result = await query(
       `INSERT INTO configuraciones_sistema (clave, valor, descripcion, actualizado_en)
        VALUES ($1, $2, $3, NOW())
        ON CONFLICT (clave) DO UPDATE
        SET valor = $2, descripcion = COALESCE($3, configuraciones_sistema.descripcion), actualizado_en = NOW()
        RETURNING *`,
-      [clave, JSON.stringify(valor), descripcion || null]
+      [clave, JSON.stringify(valorFinal), descripcion || null]
     );
+
+    if (clave === 'aforo_maximo_confirmados' && nuevoCupoAforo !== null) {
+      await query(
+        `UPDATE eventos
+         SET cupo_maximo = $1, actualizado_en = NOW()
+         WHERE codigo = 'ETS_2026' OR activo = TRUE`,
+        [nuevoCupoAforo]
+      ).catch((err) => console.error('Error sincronizando eventos.cupo_maximo:', err));
+    }
 
     await query(
       `INSERT INTO logs_auditoria (tabla_afectada, accion, usuario_responsable, datos_nuevos)
        VALUES ('configuraciones_sistema', 'CONFIGURACION_UPDATE', $1, $2)`,
-      [req.operator?.email || 'SUPERADMIN', JSON.stringify({ clave, valor })]
+      [req.operator?.email || 'SUPERADMIN', JSON.stringify({ clave, valor: valorFinal })]
     ).catch(() => {});
 
     res.json({ ok: true, item: result.rows[0], mensaje: `Parámetro '${clave}' actualizado correctamente.` });

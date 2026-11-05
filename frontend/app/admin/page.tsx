@@ -292,7 +292,7 @@ export default function AdminDashboardPage() {
     try {
       const token = localStorage.getItem('congreso_token');
       const headers = token ? { 'Authorization': `Bearer ${token}` } : undefined;
-      const res = await fetch('/api/admin/dashboard/gerencial', { headers });
+      const res = await fetch('/api/admin/dashboard/gerencial', { headers, cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setResumen(data.resumen);
@@ -304,6 +304,13 @@ export default function AdminDashboardPage() {
       console.error('Error cargando métricas:', err);
     }
   }
+
+  // Recargar métricas del Tablero 360° al regresar a la pestaña dashboard
+  useEffect(() => {
+    if (activeTab === 'dashboard' && operador) {
+      loadDashboardData();
+    }
+  }, [activeTab]);
 
   // Validar sesión y cargar catálogos
   useEffect(() => {
@@ -1167,12 +1174,12 @@ export default function AdminDashboardPage() {
 
         {/* 13. EDICIONES Y EVENTOS */}
         {activeTab === 'eventos' && (
-          <AdminEventosView onNotice={(msg) => setActionNotice(msg)} />
+          <AdminEventosView onNotice={(msg) => { setActionNotice(msg); loadDashboardData(); }} />
         )}
 
         {/* 14. CONFIGURACIÓN DEL SISTEMA */}
         {activeTab === 'configuracion' && (
-          <AdminConfiguracionView onNotice={(msg) => setActionNotice(msg)} />
+          <AdminConfiguracionView onNotice={(msg) => { setActionNotice(msg); loadDashboardData(); }} />
         )}
 
         {/* 15. AUDITORÍA FORENSE INMUTABLE */}

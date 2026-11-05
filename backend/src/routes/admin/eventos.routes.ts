@@ -191,7 +191,18 @@ router.put('/:id', requireHierarchy(5), async (req: AuthenticatedRequest, res: R
       return;
     }
 
-    res.json({ ok: true, evento: result.rows[0] });
+    const updatedEvento = result.rows[0];
+    if ((updatedEvento.activo || updatedEvento.codigo === 'ETS_2026') && updatedEvento.cupo_maximo) {
+      await query(
+        `INSERT INTO configuraciones_sistema (clave, valor, descripcion, actualizado_en)
+         VALUES ('aforo_maximo_confirmados', $1, 'Límite máximo de inscripciones confirmadas automáticas', NOW())
+         ON CONFLICT (clave) DO UPDATE
+         SET valor = $1, actualizado_en = NOW()`,
+        [JSON.stringify({ cupo: Number(updatedEvento.cupo_maximo) })]
+      ).catch(() => {});
+    }
+
+    res.json({ ok: true, evento: updatedEvento });
   } catch (error: any) {
     console.error('Error en PUT /api/admin/eventos/:id:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });

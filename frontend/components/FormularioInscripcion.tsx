@@ -38,8 +38,8 @@ export default function FormularioInscripcion() {
     async function fetchData() {
       try {
         const [resRoles, resVacantes] = await Promise.all([
-          fetch('/api/registro/roles'),
-          fetch('/api/vacantes'),
+          fetch('/api/registro/roles', { cache: 'no-store' }),
+          fetch('/api/vacantes', { cache: 'no-store' }),
         ]);
 
         if (resRoles.ok) {
@@ -246,16 +246,16 @@ export default function FormularioInscripcion() {
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
             <div>
-              <span className="font-bold text-gray-900">Aforo Oficial: </span>
+              <span className="font-bold text-gray-900">Aforo Oficial ({vacantes.cupo_maximo} cupos): </span>
               <span className="text-gray-700">Auditorio Polo Saavedra 5085</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 bg-white font-semibold text-blue-900 border border-blue-200 rounded-lg shadow-sm">
               {vacantes.cupos_disponibles > 0 ? (
-                <span>🎟️ <strong>{vacantes.cupos_disponibles}</strong> vacantes libres</span>
+                <span>🎟️ <strong>{vacantes.cupos_disponibles}</strong> de <strong>{vacantes.cupo_maximo}</strong> vacantes libres</span>
               ) : (
-                <span className="text-amber-700">⏳ Lista de espera activa</span>
+                <span className="text-amber-700">⏳ Lista de espera activa (Aforo: {vacantes.cupo_maximo})</span>
               )}
             </span>
           </div>
