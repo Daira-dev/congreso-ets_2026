@@ -379,12 +379,12 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
     }
   }
 
-  async function loadAllData() {
+  async function loadAllData(showManualFeedback = false) {
     setLoading(true);
     try {
       const [confRes, catRes] = await Promise.all([
-        fetch('/api/admin/configuracion'),
-        fetch('/api/admin/catalogos'),
+        fetch('/api/admin/configuracion', { cache: 'no-store' }),
+        fetch('/api/admin/catalogos', { cache: 'no-store' }),
         loadBackups(),
         loadSqlDumps(),
         loadVisitorBackups(),
@@ -394,19 +394,53 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       ]);
       loadMailTemplatePreview();
 
+      let loadedConfigs = configs.length;
+      let loadedRoles = roles.length;
+      let loadedTipos = tiposAcred.length;
+      let loadedCats = categorias.length;
+
       if (confRes.ok) {
         const confData = await confRes.json();
-        setConfigs(confData.configuracion || []);
+        const list = confData.configuracion || [];
+        setConfigs(list);
+        loadedConfigs = list.length;
       }
 
       if (catRes.ok) {
         const catData = await catRes.json();
-        setRoles(catData.roles || []);
-        setTiposAcred(catData.tipos_acreditacion || []);
-        setCategorias(catData.categorias_tematicas || []);
+        const rList = catData.roles || [];
+        const tList = catData.tipos_acreditacion || [];
+        const cList = catData.categorias_tematicas || [];
+        setRoles(rList);
+        setTiposAcred(tList);
+        setCategorias(cList);
+        loadedRoles = rList.length;
+        loadedTipos = tList.length;
+        loadedCats = cList.length;
+      }
+
+      if (showManualFeedback) {
+        onNotice('🔄 Datos de configuración, catálogos y respaldos sincronizados correctamente.');
+        await Swal.fire({
+          icon: 'success',
+          title: 'Configuración Recargada',
+          text: `Se actualizaron los datos del módulo desde el servidor (${loadedConfigs} parámetros, ${loadedRoles} roles, ${loadedTipos} tipos de acreditación y ${loadedCats} categorías temáticas).`,
+          confirmButtonText: 'Aceptar',
+          confirmButtonColor: '#2563eb',
+          timer: 3500,
+          timerProgressBar: true,
+        });
       }
     } catch (err) {
       console.error('Error cargando configuración:', err);
+      if (showManualFeedback) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error al Recargar',
+          text: 'No se pudieron sincronizar los datos de configuración con el servidor.',
+          confirmButtonColor: '#dc3545',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -1204,11 +1238,13 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
             </button>
           )}
           <button
-            onClick={loadAllData}
+            type="button"
+            onClick={() => loadAllData(true)}
             disabled={loading}
-            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold"
+            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 disabled:opacity-60 text-gray-700 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
+            title="Sincronizar parámetros, catálogos, copias de seguridad y configuraciones desde el servidor"
           >
-            🔄 Recargar
+            {loading ? '⏳ Recargando...' : '🔄 Recargar'}
           </button>
         </div>
       </div>
