@@ -14,10 +14,50 @@ interface IdentificaciónProps {
     homologacion_estado?: string | null;
   };
   qr_token: string;
+  plantilla?: any;
 }
 
-export const IdentificacionDigital: React.FC<IdentificaciónProps> = ({ usuario, qr_token }) => {
+export const IdentificacionDigital: React.FC<IdentificaciónProps> = ({ usuario, qr_token, plantilla: propPlantilla }) => {
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [fetchedPlantilla, setFetchedPlantilla] = useState<any>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/identificacion/plantilla', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data?.plantilla) {
+          setFetchedPlantilla(data.plantilla);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const activePlantilla = fetchedPlantilla || propPlantilla || null;
+  const widgets: any[] = Array.isArray(activePlantilla?.widgets) ? activePlantilla.widgets : [];
+
+  const headerBadgeWidget =
+    widgets.find((w) => String(w.id) === '1') ||
+    widgets.find(
+      (w) =>
+        w.type === 'badge' &&
+        !String(w.props?.text ?? w.props?.Text ?? '').includes('{ROL}')
+    );
+
+  const badgeText =
+    headerBadgeWidget?.props?.text ??
+    headerBadgeWidget?.props?.Text ??
+    'ETS 2026';
+
+  const replaceVars = (str: string) =>
+    String(str || '')
+      .replace(/\{NOMBRE\}/g, usuario.nombre || '')
+      .replace(/\{APELLIDO\}/g, usuario.apellido || '')
+      .replace(/\{DNI\}/g, usuario.dni_pasaporte || '')
+      .replace(/\{ROL\}/g, usuario.rol || usuario.rol_nombre || 'Participante');
 
   const esExpositor =
     (usuario.rol && usuario.rol.toLowerCase().includes('expositor')) ||
@@ -88,7 +128,7 @@ export const IdentificacionDigital: React.FC<IdentificaciónProps> = ({ usuario,
           Gobierno de la Ciudad Autónoma de Buenos Aires · Ministerio de Educación
         </div>
         <div style={{ fontSize: '9pt', color: '#005691', fontWeight: 700 }}>
-          Dirección de Educación Técnica Superior (DETS) · 1er Congreso ETS 2026
+          Dirección de Educación Técnica Superior (DETS) · 1er Congreso {replaceVars(badgeText)}
         </div>
         <div style={{ fontSize: '7.5pt', color: '#64748b', marginTop: '1px' }}>
           Auditorio Polo Saavedra · 15, 16 y 17 de Octubre de 2026 · Ciudad de Buenos Aires
@@ -101,7 +141,14 @@ export const IdentificacionDigital: React.FC<IdentificaciónProps> = ({ usuario,
 
       <div
         className="credential-card p-3 mx-auto text-center position-relative shadow"
-        style={{ maxWidth: '380px', borderRadius: '16px', borderTop: `8px solid ${colorRol}`, backgroundColor: '#ffffff' }}
+        style={{
+          maxWidth: '380px',
+          borderRadius: '16px',
+          borderTop: `8px solid ${colorRol}`,
+          backgroundColor: activePlantilla?.backgroundColor || '#ffffff',
+          backgroundImage: activePlantilla?.backgroundImage ? `url(${activePlantilla.backgroundImage})` : undefined,
+          backgroundSize: 'cover',
+        }}
       >
         {/* Perforación para cinta colgante Lanyard */}
         <div className="d-flex justify-content-center mb-2">
@@ -114,8 +161,14 @@ export const IdentificacionDigital: React.FC<IdentificaciónProps> = ({ usuario,
 
         {/* Cabecera de la identificacion */}
         <div className="d-flex align-items-center justify-content-between mb-2 border-bottom pb-2">
-          <span className="badge" style={{ backgroundColor: colorRol, color: '#ffffff' }}>
-            ETS 2026
+          <span
+            className="badge"
+            style={{
+              backgroundColor: headerBadgeWidget?.props?.bg || colorRol,
+              color: headerBadgeWidget?.props?.color || '#ffffff',
+            }}
+          >
+            {replaceVars(badgeText)}
           </span>
           <span
             className="small text-muted fw-bold text-uppercase"
@@ -241,7 +294,7 @@ export const IdentificacionDigital: React.FC<IdentificaciónProps> = ({ usuario,
           3. Las asistencias registradas habilitan automáticamente tu constancia de asistencia oficial.
         </div>
         <div style={{ fontSize: '6.5pt', color: '#94a3b8', marginTop: '4px', fontFamily: 'monospace' }}>
-          Identificación Oficial ETS 2026 · DETS GCABA · Firma Criptográfica Verificada
+          Identificación Oficial {replaceVars(badgeText)} · DETS GCABA · Firma Criptográfica Verificada
         </div>
       </div>
     </div>

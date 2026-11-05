@@ -21,6 +21,24 @@ const credencialLimiter = rateLimit({
 });
 
 /**
+ * GET /api/credencial/plantilla
+ * Obtiene la plantilla configurada en configuraciones_sistema (plantilla_identificacion_digital)
+ */
+router.get('/plantilla', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const tplRes = await query(
+      `SELECT valor FROM configuraciones_sistema WHERE clave = 'plantilla_identificacion_digital' LIMIT 1`
+    );
+    const rawVal = tplRes.rows[0]?.valor ?? null;
+    const plantilla = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
+    res.json({ ok: true, success: true, plantilla });
+  } catch (error: any) {
+    console.error('Error en GET /api/credencial/plantilla:', error);
+    res.status(500).json({ ok: false, error: 'ERR_SERVER', message: 'Error al obtener plantilla de credencial.' });
+  }
+});
+
+/**
  * GET /api/credencial
  * Consulta los datos oficiales de la credencial PWA y genera el token QR cifrado
  */
@@ -138,6 +156,15 @@ router.get('/', credencialLimiter, async (req: Request, res: Response): Promise<
       });
     }
 
+    let plantilla: any = null;
+    try {
+      const tplRes = await query(
+        `SELECT valor FROM configuraciones_sistema WHERE clave = 'plantilla_identificacion_digital' LIMIT 1`
+      );
+      const rawVal = tplRes.rows[0]?.valor ?? null;
+      plantilla = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
+    } catch (_) {}
+
     res.json({
       success: true,
       usuario: {
@@ -156,6 +183,7 @@ router.get('/', credencialLimiter, async (req: Request, res: Response): Promise<
       },
       qr_token: qrToken,
       qr_image: qrImageDataUrl,
+      plantilla,
     });
   } catch (error: any) {
     console.error('Error en GET /api/credencial:', error);
