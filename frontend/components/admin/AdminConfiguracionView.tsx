@@ -145,7 +145,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
   const [showMailPassword, setShowMailPassword] = useState(false);
   const [testEmailRecipient, setTestEmailRecipient] = useState('');
   const [isTestingMail, setIsTestingMail] = useState(false);
-  const [testMailResult, setTestMailResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testMailResult, setTestMailResult] = useState<{ success: boolean; simulated?: boolean; message: string } | null>(null);
   const [isSavingMail, setIsSavingMail] = useState(false);
 
   // Plantilla de Correo (Header & Footer)
@@ -482,6 +482,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       const data = await res.json();
       setTestMailResult({
         success: Boolean(data.ok),
+        simulated: Boolean(data.simulated),
         message: data.mensaje || data.error || 'Resultado de la prueba',
       });
     } catch {
@@ -2757,14 +2758,22 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
             {testMailResult && (
               <div
                 className={`p-3.5 rounded-lg text-xs border ${
-                  testMailResult.success
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                    : 'bg-red-50 border-red-200 text-red-900'
+                  !testMailResult.success
+                    ? 'bg-red-50 border-red-200 text-red-900'
+                    : testMailResult.simulated
+                    ? 'bg-amber-50 border-amber-300 text-amber-900'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-900'
                 }`}
               >
                 <div className="font-bold flex items-center gap-1.5">
-                  <span>{testMailResult.success ? '✅' : '❌'}</span>
-                  <span>{testMailResult.success ? 'Prueba Exitosa' : 'Fallo de Conexión'}</span>
+                  <span>{!testMailResult.success ? '❌' : testMailResult.simulated ? '🧪' : '✅'}</span>
+                  <span>
+                    {!testMailResult.success
+                      ? 'Fallo de Conexión SMTP Real'
+                      : testMailResult.simulated
+                      ? 'Simulación en Modo Sandbox (Correo NO enviado a buzón externo)'
+                      : 'Correo de Prueba Enviado Exitosamente'}
+                  </span>
                 </div>
                 <div className="mt-1 font-mono text-[11px]">{testMailResult.message}</div>
               </div>

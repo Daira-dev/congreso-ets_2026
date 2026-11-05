@@ -379,11 +379,16 @@ export async function verifySmtpConnection(
     // 1. Si está activo el modo Sandbox institucional, simular el despacho sin fallar por credenciales externas
     if (sandboxMode) {
       const mockId = `<mock-test-${Date.now()}@congreso.ets2026.local>`;
+      await query(
+        `INSERT INTO logs_auditoria (evento, actor_usuario, detalles, timestamp)
+         VALUES ('TEST_CORREO_SANDBOX', 'SISTEMA_MAIL', $1, NOW())`,
+        [JSON.stringify({ to: testRecipient || 'destinatario', host: account.host, user: account.user, simulated: true, messageId: mockId })]
+      ).catch(() => {});
       return {
         success: true,
         simulated: true,
         messageId: mockId,
-        message: `[Modo Sandbox Activo] Handshake y despacho simulados correctamente hacia ${testRecipient || 'destinatario'}. No se contactó el servidor externo. Para envíos reales a buzones externos, desactive el Modo Sandbox e ingrese la contraseña/token de aplicación SMTP.`,
+        message: `[Modo Sandbox Activo] Handshake y despacho simulados correctamente hacia ${testRecipient || 'destinatario'}. No se contactó el servidor externo. Para envíos reales a buzones externos, desactive la casilla "Modo Sandbox Institucional" e ingrese una Contraseña de Aplicación SMTP válida.`,
       };
     }
 
@@ -438,16 +443,42 @@ export async function verifySmtpConnection(
         <p style="color: #27ae60; font-weight: bold;">✅ La cuenta está correctamente vinculada para el envío de QRs, avisos 48hs y diplomas oficiales.</p>
       `);
 
+      const mailingHeaderPath = path.resolve(__dirname, '../../assets/mailing/Header.png');
+      const mailingFooterPath = path.resolve(__dirname, '../../assets/mailing/Footer.png');
+      const testAttachments: Array<{ filename: string; path: string; cid: string }> = [];
+      if (fs.existsSync(mailingHeaderPath) && html.includes('cid:gcaba_mailing_header')) {
+        testAttachments.push({
+          filename: 'Header_GCABA.png',
+          path: mailingHeaderPath,
+          cid: 'gcaba_mailing_header',
+        });
+      }
+      if (fs.existsSync(mailingFooterPath) && html.includes('cid:gcaba_mailing_footer')) {
+        testAttachments.push({
+          filename: 'Footer_GCABA.png',
+          path: mailingFooterPath,
+          cid: 'gcaba_mailing_footer',
+        });
+      }
+
       const info = await t.sendMail({
-        from: account.from,
+        from: account.from || account.user,
         to: testRecipient,
         subject: '🧪 Verificación de Conexión SMTP – Congreso ETS 2026',
         html,
+        attachments: testAttachments,
       });
+
+      await query(
+        `INSERT INTO logs_auditoria (evento, actor_usuario, detalles, timestamp)
+         VALUES ('TEST_CORREO_EXITOSO', 'SISTEMA_MAIL', $1, NOW())`,
+        [JSON.stringify({ to: testRecipient, host: account.host, user: account.user, messageId: info.messageId })]
+      ).catch(() => {});
 
       return {
         success: true,
-        message: `Conexión SMTP exitosa. Correo de prueba enviado a ${testRecipient}`,
+        simulated: false,
+        message: `Conexión SMTP exitosa. Correo de prueba real enviado a ${testRecipient} (ID: ${info.messageId})`,
         messageId: info.messageId,
       };
     }
