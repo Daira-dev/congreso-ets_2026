@@ -30,7 +30,6 @@ async function getSeccionesVisibilidad() {
 
   return [
     { key: 'hero', nombre: 'Sección Hero', enabled: true },
-    { key: 'avisos', nombre: 'Avisos en Vivo (Push)', enabled: true },
     { key: 'sobre_congreso', nombre: 'El Congreso & Carrusel', enabled: true },
     { key: 'modalidades', nombre: 'Actividades & Modalidades', enabled: true },
     { key: 'programa', nombre: 'Programa del Congreso', enabled: true },

@@ -59,11 +59,11 @@ type BarraProps = MiscelaneaProps & {
 //Barra decorativa. Recibe el color como texto ("azul", "blanca" u "oscura")
 export const Barra = ({ color = "azul", className = "" }: BarraProps) => {
     return (
-        <Image 
+        <Image
             src={barras[color]}
             alt=""
             aria-hidden="true"
-            className={className}
+            className={`block scale-y-[1.05] ${className}`}
         />
     )
 }

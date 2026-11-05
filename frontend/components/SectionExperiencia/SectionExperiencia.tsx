@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Barra } from "@/components/Miscelaneas";
 import VideoIframe from './VideoIframe/VideoIframe';
 
 interface VideoConfig {
@@ -52,24 +53,35 @@ const SectionExperiencia = () => {
   }
 
   return (
-    <section id="experiencia" className="scroll-mt-24 p-5 sm:p-10 text-center bg-white">
-      <h4 className="text-azul-oscuro text-2xl sm:text-3xl font-bold mb-2">
-        {config.titulo || 'Sumate a la experiencia ETS'}
-      </h4>
+    /* Decoración superior */
+    <div className="relative w-full">
+      <Barra
+        color="blanca"
+        className="pointer-events-none absolute left-0 top-0 z-20 w-[42%] -translate-y-full"
+      />
 
-      {config.subtitulo && (
-        <p className="text-gray-600 text-sm sm:text-base max-w-2xl mx-auto mb-6">
-          {config.subtitulo}
-        </p>
-      )}
+      <section id="experiencia" className="relative w-full overflow-hidden bg-[#FCFCFC] text-center scroll-mt-24">
+        {/* Contenido */}
+        <div className="relative z-10 px-5 py-8 sm:px-10 sm:py-12">
+            <h4 className="mb-3 text-base font-bold text-azul-oscuro sm:text-2xl">
+              {config.titulo || 'Sumate a la experiencia ETS'}
+            </h4>
 
-      <div className="mx-auto w-full max-w-4xl shadow-lg rounded-xl overflow-hidden mt-4">
-        <VideoIframe
-          videoUrl={config.videoUrl || DEFAULT_CONFIG.videoUrl}
-          videoTitle={config.titulo || 'Video Institucional'}
-        />
-      </div>
-    </section>
+            {config.subtitulo && (
+              <p className="mx-auto mb-5 max-w-2xl text-sm text-gray-600 sm:text-base">
+                  {config.subtitulo}
+              </p>
+            )}
+
+            <div className="mx-auto mt-3 w-full max-w-4xl">
+              <VideoIframe
+                  videoUrl={config.videoUrl || DEFAULT_CONFIG.videoUrl}
+                  videoTitle={config.titulo || 'Video Institucional'}
+              />
+            </div>
+        </div>
+      </section>
+    </div>
   );
 };
 

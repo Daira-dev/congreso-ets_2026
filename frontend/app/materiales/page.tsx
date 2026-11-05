@@ -208,33 +208,29 @@ export default function Materiales() {
 
                 {/* Encabezado de la sección */}
                 <section className="bg-azul-claro/10">
-                    <div className="mx-auto max-w-7xl px-6 py-16 md:px-10 md:py-20">
-                        <p className="mb-3 text-sm font-bold uppercase tracking-wide text-azul-claro">
+                    <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-9 md:px-10 md:py-12">
+                        <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-azul-claro sm:text-xs">
                             Congreso ETS 2026
                         </p>
 
-                        <h1 className="text-4xl font-bold tracking-tight text-azul-oscuro md:text-5xl">
+                        <h1 className="text-2xl font-bold tracking-tight text-azul-oscuro sm:text-3xl md:text-4xl">
                             Materiales y novedades
                         </h1>
 
-                        <p suppressHydrationWarning className="mt-5 max-w-2xl text-lg leading-relaxed text-azul-oscuro/70">
+                        <p suppressHydrationWarning className="mt-3 max-w-2xl text-sm leading-relaxed text-azul-oscuro/70 sm:text-base">
                             Accedé a los recursos, publicaciones, fotos, videos y documentos oficiales del Congreso de Educación Técnica Superior.
                         </p>
                     </div>
                 </section>
 
-                <section className="mx-auto max-w-7xl px-6 py-16 md:px-10 md:py-20">
-                    <div className="grid gap-12 lg:grid-cols-[240px_1fr]">
-
+                <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 md:px-10 md:py-14">
+                    <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
                         {/* Filtros y búsqueda */}
                         <aside>
                             <div className="lg:sticky lg:top-8">
                                 <div>
-                                    <label
-                                        htmlFor="buscar"
-                                        className="mb-3 block text-sm font-bold text-azul-oscuro"
-                                    >
-                                        Buscar
+                                    <label htmlFor="buscar" className="mb-3 block text-base font-bold uppercase tracking-widest text-azul-oscuro">
+                                        Buscar materiales
                                     </label>
 
                                     <div className="relative">
@@ -262,12 +258,30 @@ export default function Materiales() {
                                 </div>
 
                                 {/* Tipos disponibles */}
-                                <div className="mt-10">
-                                    <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-azul-oscuro">
+                                <div className="mt-6 lg:mt-10">
+                                    <label htmlFor="tipo-contenido" className="mb-3 block text-base font-bold uppercase tracking-widest text-azul-oscuro">
                                         Tipo de contenido
-                                    </h2>
+                                    </label>
 
-                                    <div className="flex flex-col gap-3">
+                                    <select
+                                        id="tipo-contenido"
+                                        value={selectedType}
+                                        onChange={(event) => {
+                                            setSelectedContent(null);
+                                            setSelectedType(event.target.value as FilterType);
+                                        }}
+                                        className="w-full border border-azul-oscuro/20 bg-white px-3 py-3 text-sm text-azul-oscuro outline-none focus:border-azul-claro lg:hidden"
+                                    >
+                                        <option value="todos">Todos</option>
+                                        <option value="novedad">Novedades</option>
+                                        <option value="documento">Documentos</option>
+                                        <option value="video">Videos</option>
+                                        <option value="flyer">Flyers</option>
+                                        <option value="foto">Fotos</option>
+                                        <option value="recurso">Recursos</option>
+                                    </select>
+
+                                    <div className="hidden lg:flex lg:flex-col lg:gap-3">
                                         <FilterButton
                                             active={selectedType === "todos"}
                                             onClick={() => {
@@ -342,7 +356,7 @@ export default function Materiales() {
                             </div>
                         </aside>
 
-                        <section>
+                        <section className="min-w-0 w-full">
                             {selectedContent ? (
 
                                 /* Detalle Anidado del contenido seleccionado (Botón "Ver") */

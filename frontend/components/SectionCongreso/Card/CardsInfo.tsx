@@ -7,12 +7,9 @@ import imgCard2 from "@/assets/IFTS_27/iconos_card/icono=muestrapermanente.svg";
 import imgCard3 from "@/assets/IFTS_27/iconos_card/icono=presentacionacademica.svg";
 import imgCard4 from "@/assets/IFTS_27/iconos_card/icono=proyectos.svg";
 import imgCard5 from "@/assets/IFTS_27/iconos_card/icono=talentos.svg";
-import miscelaneaBarraBlanca from "@/assets/IFTS_27/hero/Miscelanea barra blanca.svg";
 import miscelaneaPuntos from "@/assets/IFTS_27/hero/Miscelanea puntos.svg";
+import { Barra } from "@/components/Miscelaneas";
 import Link from "next/link";
-import Image from "next/image";
-import miscelanea_azul from "@/assets/IFTS_27/hero/Miscelanea barra azul.svg" ;
-import miscelanea_oscura from "@/assets/IFTS_27/hero/Miscelanea barra oscura.svg";
 
 const CardsInfo = () => {
     const [evento, setEvento] = useState<any>(null);
@@ -191,22 +188,17 @@ const CardsInfo = () => {
     };
 
     return (
-        <section className="relative flex flex-col items-center w-full pb-10 bg-white">
+        <section className="relative flex flex-col items-center w-full bg-white">
             {/* CONTENEDOR DE ACTIVIDADES */}
             <div className="relative w-full">
 
                 {/* ENCABEZADO DECORATIVO (Noelia-Cards) */}
                 <div className="w-full relative" style={{ backgroundColor: 'var(--color-blanco)' }}>
-                    {/* 1. Fondo azul superior */}
-                    <div className="relative w-full pt-3 md:pt-4 overflow-hidden" style={{ backgroundColor: 'var(--color-azul-claro)' }}>
-                        <div className="w-1/2 md:w-1/3 flex items-end">
-                            <img
-                                src={miscelaneaBarraBlanca.src || miscelaneaBarraBlanca}
-                                alt=""
-                                className="w-full h-auto block align-bottom pointer-events-none object-contain"
-                            />
-                        </div>
-                    </div>
+                    {/* Decoración superior */}
+                    <Barra
+                        color="blanca"
+                        className="pointer-events-none absolute left-0 top-0 z-10 w-[42%] -translate-y-full"
+                    />
 
                     {/* 2. Franja de puntos continuos */}
                     <div className="relative z-10 w-full pt-3 pb-2 overflow-hidden -mt-[1px]" style={{ backgroundColor: 'var(--color-blanco)' }}>
@@ -287,23 +279,17 @@ const CardsInfo = () => {
                         </>
                     )}
                 </div>
-
-                {/* MISCELANEA BARRA OSCURA */}
-                <div className="absolute pointer-events-none bottom-[-25px] md:bottom-[-15px] left-[-0.5px] z-20 w-[min(720px,90vw)] translate-y-1/2">
-                    <Image
-                        src={miscelanea_oscura}
-                        alt=""
-                        aria-hidden={true}
-                        width={720}
-                        height={200}
-                        className="block h-auto w-full"
-                    />
-                </div>
             </div>
             
 
             {/* SECCION DE INFORMACION Y MAPA */}
-            <div className="relative mt-8 min-h-[460px] w-full overflow-hidden bg-[#1c3342]">
+            <div className="relative mt-8 min-h-[460px] w-full bg-[#1c3342]">
+                
+                {/* Decoración superior */}
+                <Barra
+                    color="oscura"
+                    className="pointer-events-none absolute left-0 top-0 z-20 w-[42%] -translate-y-full"
+                />
 
                 <div className="relative z-10 grid min-h-[460px] grid-cols-1 items-center gap-10 px-6 py-12 sm:px-10 md:grid-cols-[1.05fr_0.95fr] md:gap-8 md:px-8 md:py-16 lg:px-14 xl:px-16">
 
@@ -390,18 +376,6 @@ const CardsInfo = () => {
                             Cómo llegar <span aria-hidden="true">→</span>
                         </Link>
                     </div>
-                </div>
-
-                {/* MISCELÁNEA BARRA AZUL */}
-                <div className="pointer-events-none absolute bottom-0 left-0 z-10 w-[min(720px,90vw)]">
-                    <Image
-                        src={miscelanea_azul}
-                        alt=""
-                        aria-hidden={true}
-                        width={720}
-                        height={200}
-                        className="block h-auto w-full"
-                    />
                 </div>
             </div>
         </section>

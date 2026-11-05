@@ -1,8 +1,17 @@
 import CongresoSlider from "./CongresoSlider";
+import { Barra } from "@/components/Miscelaneas";
 
 const SobreCongreso = () => {
     return (
-        <section id="congreso" className="scroll-mt-24 bg-blanco px-6 py-20 md:px-10 lg:px-16 lg:py-24">
+        
+        <section id="congreso" className="relative scroll-mt-24 bg-blanco px-6 py-20 md:px-10 lg:px-16 lg:py-24">
+            
+            {/* Decoración superior */}
+            <Barra
+                color="azul"
+                className="pointer-events-none absolute left-0 top-0 z-10 w-[42%] -translate-y-full"
+            />
+            
             <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2 lg:gap-20">
 
                 {/* Información sobre el Congreso */}

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import imgEdificio from "@/assets/IFTS_27/hero/Imagen del header.jpg";
 import logoDefault from "@/assets/IFTS_27/hero/Logo en blanco.svg";
-import { Barra, LineasHeader, Triangulos } from "../Miscelaneas";
+import { LineasHeader, Triangulos } from "../Miscelaneas";
 import HeroButton from "./HeroButton";
 
 interface HeroData {
@@ -118,7 +118,6 @@ const Hero = () => {
           <LineasHeader className="absolute left-0 top-0 z-0 w-[110px] -translate-y-[19.8%] md:w-[16.5%]" />
           <Triangulos className="absolute left-[6%] top-[9%] z-[1] hidden w-[23%] md:block" />
           <Triangulos className="absolute bottom-[8%] right-[4%] z-[1] hidden w-[23%] md:block" />
-          <Barra color="azul" className="absolute bottom-0 left-0 z-[1] w-[50%] md:w-[35%]" />
         </>
       )}
 

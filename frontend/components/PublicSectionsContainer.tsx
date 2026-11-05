@@ -6,7 +6,6 @@ import SobreCongreso from '@/components/Congreso/SobreCongreso';
 import SectionCongreso from '@/components/SectionCongreso/SectionCongreso';
 import SectionExperiencia from '@/components/SectionExperiencia/SectionExperiencia';
 import SectionPrograma from '@/components/SectionPrograma/SectionPrograma';
-import PushSubscriptionBanner from '@/components/PushSubscriptionBanner';
 
 export interface SeccionItem {
   key: string;
@@ -64,27 +63,20 @@ export default function PublicSectionsContainer({ initialSecciones }: Props) {
       {/* 1. SECCIÓN HERO */}
       {isEnabled('hero') && <Hero />}
 
-      {/* 2. SECCIÓN AVISOS / PUSH */}
-      {isEnabled('avisos') && (
-        <div className="max-w-7xl mx-auto px-4">
-          <PushSubscriptionBanner />
-        </div>
-      )}
-
-      {/* 3. SECCIÓN SOBRE EL CONGRESO & CARRUSEL */}
+      {/* 2. SECCIÓN SOBRE EL CONGRESO & CARRUSEL */}
       {isEnabled('sobre_congreso') && <SobreCongreso />}
 
-      {/* 4. SECCIÓN ACTIVIDADES & MODALIDADES */}
+      {/* 3. SECCIÓN ACTIVIDADES & MODALIDADES */}
       {isEnabled('modalidades') && (
         <Suspense fallback={<div className="p-8 text-center text-gray-400">Cargando actividades...</div>}>
           <SectionCongreso />
         </Suspense>
       )}
 
-      {/* 5. SECCIÓN PROGRAMA */}
+      {/* 4. SECCIÓN PROGRAMA */}
       {isEnabled('programa') && <SectionPrograma />}
 
-      {/* 6. SECCIÓN EXPERIENCIA */}
+      {/* 5. SECCIÓN EXPERIENCIA */}
       {isEnabled('experiencia') && <SectionExperiencia />}
     </>
   );

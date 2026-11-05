@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import CardPrograma from "./Card/Card";
 import FiltrosPrograma from "./FiltrosPrograma/FiltrosPrograma";
-import { Barra } from "../Miscelaneas";
+import { Barra } from "@/components/Miscelaneas";
 
 interface ActividadPublica {
   id: number;
@@ -103,7 +103,7 @@ export default function SectionPrograma() {
   }
 
   return (
-    <section id="programa-wrapper" className="relative w-full border-t-1 border-black">
+    <section id="programa-wrapper" className="relative w-full border-t-1">
       <div id="programa" className="scroll-mt-32 max-w-4xl mx-auto py-25 px-4">
         <div>
           <h2 className="text-3xl font-bold text-azul-oscuro">Programa del Congreso</h2>
@@ -111,7 +111,6 @@ export default function SectionPrograma() {
             Cronograma oficial de ponencias, talleres y masterclasses por jornada
           </p>
         </div>
-
 
         {/* Selector de Jornada / Día Multidía */}
         {jornadasDisponibles.length > 0 && (
@@ -207,10 +206,13 @@ export default function SectionPrograma() {
           )}
         </div>
       </div>
+
+      {/* Decoración superior */}
       <Barra
         color="azul"
-        className="absolute left-0 top-0 z-[1] w-[50%] -translate-y-[100%] md:w-[35%]"
+        className="pointer-events-none absolute left-0 top-0 z-10 w-[42%] -translate-y-full"
       />
+      
     </section>
   );
 }
