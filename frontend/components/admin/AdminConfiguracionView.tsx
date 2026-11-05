@@ -220,6 +220,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
   // Tipos Acreditación
   const [tiposAcred, setTiposAcred] = useState<TipoAcredItem[]>([]);
   const [isTipoModalOpen, setIsTipoModalOpen] = useState(false);
+  const [currentTipo, setCurrentTipo] = useState<TipoAcredItem | null>(null);
   const [tipoForm, setTipoForm] = useState({ codigo: '', descripcion: '', requiere_actividad: false });
 
   // Categorías Temáticas
@@ -918,21 +919,71 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
   async function handleSaveTipo(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const res = await fetch('/api/admin/catalogos/tipos-acreditacion', {
-        method: 'POST',
+      const url = currentTipo
+        ? `/api/admin/catalogos/tipos-acreditacion/${currentTipo.id}`
+        : '/api/admin/catalogos/tipos-acreditacion';
+      const method = currentTipo ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(tipoForm),
       });
-      if (res.ok) {
-        onNotice('Tipo de acreditación creado con éxito.');
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        onNotice(currentTipo ? 'Tipo de acreditación actualizado con éxito.' : 'Tipo de acreditación creado con éxito.');
         setIsTipoModalOpen(false);
+        setCurrentTipo(null);
         setTipoForm({ codigo: '', descripcion: '', requiere_actividad: false });
         loadAllData();
+      } else {
+        await Swal.fire({
+          title: 'Error en Tipo de Acreditación',
+          text: data.message || 'No se pudo guardar el tipo de acreditación.',
+          icon: 'error',
+          confirmButtonColor: '#dc3545',
+        });
       }
     } catch {
       await Swal.fire({
         title: 'Error',
         text: 'Error al guardar tipo.',
+        icon: 'error',
+        confirmButtonColor: '#dc3545',
+      });
+    }
+  }
+
+  async function handleDeleteTipo(id: number, codigo: string) {
+    const confirmRes = await Swal.fire({
+      title: '¿Eliminar tipo de acreditación?',
+      text: `¿Seguro que deseas eliminar el tipo "${codigo}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
+    });
+    if (!confirmRes.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/admin/catalogos/tipos-acreditacion/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        onNotice(data.mensaje || 'Tipo de acreditación eliminado correctamente.');
+        loadAllData();
+      } else {
+        await Swal.fire({
+          title: 'Error al Eliminar Tipo',
+          text: data.message || 'No se puede eliminar el tipo de acreditación.',
+          icon: 'error',
+          confirmButtonColor: '#dc3545',
+        });
+      }
+    } catch {
+      await Swal.fire({
+        title: 'Error de Conexión',
+        text: 'Error de conexión.',
         icon: 'error',
         confirmButtonColor: '#dc3545',
       });
@@ -1069,7 +1120,11 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
           )}
           {tab === 'tipos' && (
             <button
-              onClick={() => setIsTipoModalOpen(true)}
+              onClick={() => {
+                setCurrentTipo(null);
+                setTipoForm({ codigo: '', descripcion: '', requiere_actividad: false });
+                setIsTipoModalOpen(true);
+              }}
               className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-xs"
             >
               ➕ Nuevo Tipo
@@ -1203,6 +1258,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                 <th className="px-4 py-3">Código</th>
                 <th className="px-4 py-3">Descripción</th>
                 <th className="px-4 py-3 text-center">Requiere Actividad</th>
+                <th className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -1217,6 +1273,32 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                     }`}>
                       {t.requiere_actividad ? 'SÍ' : 'NO'}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-1">
+                      <button
+                        onClick={() => {
+                          setCurrentTipo(t);
+                          setTipoForm({
+                            codigo: t.codigo,
+                            descripcion: t.descripcion || '',
+                            requiere_actividad: Boolean(t.requiere_actividad),
+                          });
+                          setIsTipoModalOpen(true);
+                        }}
+                        title="Editar tipo de acreditación"
+                        className="px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded text-xs font-semibold"
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTipo(t.id, t.codigo)}
+                        title="Eliminar tipo de acreditación"
+                        className="px-2 py-1 bg-red-50 text-red-700 hover:bg-red-100 rounded text-xs font-semibold"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -3242,11 +3324,13 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
         </div>
       )}
 
-      {/* MODAL CREAR TIPO ACREDITACIÓN */}
+      {/* MODAL CREAR / EDITAR TIPO ACREDITACIÓN */}
       {isTipoModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-gray-900">➕ Nuevo Tipo de Acreditación</h3>
+            <h3 className="text-base font-bold text-gray-900">
+              {currentTipo ? '✏️ Editar Tipo de Acreditación' : '➕ Nuevo Tipo de Acreditación'}
+            </h3>
             <form onSubmit={handleSaveTipo} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-gray-600">Código</label>
@@ -3281,7 +3365,10 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <button
                   type="button"
-                  onClick={() => setIsTipoModalOpen(false)}
+                  onClick={() => {
+                    setIsTipoModalOpen(false);
+                    setCurrentTipo(null);
+                  }}
                   className="px-4 py-2 border rounded-lg text-sm text-gray-600"
                 >
                   Cancelar
@@ -3290,7 +3377,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                   type="submit"
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold"
                 >
-                  Guardar Tipo
+                  {currentTipo ? 'Guardar Cambios' : 'Guardar Tipo'}
                 </button>
               </div>
             </form>

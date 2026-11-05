@@ -360,14 +360,36 @@ router.put('/tipos-acreditacion/:id', requireHierarchy(4), async (req: Authentic
       return;
     }
 
-    const { descripcion, requiere_actividad } = req.body;
+    const { codigo, descripcion, requiere_actividad } = req.body;
+    const cleanCodigo = codigo ? String(codigo).toUpperCase().trim() : null;
+
+    if (cleanCodigo) {
+      const dupCheck = await query(
+        `SELECT id FROM tipos_acreditacion WHERE codigo = $1 AND id != $2`,
+        [cleanCodigo, id]
+      );
+      if (dupCheck.rows.length > 0) {
+        res.status(409).json({
+          ok: false,
+          message: `Ya existe otro tipo de acreditación con el código "${cleanCodigo}".`,
+        });
+        return;
+      }
+    }
+
+    const reqActBool =
+      requiere_actividad !== undefined
+        ? requiere_actividad === true || requiere_actividad === 'true'
+        : null;
+
     const upd = await query(
       `UPDATE tipos_acreditacion 
-       SET descripcion = COALESCE($1, descripcion), 
-           requiere_actividad = COALESCE($2, requiere_actividad) 
-       WHERE id = $3 
+       SET codigo = COALESCE($1, codigo),
+           descripcion = COALESCE($2, descripcion), 
+           requiere_actividad = COALESCE($3, requiere_actividad) 
+       WHERE id = $4 
        RETURNING *`,
-      [descripcion ? String(descripcion).trim() : null, requiere_actividad, id]
+      [cleanCodigo, descripcion ? String(descripcion).trim() : null, reqActBool, id]
     );
 
     if (upd.rows.length === 0) {
@@ -384,6 +406,65 @@ router.put('/tipos-acreditacion/:id', requireHierarchy(4), async (req: Authentic
     res.json({ ok: true, mensaje: 'Tipo de acreditación actualizado exitosamente.', tipo: upd.rows[0] });
   } catch (error: any) {
     console.error('Error en PUT /api/admin/catalogos/tipos-acreditacion/:id:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/catalogos/tipos-acreditacion/:id
+ */
+router.delete('/tipos-acreditacion/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      res.status(400).json({ ok: false, message: 'ID de tipo de acreditación inválido.' });
+      return;
+    }
+
+    const checkRes = await query(`SELECT * FROM tipos_acreditacion WHERE id = $1`, [id]);
+    if (checkRes.rows.length === 0) {
+      res.status(404).json({ ok: false, message: 'Tipo de acreditación no encontrado.' });
+      return;
+    }
+    const tipo = checkRes.rows[0];
+
+    // Comprobar dependencias en actividades
+    const inUseAct = await query(
+      `SELECT COUNT(*)::int as c FROM actividades WHERE tipo_acreditacion_id = $1`,
+      [id]
+    );
+    if (inUseAct.rows[0].c > 0) {
+      res.status(409).json({
+        ok: false,
+        message: `No se puede eliminar el tipo "${tipo.codigo}" porque está asignado a ${inUseAct.rows[0].c} actividad(es) del programa.`,
+      });
+      return;
+    }
+
+    // Comprobar dependencias en acreditaciones registradas
+    const inUseAcred = await query(
+      `SELECT COUNT(*)::int as c FROM acreditaciones WHERE tipo_acreditacion_id = $1`,
+      [id]
+    );
+    if (inUseAcred.rows[0].c > 0) {
+      res.status(409).json({
+        ok: false,
+        message: `No se puede eliminar el tipo "${tipo.codigo}" porque posee ${inUseAcred.rows[0].c} registro(s) de acreditación asociados.`,
+      });
+      return;
+    }
+
+    await query(`DELETE FROM tipos_acreditacion WHERE id = $1`, [id]);
+
+    await query(
+      `INSERT INTO logs_auditoria (tabla_afectada, registro_id, accion, usuario_responsable, datos_nuevos) 
+       VALUES ($1, $2, $3, $4, $5)`,
+      ['tipos_acreditacion', id, 'TIPO_ACREDITACION_ELIMINADO', req.operator?.email || 'ADMIN', JSON.stringify(tipo)]
+    ).catch(() => {});
+
+    res.json({ ok: true, mensaje: `Tipo de acreditación "${tipo.codigo}" eliminado correctamente.` });
+  } catch (error: any) {
+    console.error('Error en DELETE /api/admin/catalogos/tipos-acreditacion/:id:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
   }
 });
