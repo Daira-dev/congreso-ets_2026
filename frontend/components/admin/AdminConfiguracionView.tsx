@@ -3041,270 +3041,284 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
 
       {/* MODAL CREAR / EDITAR ROL */}
       {isRolModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-gray-900">
-              {currentRol ? '✏️ Editar Rol Institucional' : '➕ Nuevo Rol Institucional'}
-            </h3>
-            <form onSubmit={handleSaveRol} className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-gray-600">Nombre del Rol</label>
-                <input
-                  type="text"
-                  required
-                  value={rolForm.nombre}
-                  onChange={(e) => setRolForm({ ...rolForm, nombre: e.target.value })}
-                  placeholder="Ej: Becario, Jurado, Prensa..."
-                  className="w-full mt-1 p-2 text-sm border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-600">Descripción</label>
-                <input
-                  type="text"
-                  value={rolForm.descripcion}
-                  onChange={(e) => setRolForm({ ...rolForm, descripcion: e.target.value })}
-                  placeholder="Alcance pedagógico o institucional..."
-                  className="w-full mt-1 p-2 text-sm border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-600">Jerarquía del Rol (Nivel 1 a 5)</label>
-                <div className="flex items-center gap-3 mt-1">
-                  <input
-                    type="number"
-                    min={1}
-                    max={5}
-                    value={rolForm.jerarquia}
-                    onChange={(e) => {
-                      const newJerarquia = Math.min(5, Math.max(1, parseInt(e.target.value, 10) || 1));
-                      // Filtrar permisos existentes que ya no sean permitidos por la nueva jerarquía
-                      const maxItems = [
-                        { key: 'dashboard', min: 3 },
-                        { key: 'estadisticas_5ejes', min: 3 },
-                        { key: 'usuarios', min: 3 },
-                        { key: 'acreditaciones', min: 3 },
-                        { key: 'actividades', min: 4 },
-                        { key: 'presentadores', min: 4 },
-                        { key: 'catalogo', min: 4 },
-                        { key: 'homologaciones', min: 4 },
-                        { key: 'certificados', min: 4 },
-                        { key: 'encuestas', min: 4 },
-                        { key: 'manuales', min: 3 },
-                        { key: 'puntos', min: 4 },
-                        { key: 'eventos', min: 4 },
-                        { key: 'operadores', min: 5 },
-                        { key: 'blacklist', min: 5 },
-                        { key: 'auditoria', min: 5 },
-                        { key: 'configuracion', min: 5 },
-                        { key: 'frontend_cms', min: 3 },
-                        { key: 'cron', min: 5 },
-                      ];
-                      const filteredPermisos = rolForm.permisos.filter(
-                        (p) => (maxItems.find((m) => m.key === p)?.min || 5) <= newJerarquia
-                      );
-                      setRolForm({ ...rolForm, jerarquia: newJerarquia, permisos: filteredPermisos });
-                    }}
-                    className="w-24 p-2 text-sm border rounded-lg font-bold text-center"
-                  />
-                  <div className="text-xs text-gray-500">
-                    {rolForm.jerarquia <= 2 && 'Roles de Asistencia / Participantes (sin acceso administrativo a la botonera)'}
-                    {rolForm.jerarquia === 3 && 'Operador General / Acreditador (Acceso a Operaciones y Manuales)'}
-                    {rolForm.jerarquia === 4 && 'Gestor Académico / Supervisor de Recintos'}
-                    {rolForm.jerarquia >= 5 && 'Administrador de Seguridad / Superadmin (Acceso Total)'}
-                  </div>
-                </div>
-              </div>
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col p-4 sm:p-5 shadow-2xl overflow-hidden my-auto">
+            <div className="flex items-center justify-between pb-2.5 border-b shrink-0">
+              <h3 className="text-sm sm:text-base font-bold text-gray-900">
+                {currentRol ? '✏️ Editar Rol Institucional' : '➕ Nuevo Rol Institucional'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsRolModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 text-sm font-bold px-2 py-0.5 rounded hover:bg-gray-100 cursor-pointer"
+                aria-label="Cerrar modal"
+              >
+                ✕
+              </button>
+            </div>
 
-              {/* MATRIZ DE PERMISOS GRANULARES DE ACCESO */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
+            <form onSubmit={handleSaveRol} className="flex flex-col flex-1 min-h-0 mt-3">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden pr-1 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <h4 className="text-xs font-bold text-slate-800">
-                      Permisos Granulares de Acceso (Botonera)
-                    </h4>
-                    <p className="text-[11px] text-slate-500">
-                      {rolForm.jerarquia >= 5
-                        ? 'Los operadores de nivel 5 acceden a todas las opciones automáticamente.'
-                        : 'Seleccioná qué módulos específicos estarán habilitados para este rol.'}
-                    </p>
+                    <label className="text-xs font-bold text-gray-600">Nombre del Rol</label>
+                    <input
+                      type="text"
+                      required
+                      value={rolForm.nombre}
+                      onChange={(e) => setRolForm({ ...rolForm, nombre: e.target.value })}
+                      placeholder="Ej: Becario, Jurado, Prensa..."
+                      className="w-full mt-1 p-2 text-xs sm:text-sm border rounded-lg"
+                    />
                   </div>
-
-                  {rolForm.jerarquia < 5 && (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const ALL_ACCESSIBLE = [
-                            { key: 'dashboard', min: 3 },
-                            { key: 'estadisticas_5ejes', min: 3 },
-                            { key: 'usuarios', min: 3 },
-                            { key: 'acreditaciones', min: 3 },
-                            { key: 'actividades', min: 4 },
-                            { key: 'presentadores', min: 4 },
-                            { key: 'catalogo', min: 4 },
-                            { key: 'homologaciones', min: 4 },
-                            { key: 'certificados', min: 4 },
-                            { key: 'encuestas', min: 4 },
-                            { key: 'manuales', min: 3 },
-                            { key: 'puntos', min: 4 },
-                            { key: 'eventos', min: 4 },
-                            { key: 'operadores', min: 5 },
-                            { key: 'blacklist', min: 5 },
-                            { key: 'auditoria', min: 5 },
-                            { key: 'configuracion', min: 5 },
-                            { key: 'frontend_cms', min: 3 },
-                            { key: 'cron', min: 5 },
-                          ]
-                            .filter((m) => m.min <= rolForm.jerarquia)
-                            .map((m) => m.key);
-                          setRolForm({ ...rolForm, permisos: ALL_ACCESSIBLE });
-                        }}
-                        className="px-2 py-1 text-[11px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded transition cursor-pointer"
-                      >
-                        ✓ Marcar permitidos
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRolForm({ ...rolForm, permisos: [] })}
-                        className="px-2 py-1 text-[11px] font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 rounded transition cursor-pointer"
-                      >
-                        Desmarcar
-                      </button>
-                    </div>
-                  )}
+                  <div>
+                    <label className="text-xs font-bold text-gray-600">Descripción</label>
+                    <input
+                      type="text"
+                      value={rolForm.descripcion}
+                      onChange={(e) => setRolForm({ ...rolForm, descripcion: e.target.value })}
+                      placeholder="Alcance pedagógico o institucional..."
+                      className="w-full mt-1 p-2 text-xs sm:text-sm border rounded-lg"
+                    />
+                  </div>
                 </div>
 
-                {/* GRUPOS DE CHECKBOXES */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto p-1">
-                  {[
-                    {
-                      categoria: 'OPERACIONES & ASISTENCIA',
-                      minGrupo: 3,
-                      items: [
-                        { key: 'dashboard', label: 'Tablero 360° (Métricas)', icon: '📊', min: 3 },
-                        { key: 'estadisticas_5ejes', label: 'Estadísticas Analíticas (5 Ejes)', icon: '📈', min: 3 },
-                        { key: 'usuarios', label: 'Gestión de Participantes (CRUD)', icon: '👥', min: 3 },
-                        { key: 'acreditaciones', label: 'Control de Accesos en Vivo (Scans)', icon: '🎟️', min: 3 },
-                      ],
-                    },
-                    {
-                      categoria: 'GESTIÓN ACADÉMICA',
-                      minGrupo: 4,
-                      items: [
-                        { key: 'actividades', label: 'Actividades & Cronograma', icon: '📅', min: 4 },
-                        { key: 'presentadores', label: 'Presentadores & Ponentes', icon: '🎤', min: 4 },
-                        { key: 'catalogo', label: 'Materias Canónicas y Áreas', icon: '📋', min: 4 },
-                        { key: 'homologaciones', label: 'Homologación de Expositores', icon: '🎖️', min: 4 },
-                        { key: 'certificados', label: 'Certificados Oficiales', icon: '🎓', min: 4 },
-                        { key: 'encuestas', label: 'Encuestas de Calidad y Feedback', icon: '📋', min: 4 },
-                        { key: 'manuales', label: 'Manuales Oficiales (Exportación PDF)', icon: '📖', min: 3 },
-                      ],
-                    },
-                    {
-                      categoria: 'INFRAESTRUCTURA & SEDE',
-                      minGrupo: 4,
-                      items: [
-                        { key: 'puntos', label: 'Recintos, Salas & Puntos de Acceso', icon: '🏢', min: 4 },
-                        { key: 'eventos', label: 'Ediciones & Eventos Oficiales', icon: '🏛️', min: 4 },
-                        { key: 'frontend_cms', label: 'CMS Frontend (Tarjetas)', icon: '🎴', min: 3 },
-                      ],
-                    },
-                    {
-                      categoria: 'SEGURIDAD & ADMINISTRACIÓN',
-                      minGrupo: 5,
-                      items: [
-                        { key: 'operadores', label: 'Operadores del Sistema', icon: '🛡️', min: 5 },
-                        { key: 'blacklist', label: 'Lista Negra de Exclusiones', icon: '🚫', min: 5 },
-                        { key: 'auditoria', label: 'Bitácora Forense de Auditoría', icon: '📜', min: 5 },
-                        { key: 'configuracion', label: 'Parámetros del Sistema', icon: '⚙️', min: 5 },
-                        { key: 'cron', label: 'Procesos Asíncronos (Cron Jobs)', icon: '⏱️', min: 5 },
-                      ],
-                    },
-                  ].map((grupo) => (
-                    <div
-                      key={grupo.categoria}
-                      className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-2xs space-y-2"
-                    >
-                      <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-700 uppercase tracking-wider border-b pb-1">
-                        <span>{grupo.categoria}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">Nivel {grupo.minGrupo}+</span>
+                <div>
+                  <label className="text-xs font-bold text-gray-600">Jerarquía del Rol (Nivel 1 a 5)</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mt-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={rolForm.jerarquia}
+                      onChange={(e) => {
+                        const newJerarquia = Math.min(5, Math.max(1, parseInt(e.target.value, 10) || 1));
+                        // Filtrar permisos existentes que ya no sean permitidos por la nueva jerarquía
+                        const maxItems = [
+                          { key: 'dashboard', min: 3 },
+                          { key: 'estadisticas_5ejes', min: 3 },
+                          { key: 'usuarios', min: 3 },
+                          { key: 'acreditaciones', min: 3 },
+                          { key: 'actividades', min: 4 },
+                          { key: 'presentadores', min: 4 },
+                          { key: 'catalogo', min: 4 },
+                          { key: 'homologaciones', min: 4 },
+                          { key: 'certificados', min: 4 },
+                          { key: 'encuestas', min: 4 },
+                          { key: 'manuales', min: 3 },
+                          { key: 'puntos', min: 4 },
+                          { key: 'eventos', min: 4 },
+                          { key: 'operadores', min: 5 },
+                          { key: 'blacklist', min: 5 },
+                          { key: 'auditoria', min: 5 },
+                          { key: 'configuracion', min: 5 },
+                          { key: 'frontend_cms', min: 3 },
+                          { key: 'cron', min: 5 },
+                        ];
+                        const filteredPermisos = rolForm.permisos.filter(
+                          (p) => (maxItems.find((m) => m.key === p)?.min || 5) <= newJerarquia
+                        );
+                        setRolForm({ ...rolForm, jerarquia: newJerarquia, permisos: filteredPermisos });
+                      }}
+                      className="w-20 p-1.5 text-sm border rounded-lg font-bold text-center shrink-0"
+                    />
+                    <div className="text-[11px] text-gray-500 leading-snug">
+                      {rolForm.jerarquia <= 2 && 'Roles de Asistencia / Participantes (sin acceso administrativo a la botonera)'}
+                      {rolForm.jerarquia === 3 && 'Operador General / Acreditador (Acceso a Operaciones y Manuales)'}
+                      {rolForm.jerarquia === 4 && 'Gestor Académico / Supervisor de Recintos'}
+                      {rolForm.jerarquia >= 5 && 'Administrador de Seguridad / Superadmin (Acceso Total)'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* MATRIZ DE PERMISOS GRANULARES DE ACCESO */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs font-bold text-slate-800">
+                        Permisos Granulares de Acceso (Botonera)
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        {rolForm.jerarquia >= 5
+                          ? 'Los operadores de nivel 5 acceden a todas las opciones automáticamente.'
+                          : 'Seleccioná qué módulos específicos estarán habilitados para este rol.'}
+                      </p>
+                    </div>
+
+                    {rolForm.jerarquia < 5 && (
+                      <div className="flex gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const ALL_ACCESSIBLE = [
+                              { key: 'dashboard', min: 3 },
+                              { key: 'estadisticas_5ejes', min: 3 },
+                              { key: 'usuarios', min: 3 },
+                              { key: 'acreditaciones', min: 3 },
+                              { key: 'actividades', min: 4 },
+                              { key: 'presentadores', min: 4 },
+                              { key: 'catalogo', min: 4 },
+                              { key: 'homologaciones', min: 4 },
+                              { key: 'certificados', min: 4 },
+                              { key: 'encuestas', min: 4 },
+                              { key: 'manuales', min: 3 },
+                              { key: 'puntos', min: 4 },
+                              { key: 'eventos', min: 4 },
+                              { key: 'operadores', min: 5 },
+                              { key: 'blacklist', min: 5 },
+                              { key: 'auditoria', min: 5 },
+                              { key: 'configuracion', min: 5 },
+                              { key: 'frontend_cms', min: 3 },
+                              { key: 'cron', min: 5 },
+                            ]
+                              .filter((m) => m.min <= rolForm.jerarquia)
+                              .map((m) => m.key);
+                            setRolForm({ ...rolForm, permisos: ALL_ACCESSIBLE });
+                          }}
+                          className="px-2 py-1 text-[11px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded transition cursor-pointer"
+                        >
+                          ✓ Marcar permitidos
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRolForm({ ...rolForm, permisos: [] })}
+                          className="px-2 py-1 text-[11px] font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 rounded transition cursor-pointer"
+                        >
+                          Desmarcar
+                        </button>
                       </div>
+                    )}
+                  </div>
 
-                      <div className="space-y-1">
-                        {grupo.items.map((item) => {
-                          const isLevelAllowed = rolForm.jerarquia >= item.min;
-                          const isChecked = rolForm.permisos.includes(item.key);
+                  {/* GRUPOS DE CHECKBOXES */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {[
+                      {
+                        categoria: 'OPERACIONES & ASISTENCIA',
+                        minGrupo: 3,
+                        items: [
+                          { key: 'dashboard', label: 'Tablero 360° (Métricas)', icon: '📊', min: 3 },
+                          { key: 'estadisticas_5ejes', label: 'Estadísticas Analíticas (5 Ejes)', icon: '📈', min: 3 },
+                          { key: 'usuarios', label: 'Gestión de Participantes (CRUD)', icon: '👥', min: 3 },
+                          { key: 'acreditaciones', label: 'Control de Accesos en Vivo (Scans)', icon: '🎟️', min: 3 },
+                        ],
+                      },
+                      {
+                        categoria: 'GESTIÓN ACADÉMICA',
+                        minGrupo: 4,
+                        items: [
+                          { key: 'actividades', label: 'Actividades & Cronograma', icon: '📅', min: 4 },
+                          { key: 'presentadores', label: 'Presentadores & Ponentes', icon: '🎤', min: 4 },
+                          { key: 'catalogo', label: 'Materias Canónicas y Áreas', icon: '📋', min: 4 },
+                          { key: 'homologaciones', label: 'Homologación de Expositores', icon: '🎖️', min: 4 },
+                          { key: 'certificados', label: 'Certificados Oficiales', icon: '🎓', min: 4 },
+                          { key: 'encuestas', label: 'Encuestas de Calidad y Feedback', icon: '📋', min: 4 },
+                          { key: 'manuales', label: 'Manuales Oficiales (Exportación PDF)', icon: '📖', min: 3 },
+                        ],
+                      },
+                      {
+                        categoria: 'INFRAESTRUCTURA & SEDE',
+                        minGrupo: 4,
+                        items: [
+                          { key: 'puntos', label: 'Recintos, Salas & Puntos de Acceso', icon: '🏢', min: 4 },
+                          { key: 'eventos', label: 'Ediciones & Eventos Oficiales', icon: '🏛️', min: 4 },
+                          { key: 'frontend_cms', label: 'CMS Frontend (Tarjetas)', icon: '🎴', min: 3 },
+                        ],
+                      },
+                      {
+                        categoria: 'SEGURIDAD & ADMINISTRACIÓN',
+                        minGrupo: 5,
+                        items: [
+                          { key: 'operadores', label: 'Operadores del Sistema', icon: '🛡️', min: 5 },
+                          { key: 'blacklist', label: 'Lista Negra de Exclusiones', icon: '🚫', min: 5 },
+                          { key: 'auditoria', label: 'Bitácora Forense de Auditoría', icon: '📜', min: 5 },
+                          { key: 'configuracion', label: 'Parámetros del Sistema', icon: '⚙️', min: 5 },
+                          { key: 'cron', label: 'Procesos Asíncronos (Cron Jobs)', icon: '⏱️', min: 5 },
+                        ],
+                      },
+                    ].map((grupo) => (
+                      <div
+                        key={grupo.categoria}
+                        className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-2xs space-y-1.5 overflow-hidden"
+                      >
+                        <div className="flex items-center justify-between gap-1 text-[10px] font-extrabold text-slate-700 uppercase tracking-wider border-b pb-1">
+                          <span className="leading-tight break-words min-w-0">{grupo.categoria}</span>
+                          <span className="text-[9px] text-slate-400 font-mono shrink-0">Nivel {grupo.minGrupo}+</span>
+                        </div>
 
-                          return (
-                            <label
-                              key={item.key}
-                              className={`flex items-start gap-2 p-1.5 rounded-md transition text-xs select-none ${
-                                !isLevelAllowed
-                                  ? 'opacity-40 bg-slate-100 cursor-not-allowed text-slate-400'
-                                  : isChecked
-                                  ? 'bg-blue-50/70 border border-blue-200 text-blue-900 cursor-pointer font-medium'
-                                  : 'hover:bg-slate-50 cursor-pointer text-slate-700'
-                              }`}
-                              title={
-                                !isLevelAllowed
-                                  ? `Inhabilitado: Requiere Nivel ${item.min} o superior (el rol actual tiene Nivel ${rolForm.jerarquia})`
-                                  : undefined
-                              }
-                            >
-                              <input
-                                type="checkbox"
-                                disabled={!isLevelAllowed}
-                                checked={isChecked && isLevelAllowed}
-                                onChange={(e) => {
-                                  if (!isLevelAllowed) return;
-                                  if (e.target.checked) {
-                                    setRolForm({
-                                      ...rolForm,
-                                      permisos: [...rolForm.permisos, item.key],
-                                    });
-                                  } else {
-                                    setRolForm({
-                                      ...rolForm,
-                                      permisos: rolForm.permisos.filter((p) => p !== item.key),
-                                    });
-                                  }
-                                }}
-                                className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 disabled:opacity-40 shrink-0 cursor-pointer"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="truncate flex items-center gap-1 text-[11px]">
-                                    <span>{item.icon}</span>
+                        <div className="space-y-1">
+                          {grupo.items.map((item) => {
+                            const isLevelAllowed = rolForm.jerarquia >= item.min;
+                            const isChecked = rolForm.permisos.includes(item.key);
+
+                            return (
+                              <label
+                                key={item.key}
+                                className={`flex items-start gap-2 p-1.5 rounded-md transition text-xs select-none w-full overflow-hidden ${
+                                  !isLevelAllowed
+                                    ? 'opacity-50 bg-slate-100 cursor-not-allowed text-slate-400'
+                                    : isChecked
+                                    ? 'bg-blue-50/70 border border-blue-200 text-blue-900 cursor-pointer font-medium'
+                                    : 'hover:bg-slate-50 cursor-pointer text-slate-700'
+                                }`}
+                                title={
+                                  !isLevelAllowed
+                                    ? `Inhabilitado: Requiere Nivel ${item.min} o superior (el rol actual tiene Nivel ${rolForm.jerarquia})`
+                                    : undefined
+                                }
+                              >
+                                <input
+                                  type="checkbox"
+                                  disabled={!isLevelAllowed}
+                                  checked={isChecked && isLevelAllowed}
+                                  onChange={(e) => {
+                                    if (!isLevelAllowed) return;
+                                    if (e.target.checked) {
+                                      setRolForm({
+                                        ...rolForm,
+                                        permisos: [...rolForm.permisos, item.key],
+                                      });
+                                    } else {
+                                      setRolForm({
+                                        ...rolForm,
+                                        permisos: rolForm.permisos.filter((p) => p !== item.key),
+                                      });
+                                    }
+                                  }}
+                                  className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 disabled:opacity-40 shrink-0 cursor-pointer"
+                                />
+                                <div className="flex-1 min-w-0 flex items-start justify-between gap-1.5 text-left">
+                                  <span className="text-[11px] leading-snug break-words min-w-0 flex-1">
+                                    <span className="mr-1">{item.icon}</span>
                                     <span>{item.label}</span>
                                   </span>
                                   {!isLevelAllowed && (
-                                    <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1 rounded shrink-0 border border-rose-200">
+                                    <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded shrink-0 border border-rose-200 whitespace-nowrap">
                                       Req. Nivel {item.min}
                                     </span>
                                   )}
                                 </div>
-                              </div>
-                            </label>
-                          );
-                        })}
+                              </label>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t">
+              <div className="flex justify-end gap-2 pt-3 mt-2 border-t shrink-0 bg-white">
                 <button
                   type="button"
                   onClick={() => setIsRolModalOpen(false)}
-                  className="px-4 py-2 border rounded-lg text-sm text-gray-600"
+                  className="px-4 py-2 border rounded-lg text-xs sm:text-sm text-gray-600 hover:bg-gray-50 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs sm:text-sm font-semibold cursor-pointer"
                 >
                   Guardar Rol
                 </button>
