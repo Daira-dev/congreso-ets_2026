@@ -15,7 +15,7 @@ router.use(requireHierarchy(3));
  */
 router.get('/config', async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const [operadoresRes, puntosRes, tiposRes, actividadesRes] = await Promise.all([
+    const [operadoresRes, puntosRes, tiposRes, actividadesRes, politicaRes] = await Promise.all([
       query(`
         SELECT id, nombre, apellido, email_institucional, punto_acceso_default_id
         FROM operadores
@@ -39,7 +39,23 @@ router.get('/config', async (_req: AuthenticatedRequest, res: Response): Promise
         WHERE activo = TRUE
         ORDER BY id ASC
       `),
+      query(`
+        SELECT valor FROM configuraciones_sistema WHERE clave = 'politica_acreditacion' LIMIT 1
+      `),
     ]);
+
+    let politica_acreditacion: any = {
+      exigir_dni_fisico: true,
+      mostrar_foto_operador: true,
+      reloj_animado_credencial: true,
+    };
+    try {
+      const rawPol = politicaRes.rows[0]?.valor;
+      const parsedPol = typeof rawPol === 'string' ? JSON.parse(rawPol) : rawPol;
+      if (parsedPol && typeof parsedPol === 'object') {
+        politica_acreditacion = { ...politica_acreditacion, ...parsedPol };
+      }
+    } catch (_) {}
 
     res.json({
       ok: true,
@@ -47,6 +63,7 @@ router.get('/config', async (_req: AuthenticatedRequest, res: Response): Promise
       puntos_acceso: puntosRes.rows,
       tipos_acreditacion: tiposRes.rows,
       actividades: actividadesRes.rows,
+      politica_acreditacion,
     });
   } catch (error: any) {
     console.error('Error en GET /api/operator/config:', error);

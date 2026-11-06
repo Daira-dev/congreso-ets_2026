@@ -23,8 +23,27 @@ export interface VapidKeys {
   privateKey: string;
 }
 
+export interface DispatchedPushRecord {
+  id: string;
+  title: string;
+  body: string;
+  url: string;
+  urgente: boolean;
+  segmento: string;
+  createdAt: string;
+}
+
 let cachedVapidKeys: VapidKeys | null = null;
 let vapidConfigured = false;
+
+/**
+ * Actualiza en memoria las claves VAPID tras una regeneración administrativa
+ */
+export function setVapidKeysCache(keys: VapidKeys) {
+  cachedVapidKeys = keys;
+  vapidConfigured = false;
+  initWebPush(keys);
+}
 
 /**
  * Obtiene o genera las claves VAPID para Web Push persistiendo en la base de datos
@@ -187,16 +206,20 @@ export async function broadcastPushNotification(
 
   let querySql = `SELECT DISTINCT sp.id, sp.endpoint, sp.p256dh, sp.auth FROM suscripciones_push sp`;
   const joins: string[] = [];
-  const where: string[] = ['sp.usuario_id IS NOT NULL'];
+  const where: string[] = [];
   const params: any[] = [];
 
   if (filter?.solo_acreditados) {
+    where.push('sp.usuario_id IS NOT NULL');
     joins.push(
       `JOIN acreditaciones a ON a.usuario_id = sp.usuario_id AND a.tipo_movimiento = 'INGRESO'`
     );
   }
 
   if (filter?.rol_id) {
+    if (!where.includes('sp.usuario_id IS NOT NULL')) {
+      where.push('sp.usuario_id IS NOT NULL');
+    }
     joins.push(`JOIN usuarios u ON sp.usuario_id = u.id`);
     params.push(filter.rol_id);
     where.push(`(u.rol_principal_id = $${params.length} OR EXISTS (
@@ -225,17 +248,66 @@ export async function broadcastPushNotification(
     })
   );
 
+  const segmentoLabel = filter?.solo_acreditados
+    ? 'SOLO_ACREDITADOS'
+    : filter?.rol_id
+      ? `ROL_${filter.rol_id}`
+      : 'TODOS';
+
+  const dispatchedRecord: DispatchedPushRecord = {
+    id: `push_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    title: payload.title || 'Congreso ETS 2026',
+    body: payload.body || '',
+    url: payload.url?.trim() || '/',
+    urgente: esUrgente,
+    segmento: segmentoLabel,
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    const existingRes = await query(
+      `SELECT valor FROM configuraciones_sistema WHERE clave = 'avisos_push_recientes'`
+    );
+    const prevList: DispatchedPushRecord[] = Array.isArray(existingRes.rows[0]?.valor)
+      ? existingRes.rows[0].valor
+      : [];
+    const updatedList = [dispatchedRecord, ...prevList].slice(0, 20);
+
+    await query(
+      `INSERT INTO configuraciones_sistema (clave, valor, descripcion, categoria, actualizado_en)
+       VALUES ('avisos_push_recientes', $1::jsonb, 'Historial reciente de avisos Push despachados en tiempo real', 'GENERAL', NOW())
+       ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, actualizado_en = NOW()`,
+      [JSON.stringify(updatedList)]
+    );
+  } catch (err) {
+    console.warn('No se pudo persistir el aviso push en avisos_push_recientes:', err);
+  }
+
   return {
     total: subs.length,
     sent,
     failed,
-    segmento: filter?.solo_acreditados
-      ? 'SOLO_ACREDITADOS'
-      : filter?.rol_id
-        ? `ROL_${filter.rol_id}`
-        : 'TODOS',
+    segmento: segmentoLabel,
     urgente: esUrgente,
+    aviso: dispatchedRecord,
   };
+}
+
+/**
+ * Obtiene los avisos Push despachados recientemente para mostrarlos en las URLs de destino
+ */
+export async function getRecentDispatchedPushes(): Promise<DispatchedPushRecord[]> {
+  try {
+    const res = await query(
+      `SELECT valor FROM configuraciones_sistema WHERE clave = 'avisos_push_recientes'`
+    );
+    if (res.rows.length > 0 && Array.isArray(res.rows[0].valor)) {
+      return res.rows[0].valor as DispatchedPushRecord[];
+    }
+  } catch (err) {
+    console.warn('Error consultando avisos_push_recientes:', err);
+  }
+  return [];
 }
 
 /**

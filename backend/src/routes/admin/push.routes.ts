@@ -1,7 +1,13 @@
 import { Router, Response } from 'express';
 import { query } from '../../lib/db';
 import { AuthenticatedRequest, requireHierarchy } from '../../middlewares/authMiddleware';
-import { broadcastPushNotification, getVapidKeys, VapidKeys } from '../../lib/pushService';
+import {
+  broadcastPushNotification,
+  getVapidKeys,
+  setVapidKeysCache,
+  getRecentDispatchedPushes,
+  VapidKeys,
+} from '../../lib/pushService';
 import { pushBroadcastSchema } from '../../lib/schemas';
 import webpush from 'web-push';
 
@@ -16,6 +22,7 @@ router.get('/stats', requireHierarchy(4), async (_req: AuthenticatedRequest, res
     const totalSubsRes = await query(`SELECT COUNT(*) as total FROM suscripciones_push`);
     const vinculadosRes = await query(`SELECT COUNT(*) as total FROM suscripciones_push WHERE usuario_id IS NOT NULL`);
     const vapidKeys = await getVapidKeys();
+    const recentPushes = await getRecentDispatchedPushes();
 
     const rolesBreakdownRes = await query(`
       SELECT r.nombre as rol, COUNT(sp.id) as total
@@ -31,6 +38,7 @@ router.get('/stats', requireHierarchy(4), async (_req: AuthenticatedRequest, res
       usuarios_vinculados: parseInt(vinculadosRes.rows[0].total, 10) || 0,
       desglose_roles: rolesBreakdownRes.rows,
       vapid_public_key: vapidKeys.publicKey,
+      avisos_recientes: recentPushes,
     });
   } catch (error: any) {
     console.error('Error obteniendo estadísticas push:', error);
@@ -109,6 +117,8 @@ router.post('/regenerate-keys', requireHierarchy(5), async (req: AuthenticatedRe
        ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, actualizado_en = NOW()`,
       [JSON.stringify(keysObj)]
     );
+
+    setVapidKeysCache(keysObj);
 
     await query(
       `INSERT INTO logs_auditoria (tabla_afectada, accion, usuario_responsable, datos_nuevos)

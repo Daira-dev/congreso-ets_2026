@@ -105,6 +105,15 @@ interface PushStats {
   usuarios_vinculados: number;
   desglose_roles: Array<{ rol: string; total: string | number }>;
   vapid_public_key: string;
+  avisos_recientes?: Array<{
+    id: string;
+    title: string;
+    body: string;
+    url: string;
+    urgente: boolean;
+    segmento: string;
+    createdAt: string;
+  }>;
 }
 
 export default function AdminConfiguracionView({ onNotice }: Props) {
@@ -145,7 +154,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
   const [showMailPassword, setShowMailPassword] = useState(false);
   const [testEmailRecipient, setTestEmailRecipient] = useState('');
   const [isTestingMail, setIsTestingMail] = useState(false);
-  const [testMailResult, setTestMailResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testMailResult, setTestMailResult] = useState<{ success: boolean; simulated?: boolean; message: string } | null>(null);
   const [isSavingMail, setIsSavingMail] = useState(false);
 
   // Plantilla de Correo (Header & Footer)
@@ -220,12 +229,14 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
   // Tipos Acreditación
   const [tiposAcred, setTiposAcred] = useState<TipoAcredItem[]>([]);
   const [isTipoModalOpen, setIsTipoModalOpen] = useState(false);
+  const [currentTipo, setCurrentTipo] = useState<TipoAcredItem | null>(null);
   const [tipoForm, setTipoForm] = useState({ codigo: '', descripcion: '', requiere_actividad: false });
 
   // Categorías Temáticas
   const [categorias, setCategorias] = useState<CategoriaItem[]>([]);
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
-  const [catForm, setCatForm] = useState({ nombre: '', descripcion: '' });
+  const [currentCat, setCurrentCat] = useState<CategoriaItem | null>(null);
+  const [catForm, setCatForm] = useState({ nombre: '', descripcion: '', activo: true });
 
   // Copias de Seguridad (Backups)
   const [backups, setBackups] = useState<BackupItem[]>([]);
@@ -377,12 +388,12 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
     }
   }
 
-  async function loadAllData() {
+  async function loadAllData(showManualFeedback = false) {
     setLoading(true);
     try {
       const [confRes, catRes] = await Promise.all([
-        fetch('/api/admin/configuracion'),
-        fetch('/api/admin/catalogos'),
+        fetch('/api/admin/configuracion', { cache: 'no-store' }),
+        fetch('/api/admin/catalogos', { cache: 'no-store' }),
         loadBackups(),
         loadSqlDumps(),
         loadVisitorBackups(),
@@ -392,19 +403,53 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       ]);
       loadMailTemplatePreview();
 
+      let loadedConfigs = configs.length;
+      let loadedRoles = roles.length;
+      let loadedTipos = tiposAcred.length;
+      let loadedCats = categorias.length;
+
       if (confRes.ok) {
         const confData = await confRes.json();
-        setConfigs(confData.configuracion || []);
+        const list = confData.configuracion || [];
+        setConfigs(list);
+        loadedConfigs = list.length;
       }
 
       if (catRes.ok) {
         const catData = await catRes.json();
-        setRoles(catData.roles || []);
-        setTiposAcred(catData.tipos_acreditacion || []);
-        setCategorias(catData.categorias_tematicas || []);
+        const rList = catData.roles || [];
+        const tList = catData.tipos_acreditacion || [];
+        const cList = catData.categorias_tematicas || [];
+        setRoles(rList);
+        setTiposAcred(tList);
+        setCategorias(cList);
+        loadedRoles = rList.length;
+        loadedTipos = tList.length;
+        loadedCats = cList.length;
+      }
+
+      if (showManualFeedback) {
+        onNotice('🔄 Datos de configuración, catálogos y respaldos sincronizados correctamente.');
+        await Swal.fire({
+          icon: 'success',
+          title: 'Configuración Recargada',
+          text: `Se actualizaron los datos del módulo desde el servidor (${loadedConfigs} parámetros, ${loadedRoles} roles, ${loadedTipos} tipos de acreditación y ${loadedCats} categorías temáticas).`,
+          confirmButtonText: 'Aceptar',
+          confirmButtonColor: '#2563eb',
+          timer: 3500,
+          timerProgressBar: true,
+        });
       }
     } catch (err) {
       console.error('Error cargando configuración:', err);
+      if (showManualFeedback) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error al Recargar',
+          text: 'No se pudieron sincronizar los datos de configuración con el servidor.',
+          confirmButtonColor: '#dc3545',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -481,6 +526,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       const data = await res.json();
       setTestMailResult({
         success: Boolean(data.ok),
+        simulated: Boolean(data.simulated),
         message: data.mensaje || data.error || 'Resultado de la prueba',
       });
     } catch {
@@ -491,6 +537,104 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
     } finally {
       setIsTestingMail(false);
     }
+  }
+
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  async function subscribeCurrentBrowserToPush(silent = false): Promise<boolean> {
+    if (
+      typeof window === 'undefined' ||
+      !('serviceWorker' in navigator) ||
+      !('PushManager' in window) ||
+      !('Notification' in window)
+    ) {
+      if (!silent) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Navegador no compatible',
+          text: 'Este navegador no soporta suscripciones Web Push en segundo plano.',
+          confirmButtonColor: '#005691',
+        });
+      }
+      return false;
+    }
+
+    try {
+      let perm = Notification.permission;
+      if (perm === 'default') {
+        perm = await Notification.requestPermission();
+      }
+      if (perm !== 'granted') {
+        if (!silent) {
+          await Swal.fire({
+            icon: 'warning',
+            title: 'Permiso de Notificaciones Requerido',
+            text: 'Habilita el permiso de notificaciones en el candado 🔒 de la barra de direcciones para recibir alertas Push en este navegador.',
+            confirmButtonColor: '#005691',
+          });
+        }
+        return false;
+      }
+
+      const keyRes = await fetch('/api/push/public-key');
+      const keyData = await keyRes.json();
+      if (!keyRes.ok || !keyData.publicKey) return false;
+
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        const applicationServerKey = urlBase64ToUint8Array(keyData.publicKey);
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: applicationServerKey as any,
+        });
+      }
+
+      let targetUsuarioId: string | null = null;
+      const cached = localStorage.getItem('ets2026_credencial_cache');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed.usuario?.id) targetUsuarioId = parsed.usuario.id;
+        } catch (_) {}
+      }
+
+      const subJson = subscription.toJSON();
+      const saveRes = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: subscription.endpoint,
+          keys: {
+            p256dh: subJson.keys?.p256dh,
+            auth: subJson.keys?.auth,
+          },
+          usuario_id: targetUsuarioId,
+        }),
+      });
+
+      if (saveRes.ok) {
+        await loadPushStats();
+        if (!silent) {
+          onNotice('🔔 Este navegador quedó vinculado para recibir notificaciones Push en tiempo real.');
+        }
+        return true;
+      }
+    } catch (err) {
+      console.warn('No se pudo suscribir el navegador actual a Web Push:', err);
+    }
+    return false;
   }
 
   async function handleBroadcastPush(e: React.FormEvent) {
@@ -504,16 +648,28 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       });
       return;
     }
+
+    const rawUrl = pushForm.url.trim() || '/';
+    const normalizedUrl =
+      rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('/')
+        ? rawUrl
+        : `/${rawUrl}`;
+
     setIsBroadcastingPush(true);
     setPushBroadcastResult(null);
     try {
+      // Asegurar que el navegador actual esté suscrito si no hay dispositivos registrados aún
+      if ((pushStats?.total_dispositivos || 0) === 0) {
+        await subscribeCurrentBrowserToPush(true);
+      }
+
       const res = await fetch('/api/admin/push/broadcast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: pushForm.title,
-          body: pushForm.body,
-          url: pushForm.url,
+          title: pushForm.title.trim(),
+          body: pushForm.body.trim(),
+          url: normalizedUrl,
           urgente: pushForm.urgente,
           filtro: {
             rol_id: pushForm.rol_id,
@@ -523,7 +679,30 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       });
       const data = await res.json();
       if (res.ok && data.ok) {
-        onNotice(data.mensaje || 'Notificación push emitida exitosamente.');
+        const avisoRecord = data.detalle?.aviso || {
+          id: `push_${Date.now()}`,
+          title: pushForm.title.trim(),
+          body: pushForm.body.trim(),
+          url: normalizedUrl,
+          urgente: pushForm.urgente,
+          segmento: data.detalle?.segmento || 'TODOS',
+          createdAt: new Date().toISOString(),
+        };
+
+        // Difundir en tiempo real a todas las pestañas abiertas y almacenar último aviso para la URL de destino
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('ets2026_last_push_broadcast', JSON.stringify(avisoRecord));
+            sessionStorage.removeItem('ets2026_dismissed_pushes');
+            if ('BroadcastChannel' in window) {
+              const bc = new BroadcastChannel('ets2026_push_channel');
+              bc.postMessage(avisoRecord);
+              bc.close();
+            }
+          }
+        } catch (_) {}
+
+        onNotice(data.mensaje || `Notificación push despachada hacia ${normalizedUrl}.`);
         if (data.detalle) {
           setPushBroadcastResult(data.detalle);
         }
@@ -535,7 +714,28 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
           rol_id: null,
           solo_acreditados: false,
         });
-        loadPushStats();
+        await loadPushStats();
+
+        const swalRes = await Swal.fire({
+          icon: 'success',
+          title: '🔔 Notificación Push Despachada',
+          html: `<div style="text-align:left;font-size:0.86rem;line-height:1.55;">
+            <p style="margin-bottom:8px;">El aviso en tiempo real fue emitido y publicado en la URL configurada:</p>
+            <ul style="padding-left:18px;margin-bottom:10px;">
+              <li><strong>Título:</strong> ${avisoRecord.title}</li>
+              <li><strong>URL de Destino:</strong> <code>${normalizedUrl}</code></li>
+              <li><strong>Alcance:</strong> ${avisoRecord.segmento} (${data.detalle?.sent ?? 0} push Web + aviso activo en portal)</li>
+            </ul>
+          </div>`,
+          showCancelButton: true,
+          confirmButtonText: `🔗 Ver en ${normalizedUrl}`,
+          cancelButtonText: 'Cerrar',
+          confirmButtonColor: '#2563eb',
+        });
+
+        if (swalRes.isConfirmed && typeof window !== 'undefined') {
+          window.open(normalizedUrl, '_blank', 'noopener,noreferrer');
+        }
       } else {
         await Swal.fire({
           title: 'Error Push',
@@ -894,7 +1094,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       const res = await fetch(`/api/admin/catalogos/roles/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (res.ok && data.ok) {
-        onNotice('Rol eliminado correctamente.');
+        onNotice(data.mensaje || 'Rol eliminado correctamente.');
         loadAllData();
       } else {
         await Swal.fire({
@@ -918,16 +1118,29 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
   async function handleSaveTipo(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const res = await fetch('/api/admin/catalogos/tipos-acreditacion', {
-        method: 'POST',
+      const url = currentTipo
+        ? `/api/admin/catalogos/tipos-acreditacion/${currentTipo.id}`
+        : '/api/admin/catalogos/tipos-acreditacion';
+      const method = currentTipo ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(tipoForm),
       });
-      if (res.ok) {
-        onNotice('Tipo de acreditación creado con éxito.');
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        onNotice(currentTipo ? 'Tipo de acreditación actualizado con éxito.' : 'Tipo de acreditación creado con éxito.');
         setIsTipoModalOpen(false);
+        setCurrentTipo(null);
         setTipoForm({ codigo: '', descripcion: '', requiere_actividad: false });
         loadAllData();
+      } else {
+        await Swal.fire({
+          title: 'Error en Tipo de Acreditación',
+          text: data.message || 'No se pudo guardar el tipo de acreditación.',
+          icon: 'error',
+          confirmButtonColor: '#dc3545',
+        });
       }
     } catch {
       await Swal.fire({
@@ -939,25 +1152,112 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
     }
   }
 
+  async function handleDeleteTipo(id: number, codigo: string) {
+    const confirmRes = await Swal.fire({
+      title: '¿Eliminar tipo de acreditación?',
+      text: `¿Seguro que deseas eliminar el tipo "${codigo}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
+    });
+    if (!confirmRes.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/admin/catalogos/tipos-acreditacion/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        onNotice(data.mensaje || 'Tipo de acreditación eliminado correctamente.');
+        loadAllData();
+      } else {
+        await Swal.fire({
+          title: 'Error al Eliminar Tipo',
+          text: data.message || 'No se puede eliminar el tipo de acreditación.',
+          icon: 'error',
+          confirmButtonColor: '#dc3545',
+        });
+      }
+    } catch {
+      await Swal.fire({
+        title: 'Error de Conexión',
+        text: 'Error de conexión.',
+        icon: 'error',
+        confirmButtonColor: '#dc3545',
+      });
+    }
+  }
+
   // --- HANDLERS CATEGORÍAS TEMÁTICAS ---
   async function handleSaveCategoria(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const res = await fetch('/api/admin/catalogos/categorias-tematicas', {
-        method: 'POST',
+      const url = currentCat
+        ? `/api/admin/catalogos/categorias-tematicas/${currentCat.id}`
+        : '/api/admin/catalogos/categorias-tematicas';
+      const method = currentCat ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(catForm),
       });
-      if (res.ok) {
-        onNotice('Categoría temática creada.');
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        onNotice(currentCat ? 'Categoría temática actualizada con éxito.' : 'Categoría temática creada con éxito.');
         setIsCatModalOpen(false);
-        setCatForm({ nombre: '', descripcion: '' });
+        setCurrentCat(null);
+        setCatForm({ nombre: '', descripcion: '', activo: true });
         loadAllData();
+      } else {
+        await Swal.fire({
+          title: 'Error en Categoría Temática',
+          text: data.message || 'No se pudo guardar la categoría temática.',
+          icon: 'error',
+          confirmButtonColor: '#dc3545',
+        });
       }
     } catch {
       await Swal.fire({
         title: 'Error',
         text: 'Error al guardar categoría.',
+        icon: 'error',
+        confirmButtonColor: '#dc3545',
+      });
+    }
+  }
+
+  async function handleDeleteCategoria(id: number, nombre: string) {
+    const confirmRes = await Swal.fire({
+      title: '¿Eliminar categoría temática?',
+      text: `¿Seguro que deseas eliminar la categoría "${nombre}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
+    });
+    if (!confirmRes.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/admin/catalogos/categorias-tematicas/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        onNotice(data.mensaje || 'Categoría temática eliminada correctamente.');
+        loadAllData();
+      } else {
+        await Swal.fire({
+          title: 'Error al Eliminar Categoría',
+          text: data.message || 'No se puede eliminar la categoría temática.',
+          icon: 'error',
+          confirmButtonColor: '#dc3545',
+        });
+      }
+    } catch {
+      await Swal.fire({
+        title: 'Error de Conexión',
+        text: 'Error de conexión.',
         icon: 'error',
         confirmButtonColor: '#dc3545',
       });
@@ -1069,7 +1369,11 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
           )}
           {tab === 'tipos' && (
             <button
-              onClick={() => setIsTipoModalOpen(true)}
+              onClick={() => {
+                setCurrentTipo(null);
+                setTipoForm({ codigo: '', descripcion: '', requiere_actividad: false });
+                setIsTipoModalOpen(true);
+              }}
               className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-xs"
             >
               ➕ Nuevo Tipo
@@ -1077,7 +1381,11 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
           )}
           {tab === 'categorias' && (
             <button
-              onClick={() => setIsCatModalOpen(true)}
+              onClick={() => {
+                setCurrentCat(null);
+                setCatForm({ nombre: '', descripcion: '', activo: true });
+                setIsCatModalOpen(true);
+              }}
               className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-xs"
             >
               ➕ Nueva Categoría
@@ -1093,11 +1401,13 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
             </button>
           )}
           <button
-            onClick={loadAllData}
+            type="button"
+            onClick={() => loadAllData(true)}
             disabled={loading}
-            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold"
+            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 disabled:opacity-60 text-gray-700 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
+            title="Sincronizar parámetros, catálogos, copias de seguridad y configuraciones desde el servidor"
           >
-            🔄 Recargar
+            {loading ? '⏳ Recargando...' : '🔄 Recargar'}
           </button>
         </div>
       </div>
@@ -1203,6 +1513,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                 <th className="px-4 py-3">Código</th>
                 <th className="px-4 py-3">Descripción</th>
                 <th className="px-4 py-3 text-center">Requiere Actividad</th>
+                <th className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -1217,6 +1528,32 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                     }`}>
                       {t.requiere_actividad ? 'SÍ' : 'NO'}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-1">
+                      <button
+                        onClick={() => {
+                          setCurrentTipo(t);
+                          setTipoForm({
+                            codigo: t.codigo,
+                            descripcion: t.descripcion || '',
+                            requiere_actividad: Boolean(t.requiere_actividad),
+                          });
+                          setIsTipoModalOpen(true);
+                        }}
+                        title="Editar tipo de acreditación"
+                        className="px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded text-xs font-semibold"
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTipo(t.id, t.codigo)}
+                        title="Eliminar tipo de acreditación"
+                        className="px-2 py-1 bg-red-50 text-red-700 hover:bg-red-100 rounded text-xs font-semibold"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1235,6 +1572,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Descripción</th>
                 <th className="px-4 py-3 text-center">Estado</th>
+                <th className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -1250,6 +1588,32 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                       {c.activo ? 'Vigente' : 'Inactiva'}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-1">
+                      <button
+                        onClick={() => {
+                          setCurrentCat(c);
+                          setCatForm({
+                            nombre: c.nombre,
+                            descripcion: c.descripcion || '',
+                            activo: Boolean(c.activo),
+                          });
+                          setIsCatModalOpen(true);
+                        }}
+                        title="Editar categoría temática"
+                        className="px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded text-xs font-semibold"
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCategoria(c.id, c.nombre)}
+                        title="Eliminar categoría temática"
+                        className="px-2 py-1 bg-red-50 text-red-700 hover:bg-red-100 rounded text-xs font-semibold"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1261,32 +1625,100 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
       {tab === 'backups' && (
         <div className="space-y-4">
           {/* Sub-navegación entre Copias Integrales y Dumps SQL */}
-          <div className="flex gap-2 border-b border-gray-200 pb-2">
+          <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
             <button
-              onClick={() => setBackupSubtab('integrales')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              type="button"
+              onClick={async () => {
+                const wasAlreadyActive = backupSubtab === 'integrales';
+                setBackupSubtab('integrales');
+                let currentList = backups;
+                try {
+                  const res = await fetch('/api/admin/backups');
+                  if (res.ok) {
+                    const data = await res.json();
+                    currentList = data.backups || [];
+                    setBackups(currentList);
+                  }
+                } catch (_) {}
+
+                if (!wasAlreadyActive) {
+                  onNotice(`📦 Vista de Copias Integrales (.ZIP) activa (${currentList.length} archivos disponibles).`);
+                  return;
+                }
+
+                const totalMb = (
+                  currentList.reduce((acc, item) => acc + (Number(item.sizeBytes) || 0), 0) /
+                  (1024 * 1024)
+                ).toFixed(2);
+                const latest = currentList[0];
+
+                const result = await Swal.fire({
+                  icon: 'info',
+                  title: '📦 Copias Integrales (.ZIP)',
+                  html: latest
+                    ? `<div style="text-align:left;font-size:0.88rem;line-height:1.6;">
+                        <p style="margin-bottom:8px;">Estado actual del repositorio de copias integrales en el servidor:</p>
+                        <ul style="padding-left:18px;margin-bottom:10px;">
+                          <li><strong>Total de archivos .ZIP:</strong> ${currentList.length}</li>
+                          <li><strong>Espacio total en disco:</strong> ${totalMb} MB</li>
+                          <li><strong>Última copia generada:</strong> <code style="font-size:0.78rem;">${latest.filename}</code></li>
+                          <li><strong>Fecha:</strong> ${new Date(latest.createdAt).toLocaleString('es-AR')}</li>
+                        </ul>
+                        <p style="margin:0;color:#475569;font-size:0.8rem;">Puedes descargar directamente la copia más reciente o generar un nuevo paquete .ZIP ahora.</p>
+                      </div>`
+                    : `<p style="font-size:0.88rem;">Actualmente no hay copias integrales (.ZIP) registradas. ¿Deseas generar la primera copia ahora?</p>`,
+                  showCancelButton: true,
+                  showDenyButton: Boolean(latest),
+                  confirmButtonText: '💾 Crear Nueva Copia (.ZIP)',
+                  denyButtonText: '📥 Descargar Última (.ZIP)',
+                  cancelButtonText: 'Cerrar',
+                  confirmButtonColor: '#2563eb',
+                  denyButtonColor: '#059669',
+                });
+
+                if (result.isConfirmed) {
+                  await handleCreateBackup();
+                } else if (result.isDenied && latest) {
+                  const link = document.createElement('a');
+                  link.href = `/api/admin/backups/descargar/${encodeURIComponent(latest.filename)}`;
+                  link.setAttribute('download', latest.filename);
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 backupSubtab === 'integrales'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-200'
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
               }`}
+              title="Ver historial, resumen de almacenamiento o descargar la última copia integral (.ZIP)"
             >
               📦 Copias Integrales (.ZIP) ({backups.length})
             </button>
             <button
-              onClick={() => setBackupSubtab('dumps')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              type="button"
+              onClick={() => {
+                setBackupSubtab('dumps');
+                loadSqlDumps();
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 backupSubtab === 'dumps'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-200'
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
               }`}
             >
               🗄️ Dumps de Base de Datos (.SQL) ({sqlDumps.length})
             </button>
             <button
-              onClick={() => setBackupSubtab('visitantes')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              type="button"
+              onClick={() => {
+                setBackupSubtab('visitantes');
+                loadVisitorBackups();
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 backupSubtab === 'visitantes'
-                  ? 'bg-red-600 text-white shadow-xs'
+                  ? 'bg-red-600 text-white shadow-xs ring-2 ring-red-200'
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
               }`}
             >
@@ -1296,25 +1728,6 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
 
           {backupSubtab === 'integrales' && (
             <>
-              <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <h4 className="text-sm font-bold text-blue-950 flex items-center gap-2">
-                    <span>🛡️</span> Resguardo Modular y Dumps Integrados (.ZIP)
-                  </h4>
-                  <p className="text-xs text-blue-800/90 mt-1 max-w-3xl">
-                    Cada backup integral empaqueta los datos segregados en tres módulos (<span className="font-bold">Operación</span>, <span className="font-bold">Configuración</span> y <span className="font-bold">Usuarios</span>),
-                    junto con el esquema DDL 3FN y los <span className="font-bold">Dumps SQL nativos de PostgreSQL</span> para recuperación ante desastres.
-                  </p>
-                </div>
-                <button
-                  onClick={handleCreateBackup}
-                  disabled={isCreatingBackup}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold shadow-sm whitespace-nowrap"
-                >
-                  {isCreatingBackup ? '⏳ Generando...' : '💾 Crear Copia Manual'}
-                </button>
-              </div>
-
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-sm">
@@ -1487,7 +1900,9 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                               </span>
                             </td>
                             <td className="px-4 py-3 font-mono text-xs text-gray-700">
-                              {(d.sizeBytes / (1024 * 1024)).toFixed(2)} MB
+                              {d.sizeBytes >= 1024 * 1024
+                                ? `${(d.sizeBytes / (1024 * 1024)).toFixed(2)} MB`
+                                : `${Math.max(0.1, d.sizeBytes / 1024).toFixed(1)} KB`}
                             </td>
                             <td className="px-4 py-3 text-xs text-gray-500">
                               {new Date(d.createdAt).toLocaleString('es-AR', {
@@ -2694,14 +3109,22 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
             {testMailResult && (
               <div
                 className={`p-3.5 rounded-lg text-xs border ${
-                  testMailResult.success
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                    : 'bg-red-50 border-red-200 text-red-900'
+                  !testMailResult.success
+                    ? 'bg-red-50 border-red-200 text-red-900'
+                    : testMailResult.simulated
+                    ? 'bg-amber-50 border-amber-300 text-amber-900'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-900'
                 }`}
               >
                 <div className="font-bold flex items-center gap-1.5">
-                  <span>{testMailResult.success ? '✅' : '❌'}</span>
-                  <span>{testMailResult.success ? 'Prueba Exitosa' : 'Fallo de Conexión'}</span>
+                  <span>{!testMailResult.success ? '❌' : testMailResult.simulated ? '🧪' : '✅'}</span>
+                  <span>
+                    {!testMailResult.success
+                      ? 'Fallo de Conexión SMTP Real'
+                      : testMailResult.simulated
+                      ? 'Simulación en Modo Sandbox (Correo NO enviado a buzón externo)'
+                      : 'Correo de Prueba Enviado Exitosamente'}
+                  </span>
                 </div>
                 <div className="mt-1 font-mono text-[11px]">{testMailResult.message}</div>
               </div>
@@ -2715,10 +3138,21 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
         <div className="space-y-6">
           {/* Métricas de Dispositivos */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Dispositivos Suscritos</span>
-              <p className="text-3xl font-extrabold text-blue-700 mt-2">{pushStats?.total_dispositivos || 0}</p>
-              <span className="text-xs text-gray-500">Navegadores y teléfonos con push activo</span>
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Dispositivos Suscritos</span>
+                <p className="text-3xl font-extrabold text-blue-700 mt-2">{pushStats?.total_dispositivos || 0}</p>
+                <span className="text-xs text-gray-500">Navegadores y teléfonos con push activo</span>
+              </div>
+              <div className="mt-3 pt-2 border-t flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => subscribeCurrentBrowserToPush(false)}
+                  className="text-[11px] font-bold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md transition cursor-pointer"
+                >
+                  🔔 Suscribir este navegador
+                </button>
+              </div>
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
@@ -2882,8 +3316,8 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
             {pushBroadcastResult && (
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 mt-3 flex items-center justify-between">
                 <span>
-                  ✅ Broadcast completado: <strong>{pushBroadcastResult.sent}</strong> entregadas con éxito,{' '}
-                  <strong>{pushBroadcastResult.failed}</strong> fallidas de un total de {pushBroadcastResult.total}.
+                  ✅ Broadcast completado: <strong>{pushBroadcastResult.sent}</strong> entregadas por Web Push,{' '}
+                  <strong>{pushBroadcastResult.failed}</strong> fallidas de un total de {pushBroadcastResult.total} suscriptores (más publicación activa en URL de destino).
                 </span>
                 <button
                   type="button"
@@ -2892,6 +3326,50 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                 >
                   ✕
                 </button>
+              </div>
+            )}
+
+            {/* Historial de Avisos Push Activos en URLs */}
+            {pushStats?.avisos_recientes && pushStats.avisos_recientes.length > 0 && (
+              <div className="pt-4 border-t space-y-2.5">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600">
+                  📡 Últimos Avisos Push Despachados en Tiempo Real
+                </h4>
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {pushStats.avisos_recientes.slice(0, 5).map((av) => (
+                    <div
+                      key={av.id}
+                      className="p-3 rounded-lg border border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-gray-900 flex items-center gap-1.5">
+                          <span>{av.urgente ? '🚨' : '🔔'}</span>
+                          <span>{av.title}</span>
+                          <span className="text-[10px] font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
+                            {av.url}
+                          </span>
+                        </div>
+                        <p className="text-gray-600 text-[11px]">{av.body}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-gray-400">
+                          {new Date(av.createdAt).toLocaleTimeString('es-AR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        <a
+                          href={av.url || '/'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-[11px] transition"
+                        >
+                          Ver en URL ↗
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -2969,270 +3447,284 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
 
       {/* MODAL CREAR / EDITAR ROL */}
       {isRolModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-gray-900">
-              {currentRol ? '✏️ Editar Rol Institucional' : '➕ Nuevo Rol Institucional'}
-            </h3>
-            <form onSubmit={handleSaveRol} className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-gray-600">Nombre del Rol</label>
-                <input
-                  type="text"
-                  required
-                  value={rolForm.nombre}
-                  onChange={(e) => setRolForm({ ...rolForm, nombre: e.target.value })}
-                  placeholder="Ej: Becario, Jurado, Prensa..."
-                  className="w-full mt-1 p-2 text-sm border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-600">Descripción</label>
-                <input
-                  type="text"
-                  value={rolForm.descripcion}
-                  onChange={(e) => setRolForm({ ...rolForm, descripcion: e.target.value })}
-                  placeholder="Alcance pedagógico o institucional..."
-                  className="w-full mt-1 p-2 text-sm border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-600">Jerarquía del Rol (Nivel 1 a 5)</label>
-                <div className="flex items-center gap-3 mt-1">
-                  <input
-                    type="number"
-                    min={1}
-                    max={5}
-                    value={rolForm.jerarquia}
-                    onChange={(e) => {
-                      const newJerarquia = Math.min(5, Math.max(1, parseInt(e.target.value, 10) || 1));
-                      // Filtrar permisos existentes que ya no sean permitidos por la nueva jerarquía
-                      const maxItems = [
-                        { key: 'dashboard', min: 3 },
-                        { key: 'estadisticas_5ejes', min: 3 },
-                        { key: 'usuarios', min: 3 },
-                        { key: 'acreditaciones', min: 3 },
-                        { key: 'actividades', min: 4 },
-                        { key: 'presentadores', min: 4 },
-                        { key: 'catalogo', min: 4 },
-                        { key: 'homologaciones', min: 4 },
-                        { key: 'certificados', min: 4 },
-                        { key: 'encuestas', min: 4 },
-                        { key: 'manuales', min: 3 },
-                        { key: 'puntos', min: 4 },
-                        { key: 'eventos', min: 4 },
-                        { key: 'operadores', min: 5 },
-                        { key: 'blacklist', min: 5 },
-                        { key: 'auditoria', min: 5 },
-                        { key: 'configuracion', min: 5 },
-                        { key: 'frontend_cms', min: 3 },
-                        { key: 'cron', min: 5 },
-                      ];
-                      const filteredPermisos = rolForm.permisos.filter(
-                        (p) => (maxItems.find((m) => m.key === p)?.min || 5) <= newJerarquia
-                      );
-                      setRolForm({ ...rolForm, jerarquia: newJerarquia, permisos: filteredPermisos });
-                    }}
-                    className="w-24 p-2 text-sm border rounded-lg font-bold text-center"
-                  />
-                  <div className="text-xs text-gray-500">
-                    {rolForm.jerarquia <= 2 && 'Roles de Asistencia / Participantes (sin acceso administrativo a la botonera)'}
-                    {rolForm.jerarquia === 3 && 'Operador General / Acreditador (Acceso a Operaciones y Manuales)'}
-                    {rolForm.jerarquia === 4 && 'Gestor Académico / Supervisor de Recintos'}
-                    {rolForm.jerarquia >= 5 && 'Administrador de Seguridad / Superadmin (Acceso Total)'}
-                  </div>
-                </div>
-              </div>
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col p-4 sm:p-5 shadow-2xl overflow-hidden my-auto">
+            <div className="flex items-center justify-between pb-2.5 border-b shrink-0">
+              <h3 className="text-sm sm:text-base font-bold text-gray-900">
+                {currentRol ? '✏️ Editar Rol Institucional' : '➕ Nuevo Rol Institucional'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsRolModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 text-sm font-bold px-2 py-0.5 rounded hover:bg-gray-100 cursor-pointer"
+                aria-label="Cerrar modal"
+              >
+                ✕
+              </button>
+            </div>
 
-              {/* MATRIZ DE PERMISOS GRANULARES DE ACCESO */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
+            <form onSubmit={handleSaveRol} className="flex flex-col flex-1 min-h-0 mt-3">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden pr-1 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <h4 className="text-xs font-bold text-slate-800">
-                      Permisos Granulares de Acceso (Botonera)
-                    </h4>
-                    <p className="text-[11px] text-slate-500">
-                      {rolForm.jerarquia >= 5
-                        ? 'Los operadores de nivel 5 acceden a todas las opciones automáticamente.'
-                        : 'Seleccioná qué módulos específicos estarán habilitados para este rol.'}
-                    </p>
+                    <label className="text-xs font-bold text-gray-600">Nombre del Rol</label>
+                    <input
+                      type="text"
+                      required
+                      value={rolForm.nombre}
+                      onChange={(e) => setRolForm({ ...rolForm, nombre: e.target.value })}
+                      placeholder="Ej: Becario, Jurado, Prensa..."
+                      className="w-full mt-1 p-2 text-xs sm:text-sm border rounded-lg"
+                    />
                   </div>
-
-                  {rolForm.jerarquia < 5 && (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const ALL_ACCESSIBLE = [
-                            { key: 'dashboard', min: 3 },
-                            { key: 'estadisticas_5ejes', min: 3 },
-                            { key: 'usuarios', min: 3 },
-                            { key: 'acreditaciones', min: 3 },
-                            { key: 'actividades', min: 4 },
-                            { key: 'presentadores', min: 4 },
-                            { key: 'catalogo', min: 4 },
-                            { key: 'homologaciones', min: 4 },
-                            { key: 'certificados', min: 4 },
-                            { key: 'encuestas', min: 4 },
-                            { key: 'manuales', min: 3 },
-                            { key: 'puntos', min: 4 },
-                            { key: 'eventos', min: 4 },
-                            { key: 'operadores', min: 5 },
-                            { key: 'blacklist', min: 5 },
-                            { key: 'auditoria', min: 5 },
-                            { key: 'configuracion', min: 5 },
-                            { key: 'frontend_cms', min: 3 },
-                            { key: 'cron', min: 5 },
-                          ]
-                            .filter((m) => m.min <= rolForm.jerarquia)
-                            .map((m) => m.key);
-                          setRolForm({ ...rolForm, permisos: ALL_ACCESSIBLE });
-                        }}
-                        className="px-2 py-1 text-[11px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded transition cursor-pointer"
-                      >
-                        ✓ Marcar permitidos
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRolForm({ ...rolForm, permisos: [] })}
-                        className="px-2 py-1 text-[11px] font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 rounded transition cursor-pointer"
-                      >
-                        Desmarcar
-                      </button>
-                    </div>
-                  )}
+                  <div>
+                    <label className="text-xs font-bold text-gray-600">Descripción</label>
+                    <input
+                      type="text"
+                      value={rolForm.descripcion}
+                      onChange={(e) => setRolForm({ ...rolForm, descripcion: e.target.value })}
+                      placeholder="Alcance pedagógico o institucional..."
+                      className="w-full mt-1 p-2 text-xs sm:text-sm border rounded-lg"
+                    />
+                  </div>
                 </div>
 
-                {/* GRUPOS DE CHECKBOXES */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto p-1">
-                  {[
-                    {
-                      categoria: 'OPERACIONES & ASISTENCIA',
-                      minGrupo: 3,
-                      items: [
-                        { key: 'dashboard', label: 'Tablero 360° (Métricas)', icon: '📊', min: 3 },
-                        { key: 'estadisticas_5ejes', label: 'Estadísticas Analíticas (5 Ejes)', icon: '📈', min: 3 },
-                        { key: 'usuarios', label: 'Gestión de Participantes (CRUD)', icon: '👥', min: 3 },
-                        { key: 'acreditaciones', label: 'Control de Accesos en Vivo (Scans)', icon: '🎟️', min: 3 },
-                      ],
-                    },
-                    {
-                      categoria: 'GESTIÓN ACADÉMICA',
-                      minGrupo: 4,
-                      items: [
-                        { key: 'actividades', label: 'Actividades & Cronograma', icon: '📅', min: 4 },
-                        { key: 'presentadores', label: 'Presentadores & Ponentes', icon: '🎤', min: 4 },
-                        { key: 'catalogo', label: 'Materias Canónicas y Áreas', icon: '📋', min: 4 },
-                        { key: 'homologaciones', label: 'Homologación de Expositores', icon: '🎖️', min: 4 },
-                        { key: 'certificados', label: 'Certificados Oficiales', icon: '🎓', min: 4 },
-                        { key: 'encuestas', label: 'Encuestas de Calidad y Feedback', icon: '📋', min: 4 },
-                        { key: 'manuales', label: 'Manuales Oficiales (Exportación PDF)', icon: '📖', min: 3 },
-                      ],
-                    },
-                    {
-                      categoria: 'INFRAESTRUCTURA & SEDE',
-                      minGrupo: 4,
-                      items: [
-                        { key: 'puntos', label: 'Recintos, Salas & Puntos de Acceso', icon: '🏢', min: 4 },
-                        { key: 'eventos', label: 'Ediciones & Eventos Oficiales', icon: '🏛️', min: 4 },
-                        { key: 'frontend_cms', label: 'CMS Frontend (Tarjetas)', icon: '🎴', min: 3 },
-                      ],
-                    },
-                    {
-                      categoria: 'SEGURIDAD & ADMINISTRACIÓN',
-                      minGrupo: 5,
-                      items: [
-                        { key: 'operadores', label: 'Operadores del Sistema', icon: '🛡️', min: 5 },
-                        { key: 'blacklist', label: 'Lista Negra de Exclusiones', icon: '🚫', min: 5 },
-                        { key: 'auditoria', label: 'Bitácora Forense de Auditoría', icon: '📜', min: 5 },
-                        { key: 'configuracion', label: 'Parámetros del Sistema', icon: '⚙️', min: 5 },
-                        { key: 'cron', label: 'Procesos Asíncronos (Cron Jobs)', icon: '⏱️', min: 5 },
-                      ],
-                    },
-                  ].map((grupo) => (
-                    <div
-                      key={grupo.categoria}
-                      className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-2xs space-y-2"
-                    >
-                      <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-700 uppercase tracking-wider border-b pb-1">
-                        <span>{grupo.categoria}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">Nivel {grupo.minGrupo}+</span>
+                <div>
+                  <label className="text-xs font-bold text-gray-600">Jerarquía del Rol (Nivel 1 a 5)</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mt-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={rolForm.jerarquia}
+                      onChange={(e) => {
+                        const newJerarquia = Math.min(5, Math.max(1, parseInt(e.target.value, 10) || 1));
+                        // Filtrar permisos existentes que ya no sean permitidos por la nueva jerarquía
+                        const maxItems = [
+                          { key: 'dashboard', min: 3 },
+                          { key: 'estadisticas_5ejes', min: 3 },
+                          { key: 'usuarios', min: 3 },
+                          { key: 'acreditaciones', min: 3 },
+                          { key: 'actividades', min: 4 },
+                          { key: 'presentadores', min: 4 },
+                          { key: 'catalogo', min: 4 },
+                          { key: 'homologaciones', min: 4 },
+                          { key: 'certificados', min: 4 },
+                          { key: 'encuestas', min: 4 },
+                          { key: 'manuales', min: 3 },
+                          { key: 'puntos', min: 4 },
+                          { key: 'eventos', min: 4 },
+                          { key: 'operadores', min: 5 },
+                          { key: 'blacklist', min: 5 },
+                          { key: 'auditoria', min: 5 },
+                          { key: 'configuracion', min: 5 },
+                          { key: 'frontend_cms', min: 3 },
+                          { key: 'cron', min: 5 },
+                        ];
+                        const filteredPermisos = rolForm.permisos.filter(
+                          (p) => (maxItems.find((m) => m.key === p)?.min || 5) <= newJerarquia
+                        );
+                        setRolForm({ ...rolForm, jerarquia: newJerarquia, permisos: filteredPermisos });
+                      }}
+                      className="w-20 p-1.5 text-sm border rounded-lg font-bold text-center shrink-0"
+                    />
+                    <div className="text-[11px] text-gray-500 leading-snug">
+                      {rolForm.jerarquia <= 2 && 'Roles de Asistencia / Participantes (sin acceso administrativo a la botonera)'}
+                      {rolForm.jerarquia === 3 && 'Operador General / Acreditador (Acceso a Operaciones y Manuales)'}
+                      {rolForm.jerarquia === 4 && 'Gestor Académico / Supervisor de Recintos'}
+                      {rolForm.jerarquia >= 5 && 'Administrador de Seguridad / Superadmin (Acceso Total)'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* MATRIZ DE PERMISOS GRANULARES DE ACCESO */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs font-bold text-slate-800">
+                        Permisos Granulares de Acceso (Botonera)
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        {rolForm.jerarquia >= 5
+                          ? 'Los operadores de nivel 5 acceden a todas las opciones automáticamente.'
+                          : 'Seleccioná qué módulos específicos estarán habilitados para este rol.'}
+                      </p>
+                    </div>
+
+                    {rolForm.jerarquia < 5 && (
+                      <div className="flex gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const ALL_ACCESSIBLE = [
+                              { key: 'dashboard', min: 3 },
+                              { key: 'estadisticas_5ejes', min: 3 },
+                              { key: 'usuarios', min: 3 },
+                              { key: 'acreditaciones', min: 3 },
+                              { key: 'actividades', min: 4 },
+                              { key: 'presentadores', min: 4 },
+                              { key: 'catalogo', min: 4 },
+                              { key: 'homologaciones', min: 4 },
+                              { key: 'certificados', min: 4 },
+                              { key: 'encuestas', min: 4 },
+                              { key: 'manuales', min: 3 },
+                              { key: 'puntos', min: 4 },
+                              { key: 'eventos', min: 4 },
+                              { key: 'operadores', min: 5 },
+                              { key: 'blacklist', min: 5 },
+                              { key: 'auditoria', min: 5 },
+                              { key: 'configuracion', min: 5 },
+                              { key: 'frontend_cms', min: 3 },
+                              { key: 'cron', min: 5 },
+                            ]
+                              .filter((m) => m.min <= rolForm.jerarquia)
+                              .map((m) => m.key);
+                            setRolForm({ ...rolForm, permisos: ALL_ACCESSIBLE });
+                          }}
+                          className="px-2 py-1 text-[11px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded transition cursor-pointer"
+                        >
+                          ✓ Marcar permitidos
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRolForm({ ...rolForm, permisos: [] })}
+                          className="px-2 py-1 text-[11px] font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 rounded transition cursor-pointer"
+                        >
+                          Desmarcar
+                        </button>
                       </div>
+                    )}
+                  </div>
 
-                      <div className="space-y-1">
-                        {grupo.items.map((item) => {
-                          const isLevelAllowed = rolForm.jerarquia >= item.min;
-                          const isChecked = rolForm.permisos.includes(item.key);
+                  {/* GRUPOS DE CHECKBOXES */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {[
+                      {
+                        categoria: 'OPERACIONES & ASISTENCIA',
+                        minGrupo: 3,
+                        items: [
+                          { key: 'dashboard', label: 'Tablero 360° (Métricas)', icon: '📊', min: 3 },
+                          { key: 'estadisticas_5ejes', label: 'Estadísticas Analíticas (5 Ejes)', icon: '📈', min: 3 },
+                          { key: 'usuarios', label: 'Gestión de Participantes (CRUD)', icon: '👥', min: 3 },
+                          { key: 'acreditaciones', label: 'Control de Accesos en Vivo (Scans)', icon: '🎟️', min: 3 },
+                        ],
+                      },
+                      {
+                        categoria: 'GESTIÓN ACADÉMICA',
+                        minGrupo: 4,
+                        items: [
+                          { key: 'actividades', label: 'Actividades & Cronograma', icon: '📅', min: 4 },
+                          { key: 'presentadores', label: 'Presentadores & Ponentes', icon: '🎤', min: 4 },
+                          { key: 'catalogo', label: 'Materias Canónicas y Áreas', icon: '📋', min: 4 },
+                          { key: 'homologaciones', label: 'Homologación de Expositores', icon: '🎖️', min: 4 },
+                          { key: 'certificados', label: 'Certificados Oficiales', icon: '🎓', min: 4 },
+                          { key: 'encuestas', label: 'Encuestas de Calidad y Feedback', icon: '📋', min: 4 },
+                          { key: 'manuales', label: 'Manuales Oficiales (Exportación PDF)', icon: '📖', min: 3 },
+                        ],
+                      },
+                      {
+                        categoria: 'INFRAESTRUCTURA & SEDE',
+                        minGrupo: 4,
+                        items: [
+                          { key: 'puntos', label: 'Recintos, Salas & Puntos de Acceso', icon: '🏢', min: 4 },
+                          { key: 'eventos', label: 'Ediciones & Eventos Oficiales', icon: '🏛️', min: 4 },
+                          { key: 'frontend_cms', label: 'CMS Frontend (Tarjetas)', icon: '🎴', min: 3 },
+                        ],
+                      },
+                      {
+                        categoria: 'SEGURIDAD & ADMINISTRACIÓN',
+                        minGrupo: 5,
+                        items: [
+                          { key: 'operadores', label: 'Operadores del Sistema', icon: '🛡️', min: 5 },
+                          { key: 'blacklist', label: 'Lista Negra de Exclusiones', icon: '🚫', min: 5 },
+                          { key: 'auditoria', label: 'Bitácora Forense de Auditoría', icon: '📜', min: 5 },
+                          { key: 'configuracion', label: 'Parámetros del Sistema', icon: '⚙️', min: 5 },
+                          { key: 'cron', label: 'Procesos Asíncronos (Cron Jobs)', icon: '⏱️', min: 5 },
+                        ],
+                      },
+                    ].map((grupo) => (
+                      <div
+                        key={grupo.categoria}
+                        className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-2xs space-y-1.5 overflow-hidden"
+                      >
+                        <div className="flex items-center justify-between gap-1 text-[10px] font-extrabold text-slate-700 uppercase tracking-wider border-b pb-1">
+                          <span className="leading-tight break-words min-w-0">{grupo.categoria}</span>
+                          <span className="text-[9px] text-slate-400 font-mono shrink-0">Nivel {grupo.minGrupo}+</span>
+                        </div>
 
-                          return (
-                            <label
-                              key={item.key}
-                              className={`flex items-start gap-2 p-1.5 rounded-md transition text-xs select-none ${
-                                !isLevelAllowed
-                                  ? 'opacity-40 bg-slate-100 cursor-not-allowed text-slate-400'
-                                  : isChecked
-                                  ? 'bg-blue-50/70 border border-blue-200 text-blue-900 cursor-pointer font-medium'
-                                  : 'hover:bg-slate-50 cursor-pointer text-slate-700'
-                              }`}
-                              title={
-                                !isLevelAllowed
-                                  ? `Inhabilitado: Requiere Nivel ${item.min} o superior (el rol actual tiene Nivel ${rolForm.jerarquia})`
-                                  : undefined
-                              }
-                            >
-                              <input
-                                type="checkbox"
-                                disabled={!isLevelAllowed}
-                                checked={isChecked && isLevelAllowed}
-                                onChange={(e) => {
-                                  if (!isLevelAllowed) return;
-                                  if (e.target.checked) {
-                                    setRolForm({
-                                      ...rolForm,
-                                      permisos: [...rolForm.permisos, item.key],
-                                    });
-                                  } else {
-                                    setRolForm({
-                                      ...rolForm,
-                                      permisos: rolForm.permisos.filter((p) => p !== item.key),
-                                    });
-                                  }
-                                }}
-                                className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 disabled:opacity-40 shrink-0 cursor-pointer"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="truncate flex items-center gap-1 text-[11px]">
-                                    <span>{item.icon}</span>
+                        <div className="space-y-1">
+                          {grupo.items.map((item) => {
+                            const isLevelAllowed = rolForm.jerarquia >= item.min;
+                            const isChecked = rolForm.permisos.includes(item.key);
+
+                            return (
+                              <label
+                                key={item.key}
+                                className={`flex items-start gap-2 p-1.5 rounded-md transition text-xs select-none w-full overflow-hidden ${
+                                  !isLevelAllowed
+                                    ? 'opacity-50 bg-slate-100 cursor-not-allowed text-slate-400'
+                                    : isChecked
+                                    ? 'bg-blue-50/70 border border-blue-200 text-blue-900 cursor-pointer font-medium'
+                                    : 'hover:bg-slate-50 cursor-pointer text-slate-700'
+                                }`}
+                                title={
+                                  !isLevelAllowed
+                                    ? `Inhabilitado: Requiere Nivel ${item.min} o superior (el rol actual tiene Nivel ${rolForm.jerarquia})`
+                                    : undefined
+                                }
+                              >
+                                <input
+                                  type="checkbox"
+                                  disabled={!isLevelAllowed}
+                                  checked={isChecked && isLevelAllowed}
+                                  onChange={(e) => {
+                                    if (!isLevelAllowed) return;
+                                    if (e.target.checked) {
+                                      setRolForm({
+                                        ...rolForm,
+                                        permisos: [...rolForm.permisos, item.key],
+                                      });
+                                    } else {
+                                      setRolForm({
+                                        ...rolForm,
+                                        permisos: rolForm.permisos.filter((p) => p !== item.key),
+                                      });
+                                    }
+                                  }}
+                                  className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 disabled:opacity-40 shrink-0 cursor-pointer"
+                                />
+                                <div className="flex-1 min-w-0 flex items-start justify-between gap-1.5 text-left">
+                                  <span className="text-[11px] leading-snug break-words min-w-0 flex-1">
+                                    <span className="mr-1">{item.icon}</span>
                                     <span>{item.label}</span>
                                   </span>
                                   {!isLevelAllowed && (
-                                    <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1 rounded shrink-0 border border-rose-200">
+                                    <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded shrink-0 border border-rose-200 whitespace-nowrap">
                                       Req. Nivel {item.min}
                                     </span>
                                   )}
                                 </div>
-                              </div>
-                            </label>
-                          );
-                        })}
+                              </label>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t">
+              <div className="flex justify-end gap-2 pt-3 mt-2 border-t shrink-0 bg-white">
                 <button
                   type="button"
                   onClick={() => setIsRolModalOpen(false)}
-                  className="px-4 py-2 border rounded-lg text-sm text-gray-600"
+                  className="px-4 py-2 border rounded-lg text-xs sm:text-sm text-gray-600 hover:bg-gray-50 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs sm:text-sm font-semibold cursor-pointer"
                 >
                   Guardar Rol
                 </button>
@@ -3242,11 +3734,13 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
         </div>
       )}
 
-      {/* MODAL CREAR TIPO ACREDITACIÓN */}
+      {/* MODAL CREAR / EDITAR TIPO ACREDITACIÓN */}
       {isTipoModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-gray-900">➕ Nuevo Tipo de Acreditación</h3>
+            <h3 className="text-base font-bold text-gray-900">
+              {currentTipo ? '✏️ Editar Tipo de Acreditación' : '➕ Nuevo Tipo de Acreditación'}
+            </h3>
             <form onSubmit={handleSaveTipo} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-gray-600">Código</label>
@@ -3281,7 +3775,10 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <button
                   type="button"
-                  onClick={() => setIsTipoModalOpen(false)}
+                  onClick={() => {
+                    setIsTipoModalOpen(false);
+                    setCurrentTipo(null);
+                  }}
                   className="px-4 py-2 border rounded-lg text-sm text-gray-600"
                 >
                   Cancelar
@@ -3290,7 +3787,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                   type="submit"
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold"
                 >
-                  Guardar Tipo
+                  {currentTipo ? 'Guardar Cambios' : 'Guardar Tipo'}
                 </button>
               </div>
             </form>
@@ -3298,11 +3795,13 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
         </div>
       )}
 
-      {/* MODAL CREAR CATEGORÍA TEMÁTICA */}
+      {/* MODAL CREAR / EDITAR CATEGORÍA TEMÁTICA */}
       {isCatModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-gray-900">➕ Nueva Categoría Temática</h3>
+            <h3 className="text-base font-bold text-gray-900">
+              {currentCat ? '✏️ Editar Categoría Temática' : '➕ Nueva Categoría Temática'}
+            </h3>
             <form onSubmit={handleSaveCategoria} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-gray-600">Nombre de la Categoría</label>
@@ -3325,10 +3824,23 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                   className="w-full mt-1 p-2 text-sm border rounded-lg"
                 />
               </div>
+              {currentCat && (
+                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={catForm.activo}
+                    onChange={(e) => setCatForm({ ...catForm, activo: e.target.checked })}
+                  />
+                  Categoría vigente (activa)
+                </label>
+              )}
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <button
                   type="button"
-                  onClick={() => setIsCatModalOpen(false)}
+                  onClick={() => {
+                    setIsCatModalOpen(false);
+                    setCurrentCat(null);
+                  }}
                   className="px-4 py-2 border rounded-lg text-sm text-gray-600"
                 >
                   Cancelar
@@ -3337,7 +3849,7 @@ export default function AdminConfiguracionView({ onNotice }: Props) {
                   type="submit"
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold"
                 >
-                  Guardar Categoría
+                  {currentCat ? 'Guardar Cambios' : 'Guardar Categoría'}
                 </button>
               </div>
             </form>

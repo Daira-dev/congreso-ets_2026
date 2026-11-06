@@ -56,6 +56,11 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({
   const [cameraLoading, setCameraLoading] = useState<boolean>(false);
   const [modoKiosco, setModoKiosco] = useState<boolean>(false);
   const [isMobileToolsOpen, setIsMobileToolsOpen] = useState<boolean>(false);
+  const [politicaAcreditacion, setPoliticaAcreditacion] = useState<any>({
+    exigir_dni_fisico: true,
+    mostrar_foto_operador: true,
+    reloj_animado_credencial: true,
+  });
 
   const scannerRef = useRef<any>(null);
   const qrInputRef = useRef<HTMLInputElement>(null);
@@ -122,6 +127,9 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({
           if (data.actividades && data.actividades.length > 0) {
             setActividades(data.actividades);
             setActividadId(data.actividades[0].id);
+          }
+          if (data.politica_acreditacion) {
+            setPoliticaAcreditacion(data.politica_acreditacion);
           }
         }
       } catch (_) {}
@@ -886,25 +894,27 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({
             {/* Cotejo Visual Obligatorio de Foto de Perfil */}
             {lastResult.usuario && (
               <div className="p-3 bg-light rounded border d-flex flex-column flex-md-row align-items-center gap-4">
-                {lastResult.usuario.foto_url ? (
-                  <img
-                    src={lastResult.usuario.foto_url}
-                    alt="Foto oficial"
-                    className="rounded shadow"
-                    style={{
-                      width: '140px',
-                      height: '140px',
-                      objectFit: 'cover',
-                      border: '4px solid #005691',
-                    }}
-                  />
-                ) : (
-                  <div
-                    className="rounded bg-white d-flex align-items-center justify-content-center shadow-sm"
-                    style={{ width: '140px', height: '140px', border: '3px solid #cbd5e1' }}
-                  >
-                    <i className="bx bx-user fs-1 text-secondary"></i>
-                  </div>
+                {politicaAcreditacion?.mostrar_foto_operador !== false && (
+                  lastResult.usuario.foto_url ? (
+                    <img
+                      src={lastResult.usuario.foto_url}
+                      alt="Foto oficial"
+                      className="rounded shadow"
+                      style={{
+                        width: '140px',
+                        height: '140px',
+                        objectFit: 'cover',
+                        border: '4px solid #005691',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className="rounded bg-white d-flex align-items-center justify-content-center shadow-sm"
+                      style={{ width: '140px', height: '140px', border: '3px solid #cbd5e1' }}
+                    >
+                      <i className="bx bx-user fs-1 text-secondary"></i>
+                    </div>
+                  )
                 )}
 
                 <div className="flex-grow-1 text-center text-md-start">
@@ -917,10 +927,14 @@ export const QRScannerView: React.FC<QRScannerViewProps> = ({
                   <p className="mb-1 text-muted">
                     DNI / Pasaporte: <strong>{lastResult.usuario.dni_pasaporte}</strong>
                   </p>
-                  <div className="alert alert-warning py-1 px-2 small mb-0 mt-2 d-inline-block">
+                  <div
+                    className={`alert ${politicaAcreditacion?.exigir_dni_fisico === false ? 'alert-info' : 'alert-warning'} py-1 px-2 small mb-0 mt-2 d-inline-block`}
+                  >
                     <i className="bx bx-show me-1"></i>
-                    <strong>Cotejo Visual Obligatorio:</strong> Verificá que la persona frente a vos
-                    coincida con esta foto y su DNI físico.
+                    <strong>Cotejo Visual:</strong>{' '}
+                    {politicaAcreditacion?.exigir_dni_fisico === false
+                      ? 'Verificá que el asistente corresponda a la credencial presentada (No se exige DNI físico).'
+                      : 'Verificá que la persona frente a vos coincida con esta foto y su DNI físico.'}
                   </div>
                 </div>
               </div>

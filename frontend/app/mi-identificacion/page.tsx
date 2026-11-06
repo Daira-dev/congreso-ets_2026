@@ -21,6 +21,30 @@ function MiIdentificaciónContent() {
   const [descargandoDiploma, setDescargandoDiploma] = useState<boolean>(false);
   const [encuestaPendiente, setEncuestaPendiente] = useState<boolean>(false);
   const [isSurveyModalOpen, setIsSurveyModalOpen] = useState<boolean>(false);
+  const [plantilla, setPlantilla] = useState<any>(null);
+  const [politica, setPolitica] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/identificacion/plantilla', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.plantilla) setPlantilla(d.plantilla);
+        if (d?.politica_acreditacion) setPolitica(d.politica_acreditacion);
+      })
+      .catch(() => {});
+  }, []);
+
+  const badgeText = (() => {
+    const widgets: any[] = Array.isArray(plantilla?.widgets) ? plantilla.widgets : [];
+    const w =
+      widgets.find((item) => String(item.id) === '1') ||
+      widgets.find(
+        (item) =>
+          item.type === 'badge' &&
+          !String(item.props?.text ?? item.props?.Text ?? '').includes('{ROL}')
+      );
+    return w?.props?.text ?? w?.props?.Text ?? 'ETS 2026';
+  })();
 
   const handleBuscar = async (dniInput?: string) => {
     const targetDni = (dniInput || dni).trim();
@@ -47,6 +71,8 @@ function MiIdentificaciónContent() {
         setUsuario(u);
         setQrToken(token);
         setOfflineCached(false);
+        if (data.plantilla) setPlantilla(data.plantilla);
+        if (data.politica_acreditacion) setPolitica(data.politica_acreditacion);
 
         // Consultar estado de encuesta y certificado
         try {
@@ -324,7 +350,7 @@ function MiIdentificaciónContent() {
               Mi Identificación PWA
             </span>
             <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
-              ETS 2026 • Auditorio Polo Saavedra
+              {badgeText} • Auditorio Polo Saavedra
             </small>
           </div>
         </div>
@@ -428,6 +454,8 @@ function MiIdentificaciónContent() {
                 homologacion_estado: usuario.homologacion_estado,
               }}
               qr_token={qrToken || `token_${usuario.id}`}
+              plantilla={plantilla}
+              politica={politica}
             />
 
             {/* Tarjeta de Diploma Oficial para Asistentes con Acreditación Presencial */}

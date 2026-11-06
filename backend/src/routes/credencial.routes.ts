@@ -21,6 +21,51 @@ const credencialLimiter = rateLimit({
 });
 
 /**
+ * Helper para obtener plantilla y política de acreditación desde configuraciones_sistema
+ */
+async function getCredencialConfigs() {
+  let plantilla: any = null;
+  let politica_acreditacion: any = {
+    exigir_dni_fisico: true,
+    mostrar_foto_operador: true,
+    reloj_animado_credencial: true,
+  };
+
+  try {
+    const cfgRes = await query(
+      `SELECT clave, valor FROM configuraciones_sistema WHERE clave IN ('plantilla_identificacion_digital', 'politica_acreditacion')`
+    );
+    for (const row of cfgRes.rows) {
+      const parsedVal = typeof row.valor === 'string' ? JSON.parse(row.valor) : row.valor;
+      if (row.clave === 'plantilla_identificacion_digital') {
+        plantilla = parsedVal;
+      } else if (row.clave === 'politica_acreditacion' && parsedVal && typeof parsedVal === 'object') {
+        politica_acreditacion = {
+          ...politica_acreditacion,
+          ...parsedVal,
+        };
+      }
+    }
+  } catch (_) {}
+
+  return { plantilla, politica_acreditacion };
+}
+
+/**
+ * GET /api/credencial/plantilla
+ * Obtiene la plantilla y la política de acreditación configuradas en configuraciones_sistema
+ */
+router.get('/plantilla', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const { plantilla, politica_acreditacion } = await getCredencialConfigs();
+    res.json({ ok: true, success: true, plantilla, politica_acreditacion });
+  } catch (error: any) {
+    console.error('Error en GET /api/credencial/plantilla:', error);
+    res.status(500).json({ ok: false, error: 'ERR_SERVER', message: 'Error al obtener plantilla de credencial.' });
+  }
+});
+
+/**
  * GET /api/credencial
  * Consulta los datos oficiales de la credencial PWA y genera el token QR cifrado
  */
@@ -138,6 +183,8 @@ router.get('/', credencialLimiter, async (req: Request, res: Response): Promise<
       });
     }
 
+    const { plantilla, politica_acreditacion } = await getCredencialConfigs();
+
     res.json({
       success: true,
       usuario: {
@@ -156,6 +203,8 @@ router.get('/', credencialLimiter, async (req: Request, res: Response): Promise<
       },
       qr_token: qrToken,
       qr_image: qrImageDataUrl,
+      plantilla,
+      politica_acreditacion,
     });
   } catch (error: any) {
     console.error('Error en GET /api/credencial:', error);

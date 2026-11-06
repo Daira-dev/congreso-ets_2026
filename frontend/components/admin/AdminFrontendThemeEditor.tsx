@@ -62,6 +62,25 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
 
   const [highlightedKey, setHighlightedKey] = useState<keyof FrontendThemeVars | null>('--frontend-hero-bg');
   const controlsRef = useRef<HTMLDivElement>(null);
+  const latestVarsRef = useRef<FrontendThemeVars | null>(null);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function persistDefaultThemeToBackend(themeId: string, themeName: string, vars: FrontendThemeVars | null) {
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+    syncTimeoutRef.current = setTimeout(() => {
+      fetch('/api/admin/configuracion/tema-frontend-default', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          themeId,
+          themeName,
+          customVars: themeId === 'personalizado' ? vars : null,
+        }),
+      }).catch(() => {});
+    }, 350);
+  }
 
   // Cargar estado inicial desde localStorage
   useEffect(() => {
@@ -72,18 +91,23 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
       const savedCustom = localStorage.getItem(FRONTEND_CUSTOM_THEME_STORAGE_KEY);
       if (savedCustom) {
         try {
-          setCustomVars(JSON.parse(savedCustom));
+          const parsed = JSON.parse(savedCustom);
+          setCustomVars(parsed);
+          latestVarsRef.current = parsed;
         } catch {
           // Si el JSON estaba corrupto, inicializar con el tema base
         }
       }
     }
+    return () => {
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    };
   }, []);
 
   // Obtener el tema actualmente efectivo
   function getEffectiveVars(): FrontendThemeVars {
-    if (currentThemeId === 'personalizado' && customVars) {
-      return customVars;
+    if (currentThemeId === 'personalizado' && (customVars || latestVarsRef.current)) {
+      return (customVars || latestVarsRef.current) as FrontendThemeVars;
     }
     const baseTheme = FRONTEND_THEMES.find((t) => t.id === currentThemeId) || FRONTEND_THEMES[0];
     return baseTheme.cssVars;
@@ -92,6 +116,7 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
   // Aplicar un tema predeterminado
   function handleSelectPredefined(theme: FrontendTheme) {
     setCurrentThemeId(theme.id);
+    latestVarsRef.current = { ...theme.cssVars };
     if (typeof window !== 'undefined') {
       localStorage.setItem(FRONTEND_THEME_STORAGE_KEY, theme.id);
       window.dispatchEvent(
@@ -99,32 +124,34 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
           detail: { themeId: theme.id, customVars: null },
         })
       );
+      persistDefaultThemeToBackend(theme.id, theme.name, null);
       onNotice(`Tema de Frontend "${theme.name}" aplicado correctamente al portal.`);
     }
   }
 
-  // Modificar una variable en el editor
-  function handleColorChange(key: keyof FrontendThemeVars, val: string) {
-    const current = customVars || { ...getEffectiveVars() };
+  // Aplicar múltiples variables simultáneamente sin pérdida por estado asíncrono
+  function applyVarsPatch(patch: Partial<FrontendThemeVars>) {
+    const current = latestVarsRef.current || customVars || { ...getEffectiveVars() };
     const updated: FrontendThemeVars = {
       ...current,
-      [key]: val,
+      ...(patch as FrontendThemeVars),
     };
 
     // Sincronizar compatibilidad de tokens base de Tailwind
-    if (key === '--frontend-hero-bg') {
-      updated['--color-azul-oscuro'] = val;
+    if (patch['--frontend-hero-bg']) {
+      updated['--color-azul-oscuro'] = patch['--frontend-hero-bg'];
     }
-    if (key === '--frontend-btn-cta-bg') {
-      updated['--color-amarillo'] = val;
+    if (patch['--frontend-btn-cta-bg']) {
+      updated['--color-amarillo'] = patch['--frontend-btn-cta-bg'];
     }
-    if (key === '--frontend-card-bg') {
-      updated['--color-blanco'] = val;
+    if (patch['--frontend-card-bg']) {
+      updated['--color-blanco'] = patch['--frontend-card-bg'];
     }
-    if (key === '--background') {
-      updated['--frontend-sobre-bg'] = val;
+    if (patch['--background']) {
+      updated['--frontend-sobre-bg'] = patch['--background'];
     }
 
+    latestVarsRef.current = updated;
     setCustomVars(updated);
     setCurrentThemeId('personalizado');
 
@@ -136,7 +163,13 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
           detail: { themeId: 'personalizado', customVars: updated },
         })
       );
+      persistDefaultThemeToBackend('personalizado', 'Personalizado (Inspector en Vivo)', updated);
     }
+  }
+
+  // Modificar una variable en el editor
+  function handleColorChange(key: keyof FrontendThemeVars, val: string) {
+    applyVarsPatch({ [key]: val });
   }
 
   // Al hacer clic sobre cualquier elemento a corregir
@@ -161,7 +194,9 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
   // Restablecer el editor a una plantilla
   function handleResetTo(baseThemeId: string) {
     const baseTheme = FRONTEND_THEMES.find((t) => t.id === baseThemeId) || FRONTEND_THEMES[0];
-    setCustomVars({ ...baseTheme.cssVars });
+    const nextVars = { ...baseTheme.cssVars };
+    latestVarsRef.current = nextVars;
+    setCustomVars(nextVars);
     setCurrentThemeId(baseTheme.id);
     if (typeof window !== 'undefined') {
       localStorage.setItem(FRONTEND_THEME_STORAGE_KEY, baseTheme.id);
@@ -171,6 +206,7 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
           detail: { themeId: baseTheme.id, customVars: null },
         })
       );
+      persistDefaultThemeToBackend(baseTheme.id, baseTheme.name, null);
       onNotice(`Editor de Frontend reiniciado al tema base "${baseTheme.name}".`);
     }
   }
@@ -462,7 +498,7 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
 
                 {/* Lienzo del Portal */}
                 <div
-                  className="p-4 rounded-2xl border-2 border-gray-200 space-y-4 shadow-sm relative group bg-slate-100 overflow-hidden"
+                  className="admin-preview-box p-4 rounded-2xl border-2 border-gray-200 space-y-4 shadow-sm relative group bg-slate-100 overflow-hidden"
                   style={{ backgroundColor: effectiveVars['--background'] }}
                 >
                   <div className="flex items-center justify-between text-[11px] font-mono opacity-70">
@@ -493,7 +529,7 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                       selectedTarget?.elementName.includes('Header')
                         ? 'ring-2 ring-blue-500 border-blue-500 shadow-md'
-                        : 'hover:border-blue-400 bg-white border-gray-200'
+                        : 'hover:border-blue-400 border-gray-200'
                     }`}
                     style={{
                       backgroundColor: effectiveVars['--frontend-header-bg'],
@@ -514,10 +550,24 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
                     </div>
 
                     <div
+                      onClick={(e) =>
+                        selectTarget(
+                          e,
+                          'Botón de Acceso / Inscribirse (Acento CTA)',
+                          'Botón principal de llamada a la acción e ingreso al portal.',
+                          [
+                            { key: '--frontend-btn-cta-bg', label: 'Acento / Fondo Botón "Inscribirse"', desc: 'Color del botón principal de acción' },
+                            { key: '--frontend-btn-cta-text', label: 'Texto del Botón', desc: 'Color de la tipografía del botón' },
+                            { key: '--frontend-btn-cta-hover', label: 'Color Hover Botón', desc: 'Color al posar el cursor' },
+                            { key: '--frontend-btn-radius', label: 'Radio de Borde (Botones)', desc: 'Curvatura de las esquinas de los botones' },
+                          ]
+                        )
+                      }
                       className="px-3 py-1 rounded-md text-xs font-bold shadow-xs cursor-pointer"
                       style={{
                         backgroundColor: effectiveVars['--frontend-btn-cta-bg'],
                         color: effectiveVars['--frontend-btn-cta-text'],
+                        borderRadius: effectiveVars['--frontend-btn-radius'] || '6px',
                       }}
                     >
                       Ingresar
@@ -556,10 +606,16 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
                         }}
                         title="Clic para corregir la Sección Hero Principal"
                       >
-                        <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 block">
+                        <span
+                          className="text-[10px] font-bold uppercase tracking-widest opacity-80 block"
+                          style={{ color: effectiveVars['--frontend-hero-text'] }}
+                        >
                           1° Congreso · Educación Técnica Superior
                         </span>
-                        <h4 className="text-xl font-black tracking-tight">
+                        <h4
+                          className="text-xl font-black tracking-tight"
+                          style={{ color: effectiveVars['--frontend-hero-text'] }}
+                        >
                           Educación Técnica Superior · DETS 2026
                         </h4>
                         <p className="text-xs max-w-md mx-auto" style={{ color: effectiveVars['--frontend-hero-subtitle'] }}>
@@ -568,7 +624,22 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
 
                         <button
                           type="button"
-                          className="px-8 py-2 text-xs font-extrabold shadow-md uppercase tracking-wider transition cursor-pointer"
+                          onClick={(e) =>
+                            selectTarget(
+                              e,
+                              'Botón Principal "Inscribirse" (Acento CTA)',
+                              'Botón de llamada a la acción principal del portal público ("Inscribirse").',
+                              [
+                                { key: '--frontend-btn-cta-bg', label: 'Fondo Botón "Inscribirse"', desc: 'Color del botón principal de acción' },
+                                { key: '--frontend-btn-cta-text', label: 'Texto del Botón "Inscribirse"', desc: 'Color de la tipografía del botón' },
+                                { key: '--frontend-btn-cta-hover', label: 'Color Hover Botón', desc: 'Color al posar el cursor' },
+                                { key: '--frontend-btn-radius', label: 'Radio de Borde (Botones)', desc: 'Curvatura de las esquinas de los botones (ej: 0px, 6px, 12px, 9999px)' },
+                              ]
+                            )
+                          }
+                          className={`px-8 py-2 text-xs font-extrabold shadow-md uppercase tracking-wider transition cursor-pointer ${
+                            highlightedKey === '--frontend-btn-cta-bg' ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-800' : ''
+                          }`}
                           style={{
                             backgroundColor: effectiveVars['--frontend-btn-cta-bg'],
                             color: effectiveVars['--frontend-btn-cta-text'],
@@ -1217,7 +1288,13 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
 
                     <div className="space-y-3.5">
                       {/* 1. Primario Institucional */}
-                      <div className="p-3 bg-white rounded-xl border border-gray-200 space-y-2">
+                      <div
+                        className={`p-3 bg-white rounded-xl border space-y-2 transition-all ${
+                          highlightedKey === '--frontend-hero-bg'
+                            ? 'border-blue-500 ring-2 ring-blue-400/20 shadow-xs'
+                            : 'border-gray-200'
+                        }`}
+                      >
                         <div className="flex justify-between items-center text-xs">
                           <label className="font-bold text-gray-900">🏛️ Color Primario Institucional</label>
                           <span className="font-mono text-[11px] text-gray-500">{effectiveVars['--frontend-hero-bg']}</span>
@@ -1229,10 +1306,13 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
                             value={effectiveVars['--frontend-hero-bg']}
                             onChange={(e) => {
                               const val = e.target.value;
-                              handleColorChange('--frontend-hero-bg', val);
-                              handleColorChange('--frontend-credencial-header-bg', val);
-                              handleColorChange('--frontend-materiales-tag-bg', val);
-                              handleColorChange('--frontend-filter-active-bg', val);
+                              applyVarsPatch({
+                                '--frontend-hero-bg': val,
+                                '--frontend-credencial-header-bg': val,
+                                '--frontend-materiales-tag-bg': val,
+                                '--frontend-filter-active-bg': val,
+                                '--frontend-footer-bg': val,
+                              });
                             }}
                             className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-0 shrink-0"
                           />
@@ -1241,10 +1321,13 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
                             value={effectiveVars['--frontend-hero-bg']}
                             onChange={(e) => {
                               const val = e.target.value;
-                              handleColorChange('--frontend-hero-bg', val);
-                              handleColorChange('--frontend-credencial-header-bg', val);
-                              handleColorChange('--frontend-materiales-tag-bg', val);
-                              handleColorChange('--frontend-filter-active-bg', val);
+                              applyVarsPatch({
+                                '--frontend-hero-bg': val,
+                                '--frontend-credencial-header-bg': val,
+                                '--frontend-materiales-tag-bg': val,
+                                '--frontend-filter-active-bg': val,
+                                '--frontend-footer-bg': val,
+                              });
                             }}
                             className="flex-1 p-2 text-xs font-mono border border-gray-300 rounded-lg uppercase"
                           />
@@ -1252,7 +1335,13 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
                       </div>
 
                       {/* 2. Fondo General */}
-                      <div className="p-3 bg-white rounded-xl border border-gray-200 space-y-2">
+                      <div
+                        className={`p-3 bg-white rounded-xl border space-y-2 transition-all ${
+                          highlightedKey === '--background' || highlightedKey === '--frontend-sobre-bg'
+                            ? 'border-blue-500 ring-2 ring-blue-400/20 shadow-xs'
+                            : 'border-gray-200'
+                        }`}
+                      >
                         <div className="flex justify-between items-center text-xs">
                           <label className="font-bold text-gray-900">🖼️ Fondo General del Portal</label>
                           <span className="font-mono text-[11px] text-gray-500">{effectiveVars['--background']}</span>
@@ -1262,20 +1351,36 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
                           <input
                             type="color"
                             value={effectiveVars['--background']}
-                            onChange={(e) => handleColorChange('--background', e.target.value)}
+                            onChange={(e) =>
+                              applyVarsPatch({
+                                '--background': e.target.value,
+                                '--frontend-sobre-bg': e.target.value,
+                              })
+                            }
                             className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-0 shrink-0"
                           />
                           <input
                             type="text"
                             value={effectiveVars['--background']}
-                            onChange={(e) => handleColorChange('--background', e.target.value)}
+                            onChange={(e) =>
+                              applyVarsPatch({
+                                '--background': e.target.value,
+                                '--frontend-sobre-bg': e.target.value,
+                              })
+                            }
                             className="flex-1 p-2 text-xs font-mono border border-gray-300 rounded-lg uppercase"
                           />
                         </div>
                       </div>
 
                       {/* 3. Acento / Botones CTA */}
-                      <div className="p-3 bg-white rounded-xl border border-gray-200 space-y-2">
+                      <div
+                        className={`p-3 bg-white rounded-xl border space-y-2 transition-all ${
+                          highlightedKey === '--frontend-btn-cta-bg'
+                            ? 'border-blue-500 ring-2 ring-blue-400/20 shadow-xs'
+                            : 'border-gray-200'
+                        }`}
+                      >
                         <div className="flex justify-between items-center text-xs">
                           <label className="font-bold text-gray-900">⚡ Acento / Botón Inscribirse</label>
                           <span className="font-mono text-[11px] text-gray-500">{effectiveVars['--frontend-btn-cta-bg']}</span>
@@ -1287,8 +1392,11 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
                             value={effectiveVars['--frontend-btn-cta-bg']}
                             onChange={(e) => {
                               const val = e.target.value;
-                              handleColorChange('--frontend-btn-cta-bg', val);
-                              handleColorChange('--frontend-credencial-btn-diploma-bg', val);
+                              applyVarsPatch({
+                                '--frontend-btn-cta-bg': val,
+                                '--frontend-credencial-btn-diploma-bg': val,
+                                '--frontend-header-link-hover': val,
+                              });
                             }}
                             className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-0 shrink-0"
                           />
@@ -1297,8 +1405,11 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
                             value={effectiveVars['--frontend-btn-cta-bg']}
                             onChange={(e) => {
                               const val = e.target.value;
-                              handleColorChange('--frontend-btn-cta-bg', val);
-                              handleColorChange('--frontend-credencial-btn-diploma-bg', val);
+                              applyVarsPatch({
+                                '--frontend-btn-cta-bg': val,
+                                '--frontend-credencial-btn-diploma-bg': val,
+                                '--frontend-header-link-hover': val,
+                              });
                             }}
                             className="flex-1 p-2 text-xs font-mono border border-gray-300 rounded-lg uppercase"
                           />
@@ -1306,7 +1417,13 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
                       </div>
 
                       {/* 4. Color de Texto y Contraste */}
-                      <div className="p-3 bg-white rounded-xl border border-gray-200 space-y-2">
+                      <div
+                        className={`p-3 bg-white rounded-xl border space-y-2 transition-all ${
+                          highlightedKey === '--foreground' || highlightedKey === '--frontend-header-text'
+                            ? 'border-blue-500 ring-2 ring-blue-400/20 shadow-xs'
+                            : 'border-gray-200'
+                        }`}
+                      >
                         <div className="flex justify-between items-center text-xs">
                           <label className="font-bold text-gray-900">✍️ Texto Principal</label>
                           <span className="font-mono text-[11px] text-gray-500">{effectiveVars['--foreground']}</span>
@@ -1318,9 +1435,14 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
                             value={effectiveVars['--foreground']}
                             onChange={(e) => {
                               const val = e.target.value;
-                              handleColorChange('--foreground', val);
-                              handleColorChange('--frontend-header-text', val);
-                              handleColorChange('--frontend-card-title', val);
+                              applyVarsPatch({
+                                '--foreground': val,
+                                '--frontend-header-text': val,
+                                '--frontend-sobre-title': val,
+                                '--frontend-card-title': val,
+                                '--frontend-faq-question-text': val,
+                                '--frontend-input-text': val,
+                              });
                             }}
                             className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-0 shrink-0"
                           />
@@ -1329,9 +1451,14 @@ export default function AdminFrontendThemeEditor({ onNotice }: Props) {
                             value={effectiveVars['--foreground']}
                             onChange={(e) => {
                               const val = e.target.value;
-                              handleColorChange('--foreground', val);
-                              handleColorChange('--frontend-header-text', val);
-                              handleColorChange('--frontend-card-title', val);
+                              applyVarsPatch({
+                                '--foreground': val,
+                                '--frontend-header-text': val,
+                                '--frontend-sobre-title': val,
+                                '--frontend-card-title': val,
+                                '--frontend-faq-question-text': val,
+                                '--frontend-input-text': val,
+                              });
                             }}
                             className="flex-1 p-2 text-xs font-mono border border-gray-300 rounded-lg uppercase"
                           />

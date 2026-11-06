@@ -58,6 +58,144 @@ function ensureBackupDir() {
 }
 
 /**
+ * Localiza el binario pg_dump en el sistema operativo (incluyendo rutas estándar de PostgreSQL en Windows)
+ */
+function resolvePgDumpBinary(): string {
+  if (process.env.PG_DUMP_PATH && fs.existsSync(process.env.PG_DUMP_PATH)) {
+    return process.env.PG_DUMP_PATH;
+  }
+
+  if (process.platform === 'win32') {
+    const programDirs = [
+      process.env['ProgramFiles'] || 'C:\\Program Files',
+      process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)',
+    ];
+
+    for (const baseDir of programDirs) {
+      const pgRoot = path.join(baseDir, 'PostgreSQL');
+      if (fs.existsSync(pgRoot)) {
+        try {
+          const versions = fs
+            .readdirSync(pgRoot)
+            .sort((a, b) => parseFloat(b) - parseFloat(a));
+
+          for (const ver of versions) {
+            const candidateBin = path.join(pgRoot, ver, 'bin', 'pg_dump.exe');
+            if (fs.existsSync(candidateBin)) {
+              return candidateBin;
+            }
+            const candidateRuntime = path.join(pgRoot, ver, 'pgAdmin 4', 'runtime', 'pg_dump.exe');
+            if (fs.existsSync(candidateRuntime)) {
+              return candidateRuntime;
+            }
+          }
+        } catch (_) {
+          // Ignorar errores de permisos al explorar directorios
+        }
+      }
+    }
+  }
+
+  return 'pg_dump';
+}
+
+/**
+ * Formatea un valor de fila PostgreSQL como literal SQL seguro para el fallback nativo
+ */
+function formatSqlLiteral(val: any): string {
+  if (val === null || val === undefined) return 'NULL';
+  if (typeof val === 'number') return Number.isFinite(val) ? String(val) : 'NULL';
+  if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+  if (val instanceof Date) return `'${val.toISOString()}'`;
+  if (Buffer.isBuffer(val)) return `'\\x${val.toString('hex')}'`;
+  if (typeof val === 'object') return `'${JSON.stringify(val).replace(/'/g, "''")}'`;
+  return `'${String(val).replace(/'/g, "''")}'`;
+}
+
+/**
+ * Generador SQL de respaldo mediante consultas directas en caso de que pg_dump no esté disponible
+ */
+async function generateSqlDumpFallback(
+  options: {
+    tables?: string[];
+    dataOnly?: boolean;
+    schemaOnly?: boolean;
+    clean?: boolean;
+  } = {}
+): Promise<string> {
+  const defaultTables = [
+    'roles',
+    'estados_inscripcion',
+    'eventos',
+    'puntos_acceso',
+    'tipos_acreditacion',
+    'categorias_tematicas',
+    'catalogo_actividades',
+    'usuarios',
+    'actividades',
+    'actividad_inscripciones',
+    'operadores',
+    'blacklist',
+    'usuario_roles_adicionales',
+    'homologaciones_expositores',
+    'confirmaciones_asistencia',
+    'acreditaciones',
+    'certificados',
+    'encuestas',
+    'encuesta_preguntas',
+    'encuesta_opciones',
+    'encuesta_respuestas',
+    'encuesta_respuestas_detalles',
+    'suscripciones_push',
+    'configuraciones_sistema',
+    'logs_auditoria',
+  ];
+
+  const targetTables = options.tables && options.tables.length > 0 ? options.tables : defaultTables;
+  const lines: string[] = [
+    '--',
+    '-- PostgreSQL database dump (Congreso ETS 2026)',
+    `-- Generado: ${new Date().toISOString()}`,
+    '--',
+    'SET statement_timeout = 0;',
+    'SET client_encoding = \'UTF8\';',
+    'SET standard_conforming_strings = on;',
+    '',
+  ];
+
+  if (!options.dataOnly) {
+    const ddlPath = path.join(process.cwd(), 'database', 'schema_3fn.sql');
+    if (fs.existsSync(ddlPath)) {
+      lines.push('-- Esquema DDL 3FN');
+      lines.push(fs.readFileSync(ddlPath, 'utf8'));
+      lines.push('');
+    }
+  }
+
+  if (!options.schemaOnly) {
+    for (const table of targetTables) {
+      try {
+        const res = await query(`SELECT * FROM ${table}`);
+        lines.push(`-- Data for Name: ${table}; Rows: ${res.rows.length}`);
+        for (const row of res.rows) {
+          const cols = Object.keys(row);
+          if (cols.length === 0) continue;
+          const vals = cols.map((c) => formatSqlLiteral(row[c]));
+          lines.push(
+            `INSERT INTO public.${table} (${cols.join(', ')}) VALUES (${vals.join(', ')}) ON CONFLICT DO NOTHING;`
+          );
+        }
+        lines.push('');
+      } catch (err: any) {
+        lines.push(`-- Advertencia exportando tabla ${table}: ${err?.message || 'Error'}`);
+      }
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/**
  * Ejecuta pg_dump y retorna el resultado como string
  */
 export function executePgDumpToString(
@@ -71,9 +209,10 @@ export function executePgDumpToString(
   return new Promise((resolve, reject) => {
     const dbUrl =
       process.env.DATABASE_URL ||
-      'postgresql://congreso_app:V-129057-t@localhost:5433/congreso_ets2026';
+      'postgresql://congreso_app:V-129057-t@localhost:5432/congreso_ets2026';
 
-    const args = [dbUrl, '--no-owner', '--no-privileges'];
+    const pgDumpBin = resolvePgDumpBinary();
+    const args = ['--no-owner', '--no-privileges'];
     if (options.clean) args.push('--clean', '--if-exists');
     if (options.dataOnly) args.push('--data-only');
     if (options.schemaOnly) args.push('--schema-only');
@@ -82,8 +221,9 @@ export function executePgDumpToString(
         args.push('-t', t);
       }
     }
+    args.push(`--dbname=${dbUrl}`);
 
-    const proc = spawn('pg_dump', args);
+    const proc = spawn(pgDumpBin, args);
     let stdout = '';
     let stderr = '';
 
@@ -94,15 +234,27 @@ export function executePgDumpToString(
       stderr += d.toString();
     });
 
-    proc.on('error', (err) => {
-      reject(new Error(`Fallo al invocar pg_dump: ${err.message}`));
+    proc.on('error', async (err) => {
+      try {
+        console.warn(`Aviso: pg_dump no disponible (${err.message}), usando exportador SQL nativo de respaldo.`);
+        const fallbackSql = await generateSqlDumpFallback(options);
+        resolve(fallbackSql);
+      } catch (fallbackErr: any) {
+        reject(new Error(`Fallo al invocar pg_dump: ${err.message} (${fallbackErr?.message || ''})`));
+      }
     });
 
-    proc.on('close', (code) => {
+    proc.on('close', async (code) => {
       if (code === 0) {
         resolve(stdout);
       } else {
-        reject(new Error(`pg_dump finalizó con código ${code}: ${stderr}`));
+        try {
+          console.warn(`Aviso: pg_dump finalizó con código ${code} (${stderr.trim()}), usando exportador SQL de respaldo.`);
+          const fallbackSql = await generateSqlDumpFallback(options);
+          resolve(fallbackSql);
+        } catch {
+          reject(new Error(`pg_dump finalizó con código ${code}: ${stderr}`));
+        }
       }
     });
   });
@@ -111,7 +263,7 @@ export function executePgDumpToString(
 /**
  * Ejecuta pg_dump y escribe la salida en un archivo destino
  */
-export function executePgDumpToFile(
+export async function executePgDumpToFile(
   outputPath: string,
   options: {
     tables?: string[];
@@ -120,43 +272,8 @@ export function executePgDumpToFile(
     clean?: boolean;
   } = {}
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const dbUrl =
-      process.env.DATABASE_URL ||
-      'postgresql://congreso_app:V-129057-t@localhost:5433/congreso_ets2026';
-
-    const args = [dbUrl, '--no-owner', '--no-privileges'];
-    if (options.clean) args.push('--clean', '--if-exists');
-    if (options.dataOnly) args.push('--data-only');
-    if (options.schemaOnly) args.push('--schema-only');
-    if (options.tables && options.tables.length > 0) {
-      for (const t of options.tables) {
-        args.push('-t', t);
-      }
-    }
-
-    const outStream = fs.createWriteStream(outputPath);
-    const proc = spawn('pg_dump', args);
-
-    proc.stdout.pipe(outStream);
-
-    let stderr = '';
-    proc.stderr.on('data', (d) => {
-      stderr += d.toString();
-    });
-
-    proc.on('error', (err) => {
-      reject(new Error(`Fallo al invocar pg_dump: ${err.message}`));
-    });
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`pg_dump finalizó con código ${code}: ${stderr}`));
-      }
-    });
-  });
+  const sqlContent = await executePgDumpToString(options);
+  fs.writeFileSync(outputPath, sqlContent, 'utf-8');
 }
 
 /**

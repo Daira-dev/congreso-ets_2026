@@ -29,6 +29,60 @@ const identificacionLimiter = rateLimit({
 });
 
 /**
+ * Helper para obtener plantilla y política de acreditación desde configuraciones_sistema
+ */
+async function getIdentificacionConfigs() {
+  let plantilla: any = null;
+  let politica_acreditacion: any = {
+    exigir_dni_fisico: true,
+    mostrar_foto_operador: true,
+    reloj_animado_credencial: true,
+  };
+
+  try {
+    const cfgRes = await query(
+      `SELECT clave, valor FROM configuraciones_sistema WHERE clave IN ('plantilla_identificacion_digital', 'politica_acreditacion')`
+    );
+    for (const row of cfgRes.rows) {
+      const parsedVal = typeof row.valor === 'string' ? JSON.parse(rawValSafe(row.valor)) : row.valor;
+      if (row.clave === 'plantilla_identificacion_digital') {
+        plantilla = parsedVal;
+      } else if (row.clave === 'politica_acreditacion' && parsedVal && typeof parsedVal === 'object') {
+        politica_acreditacion = {
+          ...politica_acreditacion,
+          ...parsedVal,
+        };
+      }
+    }
+  } catch (_) {}
+
+  return { plantilla, politica_acreditacion };
+}
+
+function rawValSafe(val: string) {
+  try {
+    JSON.parse(val);
+    return val;
+  } catch (_) {
+    return '{}';
+  }
+}
+
+/**
+ * GET /api/identificacion/plantilla
+ * Obtiene la plantilla y la política de acreditación configuradas en configuraciones_sistema
+ */
+router.get('/plantilla', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const { plantilla, politica_acreditacion } = await getIdentificacionConfigs();
+    res.json({ ok: true, success: true, plantilla, politica_acreditacion });
+  } catch (error: any) {
+    console.error('Error en GET /api/identificacion/plantilla:', error);
+    res.status(500).json({ ok: false, error: 'ERR_SERVER', message: 'Error al obtener plantilla de identificación.' });
+  }
+});
+
+/**
  * GET /api/identificacion
  * Consulta los datos oficiales de la identificación PWA y genera el token QR cifrado
  */
@@ -146,6 +200,8 @@ router.get(['/', '/:dni'], identificacionLimiter, async (req: Request, res: Resp
       });
     }
 
+    const { plantilla, politica_acreditacion } = await getIdentificacionConfigs();
+
     res.json({
       success: true,
       usuario: {
@@ -164,6 +220,8 @@ router.get(['/', '/:dni'], identificacionLimiter, async (req: Request, res: Resp
       },
       qr_token: qrToken,
       qr_image: qrImageDataUrl,
+      plantilla,
+      politica_acreditacion,
     });
   } catch (error: any) {
     console.error('Error en GET /api/identificacion:', error);

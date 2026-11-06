@@ -1,20 +1,8 @@
 import { Router, Response } from 'express';
-import { query } from '../../lib/db';
+import { query, withTransaction } from '../../lib/db';
 import { AuthenticatedRequest, requireHierarchy } from '../../middlewares/authMiddleware';
 
 const router = Router();
-
-// Roles canónicos del sistema protegidos contra eliminación o degradación
-const ROLES_SISTEMA_PROTEGIDOS = [
-  'superadmin',
-  'administrador',
-  'operador',
-  'verificador',
-  'estudiante',
-  'docente',
-  'expositor',
-  'autoridad',
-];
 
 /**
  * GET /api/admin/catalogos
@@ -42,7 +30,7 @@ router.get('/', requireHierarchy(3), async (_req: AuthenticatedRequest, res: Res
       query(`SELECT id, codigo, descripcion, requiere_actividad FROM tipos_acreditacion ORDER BY id ASC`),
       query(`SELECT id, nombre, tipo_acreditacion_id, punto_acceso_id, cupo_maximo, disertante_nombre, disertante_usuario_id, catalogo_actividad_id FROM actividades WHERE activo = TRUE ORDER BY id ASC`),
       query(`SELECT id, codigo, nombre, descripcion, tipo_acreditacion_id, categoria_tematica_id, horas_catedra, activo FROM catalogo_actividades WHERE activo = TRUE ORDER BY codigo ASC`),
-      query(`SELECT id, nombre, descripcion, activo FROM categorias_tematicas WHERE activo = TRUE ORDER BY nombre ASC`),
+      query(`SELECT id, nombre, descripcion, activo FROM categorias_tematicas ORDER BY nombre ASC`),
       query(`
         SELECT DISTINCT u.id, u.nombre, u.apellido, u.email, u.dni_pasaporte, r.nombre AS rol_nombre,
                COALESCE(he.estado_homologacion, 'NO_REQUERIDO') AS homologacion_estado
@@ -204,11 +192,11 @@ router.put('/roles/:id', requireHierarchy(5), async (req: AuthenticatedRequest, 
 
     // Auditoría forense
     await query(
-      `INSERT INTO logs_auditoria (tabla_afectada, registro_id, accion, usuario_responsable, datos_previos, datos_nuevos) 
+      `INSERT INTO logs_auditoria (tabla_afectada, registro_id, accion, usuario_responsable, detalles, datos_nuevos) 
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         'roles',
-        id,
+        String(id),
         'ROL_ACTUALIZADO',
         req.operator?.email || 'SUPERADMIN',
         JSON.stringify(currentRol),
@@ -225,7 +213,7 @@ router.put('/roles/:id', requireHierarchy(5), async (req: AuthenticatedRequest, 
 
 /**
  * DELETE /api/admin/catalogos/roles/:id
- * Elimina un rol institucional si no tiene dependencias activas. Exclusivo de Superadmin (Nivel 5).
+ * Elimina un rol institucional reasignando automáticamente sus dependencias si las tuviera. Exclusivo de Superadmin (Nivel 5).
  */
 router.delete('/roles/:id', requireHierarchy(5), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -243,64 +231,91 @@ router.delete('/roles/:id', requireHierarchy(5), async (req: AuthenticatedReques
 
     const rol = rolCheck.rows[0];
 
-    // Protección de roles esenciales del sistema
-    if (
-      rol.jerarquia >= 5 ||
-      ROLES_SISTEMA_PROTEGIDOS.includes(rol.nombre.toLowerCase().trim())
-    ) {
-      res.status(403).json({
-        ok: false,
-        message: `Acción bloqueada: El rol esencial del sistema "${rol.nombre}" no puede ser eliminado.`,
-      });
-      return;
+    // Solo impedir si es el único rol de nivel 5 (Superadmin) para no dejar al sistema sin administración
+    if (rol.jerarquia >= 5) {
+      const otherSuperRes = await query(
+        `SELECT COUNT(*)::int as c FROM roles WHERE jerarquia >= 5 AND id <> $1`,
+        [id]
+      );
+      if (otherSuperRes.rows[0].c === 0) {
+        res.status(403).json({
+          ok: false,
+          message: `Acción bloqueada: No se puede eliminar el único rol de nivel Superadmin ("${rol.nombre}") del sistema.`,
+        });
+        return;
+      }
     }
 
-    // Comprobar dependencias en usuarios
-    const inUseUsuarios = await query(`SELECT COUNT(*)::int as c FROM usuarios WHERE rol_principal_id = $1`, [id]);
-    if (inUseUsuarios.rows[0].c > 0) {
+    // Buscar un rol alternativo de jerarquía equivalente o más cercana para reasignar dependencias si existen
+    const fallbackRes = await query(
+      `SELECT id, nombre, jerarquia FROM roles WHERE id <> $1 ORDER BY ABS(jerarquia - $2) ASC, id ASC LIMIT 1`,
+      [id, rol.jerarquia]
+    );
+
+    if (fallbackRes.rows.length === 0) {
       res.status(409).json({
         ok: false,
-        message: `No se puede eliminar el rol porque está asignado a ${inUseUsuarios.rows[0].c} participante(s) en la base de datos.`,
+        message: 'No se puede eliminar el único rol existente en la base de datos.',
       });
       return;
     }
 
-    // Comprobar dependencias en operadores
-    const inUseOperadores = await query(`SELECT COUNT(*)::int as c FROM operadores WHERE rol_id = $1`, [id]);
-    if (inUseOperadores.rows[0].c > 0) {
-      res.status(409).json({
-        ok: false,
-        message: `No se puede eliminar el rol porque está asignado a ${inUseOperadores.rows[0].c} operador(es) del sistema.`,
-      });
-      return;
-    }
+    const fallbackRol = fallbackRes.rows[0];
 
-    // Comprobar dependencias en roles adicionales
-    const inUseAdicionales = await query(`SELECT COUNT(*)::int as c FROM usuario_roles_adicionales WHERE rol_id = $1`, [id]);
-    if (inUseAdicionales.rows[0].c > 0) {
-      res.status(409).json({
-        ok: false,
-        message: `No se puede eliminar el rol porque está asignado como rol adicional a ${inUseAdicionales.rows[0].c} usuario(s).`,
-      });
-      return;
-    }
+    const resultStats = await withTransaction(async (client) => {
+      const updUsers = await client.query(
+        `UPDATE usuarios SET rol_principal_id = $1 WHERE rol_principal_id = $2`,
+        [fallbackRol.id, id]
+      );
 
-    await query(`DELETE FROM roles WHERE id = $1`, [id]);
+      const updOps = await client.query(
+        `UPDATE operadores SET rol_id = $1 WHERE rol_id = $2`,
+        [fallbackRol.id, id]
+      );
 
-    // Auditoría forense
+      await client.query(
+        `UPDATE encuesta_respuestas SET rol_id = $1 WHERE rol_id = $2`,
+        [fallbackRol.id, id]
+      );
+
+      await client.query(`DELETE FROM usuario_roles_adicionales WHERE rol_id = $1`, [id]);
+
+      await client.query(`DELETE FROM roles WHERE id = $1`, [id]);
+
+      return {
+        usuariosReasignados: updUsers.rowCount || 0,
+        operadoresReasignados: updOps.rowCount || 0,
+      };
+    });
+
     await query(
-      `INSERT INTO logs_auditoria (tabla_afectada, registro_id, accion, usuario_responsable, datos_previos) 
-       VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO logs_auditoria (tabla_afectada, registro_id, accion, usuario_responsable, detalles, datos_nuevos) 
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         'roles',
-        id,
+        String(id),
         'ROL_ELIMINADO',
         req.operator?.email || 'SUPERADMIN',
         JSON.stringify(rol),
+        JSON.stringify({
+          rol_reasignado_id: fallbackRol.id,
+          rol_reasignado_nombre: fallbackRol.nombre,
+          usuarios_reasignados: resultStats.usuariosReasignados,
+          operadores_reasignados: resultStats.operadoresReasignados,
+        }),
       ]
     ).catch(() => {});
 
-    res.json({ ok: true, mensaje: `Rol institucional "${rol.nombre}" eliminado correctamente.` });
+    const totalReasignados = resultStats.usuariosReasignados + resultStats.operadoresReasignados;
+    const detalleReasignacion =
+      totalReasignados > 0
+        ? ` (${totalReasignados} registro(s) reasignados automáticamente a "${fallbackRol.nombre}")`
+        : '';
+
+    res.json({
+      ok: true,
+      mensaje: `Rol institucional "${rol.nombre}" eliminado correctamente${detalleReasignacion}.`,
+    });
   } catch (error: any) {
     console.error('Error en DELETE /api/admin/catalogos/roles/:id:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
@@ -360,14 +375,36 @@ router.put('/tipos-acreditacion/:id', requireHierarchy(4), async (req: Authentic
       return;
     }
 
-    const { descripcion, requiere_actividad } = req.body;
+    const { codigo, descripcion, requiere_actividad } = req.body;
+    const cleanCodigo = codigo ? String(codigo).toUpperCase().trim() : null;
+
+    if (cleanCodigo) {
+      const dupCheck = await query(
+        `SELECT id FROM tipos_acreditacion WHERE codigo = $1 AND id != $2`,
+        [cleanCodigo, id]
+      );
+      if (dupCheck.rows.length > 0) {
+        res.status(409).json({
+          ok: false,
+          message: `Ya existe otro tipo de acreditación con el código "${cleanCodigo}".`,
+        });
+        return;
+      }
+    }
+
+    const reqActBool =
+      requiere_actividad !== undefined
+        ? requiere_actividad === true || requiere_actividad === 'true'
+        : null;
+
     const upd = await query(
       `UPDATE tipos_acreditacion 
-       SET descripcion = COALESCE($1, descripcion), 
-           requiere_actividad = COALESCE($2, requiere_actividad) 
-       WHERE id = $3 
+       SET codigo = COALESCE($1, codigo),
+           descripcion = COALESCE($2, descripcion), 
+           requiere_actividad = COALESCE($3, requiere_actividad) 
+       WHERE id = $4 
        RETURNING *`,
-      [descripcion ? String(descripcion).trim() : null, requiere_actividad, id]
+      [cleanCodigo, descripcion ? String(descripcion).trim() : null, reqActBool, id]
     );
 
     if (upd.rows.length === 0) {
@@ -384,6 +421,65 @@ router.put('/tipos-acreditacion/:id', requireHierarchy(4), async (req: Authentic
     res.json({ ok: true, mensaje: 'Tipo de acreditación actualizado exitosamente.', tipo: upd.rows[0] });
   } catch (error: any) {
     console.error('Error en PUT /api/admin/catalogos/tipos-acreditacion/:id:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/catalogos/tipos-acreditacion/:id
+ */
+router.delete('/tipos-acreditacion/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      res.status(400).json({ ok: false, message: 'ID de tipo de acreditación inválido.' });
+      return;
+    }
+
+    const checkRes = await query(`SELECT * FROM tipos_acreditacion WHERE id = $1`, [id]);
+    if (checkRes.rows.length === 0) {
+      res.status(404).json({ ok: false, message: 'Tipo de acreditación no encontrado.' });
+      return;
+    }
+    const tipo = checkRes.rows[0];
+
+    // Comprobar dependencias en actividades
+    const inUseAct = await query(
+      `SELECT COUNT(*)::int as c FROM actividades WHERE tipo_acreditacion_id = $1`,
+      [id]
+    );
+    if (inUseAct.rows[0].c > 0) {
+      res.status(409).json({
+        ok: false,
+        message: `No se puede eliminar el tipo "${tipo.codigo}" porque está asignado a ${inUseAct.rows[0].c} actividad(es) del programa.`,
+      });
+      return;
+    }
+
+    // Comprobar dependencias en acreditaciones registradas
+    const inUseAcred = await query(
+      `SELECT COUNT(*)::int as c FROM acreditaciones WHERE tipo_acreditacion_id = $1`,
+      [id]
+    );
+    if (inUseAcred.rows[0].c > 0) {
+      res.status(409).json({
+        ok: false,
+        message: `No se puede eliminar el tipo "${tipo.codigo}" porque posee ${inUseAcred.rows[0].c} registro(s) de acreditación asociados.`,
+      });
+      return;
+    }
+
+    await query(`DELETE FROM tipos_acreditacion WHERE id = $1`, [id]);
+
+    await query(
+      `INSERT INTO logs_auditoria (tabla_afectada, registro_id, accion, usuario_responsable, datos_nuevos) 
+       VALUES ($1, $2, $3, $4, $5)`,
+      ['tipos_acreditacion', id, 'TIPO_ACREDITACION_ELIMINADO', req.operator?.email || 'ADMIN', JSON.stringify(tipo)]
+    ).catch(() => {});
+
+    res.json({ ok: true, mensaje: `Tipo de acreditación "${tipo.codigo}" eliminado correctamente.` });
+  } catch (error: any) {
+    console.error('Error en DELETE /api/admin/catalogos/tipos-acreditacion/:id:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
   }
 });
@@ -442,14 +538,37 @@ router.put('/categorias-tematicas/:id', requireHierarchy(4), async (req: Authent
     }
 
     const { nombre, descripcion, activo } = req.body;
+    const cleanNombre = nombre && typeof nombre === 'string' && nombre.trim() ? nombre.trim() : null;
+
+    if (cleanNombre) {
+      const dupCheck = await query(
+        `SELECT id FROM categorias_tematicas WHERE LOWER(nombre) = LOWER($1) AND id <> $2`,
+        [cleanNombre, id]
+      );
+      if (dupCheck.rows.length > 0) {
+        res.status(409).json({
+          ok: false,
+          message: `Ya existe otra categoría temática con el nombre "${cleanNombre}".`,
+        });
+        return;
+      }
+    }
+
+    const hasDescUpdate = descripcion !== undefined;
+    const cleanDesc = hasDescUpdate ? (descripcion ? String(descripcion).trim() : null) : null;
+    const activoBool =
+      activo !== undefined
+        ? activo === true || activo === 'true'
+        : null;
+
     const upd = await query(
       `UPDATE categorias_tematicas 
        SET nombre = COALESCE($1, nombre), 
-           descripcion = COALESCE($2, descripcion), 
-           activo = COALESCE($3, activo) 
-       WHERE id = $4 
+           descripcion = CASE WHEN $2::boolean THEN $3 ELSE descripcion END, 
+           activo = COALESCE($4, activo) 
+       WHERE id = $5 
        RETURNING *`,
-      [nombre ? String(nombre).trim() : null, descripcion !== undefined ? (descripcion ? String(descripcion).trim() : null) : null, activo, id]
+      [cleanNombre, hasDescUpdate, cleanDesc, activoBool, id]
     );
 
     if (upd.rows.length === 0) {
@@ -466,6 +585,52 @@ router.put('/categorias-tematicas/:id', requireHierarchy(4), async (req: Authent
     res.json({ ok: true, mensaje: 'Categoría temática actualizada exitosamente.', categoria: upd.rows[0] });
   } catch (error: any) {
     console.error('Error en PUT /api/admin/catalogos/categorias-tematicas/:id:', error);
+    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/catalogos/categorias-tematicas/:id
+ */
+router.delete('/categorias-tematicas/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      res.status(400).json({ ok: false, message: 'ID de categoría temática inválido.' });
+      return;
+    }
+
+    const checkRes = await query(`SELECT * FROM categorias_tematicas WHERE id = $1`, [id]);
+    if (checkRes.rows.length === 0) {
+      res.status(404).json({ ok: false, message: 'Categoría temática no encontrada.' });
+      return;
+    }
+    const cat = checkRes.rows[0];
+
+    // Comprobar dependencias en catálogo de actividades
+    const inUseCat = await query(
+      `SELECT COUNT(*)::int as c FROM catalogo_actividades WHERE categoria_tematica_id = $1`,
+      [id]
+    );
+    if (inUseCat.rows[0].c > 0) {
+      res.status(409).json({
+        ok: false,
+        message: `No se puede eliminar la categoría "${cat.nombre}" porque está asignada a ${inUseCat.rows[0].c} actividad(es) del catálogo.`,
+      });
+      return;
+    }
+
+    await query(`DELETE FROM categorias_tematicas WHERE id = $1`, [id]);
+
+    await query(
+      `INSERT INTO logs_auditoria (tabla_afectada, registro_id, accion, usuario_responsable, datos_nuevos) 
+       VALUES ($1, $2, $3, $4, $5)`,
+      ['categorias_tematicas', id, 'CATEGORIA_TEMATICA_ELIMINADA', req.operator?.email || 'ADMIN', JSON.stringify(cat)]
+    ).catch(() => {});
+
+    res.json({ ok: true, mensaje: `Categoría temática "${cat.nombre}" eliminada correctamente.` });
+  } catch (error: any) {
+    console.error('Error en DELETE /api/admin/catalogos/categorias-tematicas/:id:', error);
     res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
   }
 });

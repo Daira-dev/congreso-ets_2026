@@ -91,8 +91,8 @@ export default function PushSubscriptionBanner({ usuarioId }: Props) {
     setStatusNotice(null);
 
     try {
-      // 1. Obtener o validar que el usuario esté registrado
-      let targetUsuarioId = usuarioId;
+      // 1. Obtener el usuario registrado si existe en sesión local (opcional para permitir suscripción general de dispositivos)
+      let targetUsuarioId: string | null = usuarioId || null;
 
       if (!targetUsuarioId && typeof window !== 'undefined') {
         const cached = localStorage.getItem('ets2026_credencial_cache');
@@ -104,59 +104,6 @@ export default function PushSubscriptionBanner({ usuarioId }: Props) {
             }
           } catch (_) {}
         }
-      }
-
-      // Si aún no está identificado, solicitar el DNI del participante registrado
-      if (!targetUsuarioId) {
-        setLoading(false);
-        const { value: dniInput, isDismissed } = await Swal.fire({
-          title: 'Participante Registrado',
-          text: 'Las notificaciones oficiales solo están disponibles para participantes registrados en el Congreso ETS 2026. Por favor ingresa tu DNI para vincular tu dispositivo:',
-          input: 'text',
-          inputPlaceholder: 'Ingresa tu DNI o Pasaporte...',
-          showCancelButton: true,
-          confirmButtonText: 'Verificar y Activar',
-          cancelButtonText: 'Cancelar',
-          confirmButtonColor: '#005691',
-          inputValidator: (val) => {
-            if (!val || val.trim().length < 5) {
-              return 'Por favor ingresa un número de DNI válido.';
-            }
-            return null;
-          },
-        });
-
-        if (isDismissed || !dniInput) {
-          return;
-        }
-
-        setLoading(true);
-        // Validar DNI en la base de datos
-        const userRes = await fetch(`/api/credencial/${encodeURIComponent(dniInput.trim())}`);
-        if (!userRes.ok) {
-          setLoading(false);
-          await Swal.fire({
-            icon: 'error',
-            title: 'Participante no encontrado',
-            text: 'No se encontró ningún participante registrado con el DNI ingresado. Recuerda inscribirte previamente en el congreso para recibir avisos.',
-            confirmButtonColor: '#005691',
-          });
-          return;
-        }
-
-        const userData = await userRes.json();
-        if (!userData.ok || !userData.usuario?.id) {
-          setLoading(false);
-          await Swal.fire({
-            icon: 'error',
-            title: 'Participante no válido',
-            text: 'Los datos del participante no pudieron ser validados.',
-            confirmButtonColor: '#005691',
-          });
-          return;
-        }
-
-        targetUsuarioId = userData.usuario.id;
       }
 
       // 2. Verificar si ya fue denegado previamente por el navegador

@@ -381,7 +381,7 @@ export default function AdminIdentificacionEditorView({ onNotice }: Props) {
                       <div className="text-4xl text-gray-400 flex items-center justify-center w-full h-full">👤</div>
                   )}
                   {widget.type === 'live_clock' && <span>{widget.props.format}</span>}
-                  {(widget.type === 'texto_dinamico' || widget.type === 'fecha_validez' || widget.type === 'badge') && <span className="w-full" style={{textAlign: widget.props.align}}>{widget.props.template || widget.props.text}</span>}
+                  {(widget.type === 'texto_dinamico' || widget.type === 'fecha_validez' || widget.type === 'badge') && <span className="w-full" style={{textAlign: widget.props.align}}>{widget.props.template || widget.props.text || widget.props.Text}</span>}
                   {widget.type === 'alert_box' && (
                     <div className="w-full h-full flex items-center justify-center gap-2">
                       <span className="text-xl">{widget.props.icon === 'info' ? 'ℹ️' : (widget.props.icon === 'warning' ? '⚠️' : '🚨')}</span>
@@ -497,10 +497,12 @@ export default function AdminIdentificacionEditorView({ onNotice }: Props) {
               <div>
                 <label className="text-xs font-bold text-gray-700">Texto / Plantilla</label>
                 <input type="text" 
-                  value={selectedWidget.props.template || selectedWidget.props.text || ''} 
+                  value={selectedWidget.props.template || selectedWidget.props.text || selectedWidget.props.Text || ''} 
                   onChange={e => {
                     const key = (selectedWidget.type === 'texto_dinamico' || selectedWidget.type === 'fecha_validez') ? 'template' : 'text';
-                    const newWidgets = template.widgets.map(w => w.id === selectedWidget.id ? { ...w, props: { ...w.props, [key]: e.target.value } } : w);
+                    const nextProps = { ...selectedWidget.props, [key]: e.target.value };
+                    if (key === 'text' && 'Text' in nextProps) delete nextProps.Text;
+                    const newWidgets = template.widgets.map(w => w.id === selectedWidget.id ? { ...w, props: nextProps } : w);
                     updateTemplate({ ...template, widgets: newWidgets });
                   }} 
                   className="w-full border p-1.5 rounded text-sm" />
