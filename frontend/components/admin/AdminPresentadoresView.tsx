@@ -125,9 +125,13 @@ export default function AdminPresentadoresView({ onNotice }: Props) {
         setCurrent(null);
         loadPresentadores();
       } else {
+        const detalle = data.detalles
+          ?.map((item: { mensaje: string }) => item.mensaje)
+          .join('\n');
+
         await Swal.fire({
           title: 'Error al Actualizar',
-          text: data.message || 'Error al actualizar',
+          text: detalle || data.mensaje || data.message || 'Error al actualizar',
           icon: 'error',
           confirmButtonColor: '#dc3545',
         });

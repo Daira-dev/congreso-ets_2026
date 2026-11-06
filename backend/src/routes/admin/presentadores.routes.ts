@@ -164,8 +164,44 @@ router.post('/', requireHierarchy(4), async (req: AuthenticatedRequest, res: Res
  */
 router.put('/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
+    const validacion = z.object({
+      nombre: z.string({
+        required_error: 'El nombre es obligatorio',
+        invalid_type_error: 'El nombre debe ser un texto válido',
+      }).trim().min(1, 'El nombre es obligatorio'),
+
+      apellido: z.string({
+        required_error: 'El apellido es obligatorio',
+        invalid_type_error: 'El apellido debe ser un texto válido',
+      }).trim().min(1, 'El apellido es obligatorio'),
+
+      email: z.string({
+        required_error: 'El email es obligatorio',
+        invalid_type_error: 'El email debe ser un texto válido',
+      }).trim().min(1, 'El email es obligatorio'),
+
+      celular: z.string({
+        required_error: 'El celular es obligatorio',
+        invalid_type_error: 'El celular debe ser un texto válido',
+      }).trim().min(1, 'El celular es obligatorio'),
+    }).safeParse(req.body);
+
+    if (!validacion.success) {
+      res.status(400).json({
+        ok: false,
+        error: 'ERR_VALIDATION',
+        mensaje: 'No se pudo actualizar el presentador. Revisá los campos obligatorios.',
+        detalles: validacion.error.issues.map((issue) => ({
+          campo: issue.path.join('.'),
+          mensaje: issue.message,
+        })),
+      });
+      return;
+    }
+
     const id = req.params.id;
-    const { nombre, apellido, email, celular, institucion, estado_homologacion } = req.body;
+    const { nombre, apellido, email, celular } = validacion.data;
+    const { institucion, estado_homologacion } = req.body;
 
     const userRes = await query(
       `UPDATE usuarios
@@ -176,7 +212,7 @@ router.put('/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: R
            actualizado_en = NOW()
        WHERE id = $5
        RETURNING *`,
-      [nombre, apellido, email ? email.toLowerCase().trim() : null, celular, id]
+      [nombre, apellido, email.toLowerCase(), celular, id]
     );
 
     if (userRes.rows.length === 0) {
