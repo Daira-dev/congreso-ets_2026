@@ -168,7 +168,8 @@ router.put('/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: R
       nombre: z.string({
         required_error: 'El nombre es obligatorio',
         invalid_type_error: 'El nombre debe ser un texto válido',
-      }).trim().min(1, 'El nombre es obligatorio'),
+      }).trim()
+      .min(1, 'El nombre es obligatorio'),
 
       apellido: z.string({
         required_error: 'El apellido es obligatorio',
@@ -186,7 +187,12 @@ router.put('/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: R
       celular: z.string({
         required_error: 'El celular es obligatorio',
         invalid_type_error: 'El celular debe ser un texto válido',
-      }).trim().min(1, 'El celular es obligatorio'),
+      })
+        .trim()
+        .min(1, 'El celular es obligatorio')
+        .regex(/^[0-9]+$/, 'El celular solo debe contener números')
+        .min(7, 'El celular debe tener al menos 7 dígitos')
+        .max(15, 'El celular no puede superar los 15 dígitos'),
     }).safeParse(req.body);
 
     if (!validacion.success) {
