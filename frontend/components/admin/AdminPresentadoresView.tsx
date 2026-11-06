@@ -85,9 +85,13 @@ export default function AdminPresentadoresView({ onNotice }: Props) {
         setFormData({ nombre: '', apellido: '', email: '', dni_pasaporte: '', celular: '', institucion: '' });
         loadPresentadores();
       } else {
+        const detalles = data.details?.fieldErrors
+          ? Object.values(data.details.fieldErrors).flat().join('\n')
+          : '';
+
         await Swal.fire({
           title: 'Error al Registrar',
-          text: data.message || data.error || 'Error al registrar presentador',
+          text: detalles || data.message || 'Error al registrar presentador',
           icon: 'error',
           confirmButtonColor: '#dc3545',
         });

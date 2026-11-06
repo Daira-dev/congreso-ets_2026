@@ -6,11 +6,29 @@ import { AuthenticatedRequest, requireHierarchy, requirePermission } from '../..
 const router = Router();
 
 const presenterSchema = z.object({
-  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  apellido: z.string().min(2, 'El apellido debe tener al menos 2 caracteres'),
-  email: z.string().email('Email inválido'),
-  dni_pasaporte: z.string().min(6, 'DNI o Pasaporte inválido'),
-  celular: z.string().min(6, 'Número de celular inválido'),
+  nombre: z.string().trim()
+    .min(1, 'El nombre es obligatorio')
+    .max(100, 'El nombre no puede superar los 100 caracteres'),
+
+  apellido: z.string().trim()
+    .min(1, 'El apellido es obligatorio')
+    .max(100, 'El apellido no puede superar los 100 caracteres'),
+
+  email: z.string().trim()
+    .min(1, 'El email es obligatorio')
+    .email('Email inválido')
+    .max(150, 'El email no puede superar los 150 caracteres'),
+
+  dni_pasaporte: z.string().trim()
+    .min(6, 'DNI o Pasaporte inválido')
+    .max(15, 'El documento no puede superar los 15 caracteres')
+    .regex(/^[A-Za-z0-9]+$/, 'El documento solo puede contener letras y números') .refine((valor) => !/^0+$/.test(valor), 'El documento no puede estar compuesto únicamente por ceros'),
+  
+  celular: z.string().trim()
+    .regex(/^[0-9]+$/, 'El celular solo debe contener números')
+    .min(7, 'El celular debe tener al menos 7 dígitos')
+    .max(15, 'El celular no puede superar los 15 dígitos'),
+
   institucion: z.string().optional(),
   observaciones: z.string().optional(),
   evento_id: z.number().int().positive().optional(),
@@ -105,7 +123,11 @@ router.post('/', requireHierarchy(4), async (req: AuthenticatedRequest, res: Res
   try {
     const parsed = presenterSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ ok: false, error: 'ERR_VALIDATION', details: parsed.error.format() });
+      res.status(400).json({
+        ok: false,
+        error: 'ERR_VALIDATION',
+        details: parsed.error.flatten(),
+      });
       return;
     }
 
@@ -169,27 +191,28 @@ router.put('/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: R
         required_error: 'El nombre es obligatorio',
         invalid_type_error: 'El nombre debe ser un texto válido',
       }).trim()
-      .min(1, 'El nombre es obligatorio'),
+        .min(1, 'El nombre es obligatorio')
+        .max(100, 'El nombre no puede superar los 100 caracteres'),
 
       apellido: z.string({
         required_error: 'El apellido es obligatorio',
         invalid_type_error: 'El apellido debe ser un texto válido',
-      }).trim().min(1, 'El apellido es obligatorio'),
+      }).trim()
+        .min(1, 'El apellido es obligatorio')
+        .max(100, 'El apellido no puede superar los 100 caracteres'),
 
       email: z.string({
         required_error: 'El email es obligatorio',
         invalid_type_error: 'El email debe ser un texto válido',
-      })
-        .trim()
+      }).trim()
         .min(1, 'El email es obligatorio')
-        .email('Ingresá un email válido'),
+        .email('Ingresá un email válido')
+        .max(150, 'El email no puede superar los 150 caracteres'),
 
       celular: z.string({
         required_error: 'El celular es obligatorio',
         invalid_type_error: 'El celular debe ser un texto válido',
-      })
-        .trim()
-        .min(1, 'El celular es obligatorio')
+      }).trim()
         .regex(/^[0-9]+$/, 'El celular solo debe contener números')
         .min(7, 'El celular debe tener al menos 7 dígitos')
         .max(15, 'El celular no puede superar los 15 dígitos'),
