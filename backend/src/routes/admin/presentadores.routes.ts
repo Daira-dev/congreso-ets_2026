@@ -8,11 +8,13 @@ const router = Router();
 const presenterSchema = z.object({
   nombre: z.string().trim()
     .min(1, 'El nombre es obligatorio')
-    .max(100, 'El nombre no puede superar los 100 caracteres'),
+    .max(100, 'El nombre no puede superar los 100 caracteres')
+    .regex(/^[\p{L}\p{M}\s]+$/u, 'El nombre solo puede contener letras y espacios'),
 
   apellido: z.string().trim()
     .min(1, 'El apellido es obligatorio')
-    .max(100, 'El apellido no puede superar los 100 caracteres'),
+    .max(100, 'El apellido no puede superar los 100 caracteres')
+    .regex(/^[\p{L}\p{M}\s]+$/u, 'El apellido solo puede contener letras y espacios'),
 
   email: z.string().trim()
     .min(1, 'El email es obligatorio')
@@ -192,14 +194,16 @@ router.put('/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: R
         invalid_type_error: 'El nombre debe ser un texto válido',
       }).trim()
         .min(1, 'El nombre es obligatorio')
-        .max(100, 'El nombre no puede superar los 100 caracteres'),
+        .max(100, 'El nombre no puede superar los 100 caracteres')
+        .regex(/^[\p{L}\p{M}\s]+$/u, 'El nombre solo puede contener letras y espacios'),
 
       apellido: z.string({
         required_error: 'El apellido es obligatorio',
         invalid_type_error: 'El apellido debe ser un texto válido',
       }).trim()
         .min(1, 'El apellido es obligatorio')
-        .max(100, 'El apellido no puede superar los 100 caracteres'),
+        .max(100, 'El apellido no puede superar los 100 caracteres')
+        .regex(/^[\p{L}\p{M}\s]+$/u, 'El apellido solo puede contener letras y espacios'),
 
       email: z.string({
         required_error: 'El email es obligatorio',
