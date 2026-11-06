@@ -178,7 +178,10 @@ router.put('/:id', requireHierarchy(4), async (req: AuthenticatedRequest, res: R
       email: z.string({
         required_error: 'El email es obligatorio',
         invalid_type_error: 'El email debe ser un texto válido',
-      }).trim().min(1, 'El email es obligatorio'),
+      })
+        .trim()
+        .min(1, 'El email es obligatorio')
+        .email('Ingresá un email válido'),
 
       celular: z.string({
         required_error: 'El celular es obligatorio',
