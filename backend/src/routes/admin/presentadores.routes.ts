@@ -124,6 +124,7 @@ router.get('/', requirePermission('presentadores', 3), async (req: Authenticated
 router.post('/', requireHierarchy(4), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const parsed = presenterSchema.safeParse(req.body);
+
     if (!parsed.success) {
       res.status(400).json({
         ok: false,
@@ -133,52 +134,131 @@ router.post('/', requireHierarchy(4), async (req: AuthenticatedRequest, res: Res
       return;
     }
 
-    const { nombre, apellido, email, dni_pasaporte, celular, institucion, observaciones, evento_id } = parsed.data;
+    const {
+      nombre,
+      apellido,
+      email,
+      dni_pasaporte,
+      celular,
+      institucion,
+      observaciones,
+      evento_id,
+    } = parsed.data;
 
-    // Obtener dinámicamente el ID del rol Disertante / Expositor (id 4 en la base de datos)
-    const roleCheck = await query(
-      `SELECT id FROM roles WHERE nombre ILIKE '%Expositor%' OR nombre ILIKE '%Disertante%' ORDER BY id ASC LIMIT 1`
-    );
-    const expositorRolId = (roleCheck.rows && roleCheck.rows[0]?.id) ? roleCheck.rows[0].id : 4;
+    const newUser = await withTransaction(async (client) => {
+      // Obtener dinámicamente el ID del rol Disertante / Expositor.
+      const roleCheck = await client.query(
+        `SELECT id
+         FROM roles
+         WHERE nombre ILIKE '%Expositor%'
+            OR nombre ILIKE '%Disertante%'
+         ORDER BY id ASC
+         LIMIT 1`
+      );
 
-    // Estado Confirmado = 1
-    const userRes = await query(
-      `INSERT INTO usuarios (
-        nombre, apellido, email, dni_pasaporte, celular, rol_principal_id, estado_inscripcion_id, evento_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, 1, $7)
-      RETURNING *`,
-      [nombre, apellido, email.toLowerCase().trim(), dni_pasaporte.trim(), celular.trim(), expositorRolId, evento_id || 1]
-    );
+      const expositorRolId =
+        roleCheck.rows[0]?.id ?? 4;
 
-    const newUser = userRes.rows[0];
+      // Registrar usuario.
+      const userRes = await client.query(
+        `INSERT INTO usuarios (
+          nombre,
+          apellido,
+          email,
+          dni_pasaporte,
+          celular,
+          rol_principal_id,
+          estado_inscripcion_id,
+          evento_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, 1, $7)
+        RETURNING *`,
+        [
+          nombre,
+          apellido,
+          email.toLowerCase().trim(),
+          dni_pasaporte.trim(),
+          celular.trim(),
+          expositorRolId,
+          evento_id || 1,
+        ]
+      );
 
-    // Homologación de expositor automática
-    await query(
-      `INSERT INTO homologaciones_expositores (
-        usuario_id, estado_homologacion, observaciones, fecha_validacion
-      ) VALUES ($1, 'VALIDADO', $2, NOW())
-      ON CONFLICT (usuario_id) DO UPDATE SET estado_homologacion = 'VALIDADO', observaciones = EXCLUDED.observaciones`,
-      [newUser.id, institucion || observaciones || 'Expositor registrado institucionalmente']
-    );
+      const user = userRes.rows[0];
 
-    await query(
-      `INSERT INTO logs_auditoria (evento, actor_usuario, detalles, timestamp)
-       VALUES ('ALTA_PRESENTADOR_ADMIN', $1, $2, NOW())`,
-      [req.operator?.email || 'ADMIN', JSON.stringify({ usuario_id: newUser.id, nombre, apellido, email })]
-    );
+      // Registrar homologación automática.
+      await client.query(
+        `INSERT INTO homologaciones_expositores (
+          usuario_id,
+          estado_homologacion,
+          observaciones,
+          fecha_validacion
+        ) VALUES ($1, 'VALIDADO', $2, NOW())
+        ON CONFLICT (usuario_id)
+        DO UPDATE SET
+          estado_homologacion = 'VALIDADO',
+          observaciones = EXCLUDED.observaciones`,
+        [
+          user.id,
+          institucion || observaciones || 'Expositor registrado institucionalmente',
+        ]
+      );
+
+      // Registrar auditoría.
+      await client.query(
+        `INSERT INTO logs_auditoria (
+          evento,
+          actor_usuario,
+          detalles,
+          timestamp
+        ) VALUES ('ALTA_PRESENTADOR_ADMIN', $1, $2, NOW())`,
+        [
+          req.operator?.email || 'ADMIN',
+          JSON.stringify({
+            usuario_id: user.id,
+            nombre,
+            apellido,
+            email,
+          }),
+        ]
+      );
+
+      return user;
+    });
 
     res.status(201).json({
       ok: true,
       mensaje: 'Presentador registrado exitosamente.',
       presentador: newUser,
     });
+
   } catch (error: any) {
     if (error.code === '23505') {
-      res.status(409).json({ ok: false, error: 'ERR_DUPLICATE', message: 'Ya existe un usuario con este DNI o Email.' });
+      res.status(409).json({
+        ok: false,
+        error: 'ERR_DUPLICATE',
+        message: 'Ya existe un usuario con este DNI o Email.',
+      });
       return;
     }
+
+    if (error.code === '22001') {
+      console.error('Error de longitud en POST /api/admin/presentadores:', error);
+
+      res.status(400).json({
+        ok: false,
+        error: 'ERR_VALIDATION',
+        message: 'No se pudo completar el alta porque uno de los datos supera la longitud permitida.',
+      });
+      return;
+    }
+
     console.error('Error en POST /api/admin/presentadores:', error);
-    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+
+    res.status(500).json({
+      ok: false,
+      error: 'ERR_DATABASE',
+      message: 'No se pudo registrar el presentador. Intentá nuevamente.',
+    });
   }
 });
 
