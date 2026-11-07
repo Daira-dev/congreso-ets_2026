@@ -509,8 +509,8 @@ export default function AdminPresentadoresView({ onNotice }: Props) {
 
       {/* MODAL NUEVO PRESENTADOR */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-start sm:items-center justify-center overflow-y-auto p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <h3 className="text-base font-extrabold text-gray-900">Registrar Nuevo Presentador</h3>
               <button onClick={() => setIsCreateOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
@@ -607,8 +607,8 @@ export default function AdminPresentadoresView({ onNotice }: Props) {
 
       {/* MODAL EDITAR PRESENTADOR */}
       {isEditOpen && current && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-start sm:items-center justify-center overflow-y-auto p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <h3 className="text-base font-extrabold text-gray-900">Modificar Presentador</h3>
               <button onClick={() => setIsEditOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
