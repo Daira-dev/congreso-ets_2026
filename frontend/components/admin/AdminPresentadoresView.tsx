@@ -9,6 +9,59 @@ interface Props {
   onNotice: (msg: string) => void;
 }
 
+async function mostrarErroresValidacion(
+  titulo: string,
+  errores: string[],
+  mensajeFallback: string
+) {
+  const erroresValidos = errores.filter(
+    (error) => typeof error === 'string' && error.trim() !== ''
+  );
+
+  const opciones: {
+    title: string;
+    text?: string;
+    html?: string;
+    icon: 'error';
+    confirmButtonColor: string;
+  } = {
+    title: titulo,
+    icon: 'error',
+    confirmButtonColor: '#dc3545',
+  };
+
+  if (erroresValidos.length === 1) {
+    opciones.text = erroresValidos[0];
+  } else if (erroresValidos.length > 1) {
+    const escaparHTML = (texto: string) =>
+      texto.replace(/[&<>"']/g, (caracter) => {
+        const entidades: Record<string, string> = {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;',
+        };
+
+        return entidades[caracter];
+      });
+
+    opciones.html = `
+      <div style="text-align: left; margin-top: 12px;">
+        ${erroresValidos.map((error) => `
+          <p style="margin-bottom: 8px;">
+            • ${escaparHTML(error)}
+          </p>
+        `).join('')}
+      </div>
+    `;
+  } else {
+    opciones.text = mensajeFallback;
+  }
+
+  await Swal.fire(opciones);
+}
+
 export default function AdminPresentadoresView({ onNotice }: Props) {
   const [presentadores, setPresentadores] = useState<PresentadorEntity[]>([]);
   const [loading, setLoading] = useState(false);
@@ -85,16 +138,21 @@ export default function AdminPresentadoresView({ onNotice }: Props) {
         setFormData({ nombre: '', apellido: '', email: '', dni_pasaporte: '', celular: '', institucion: '' });
         loadPresentadores();
       } else {
-        const detalles = data.details?.fieldErrors
-          ? Object.values(data.details.fieldErrors).flat().join('\n')
-          : '';
+        const fieldErrors = data.details?.fieldErrors as
+          | Record<string, string[] | undefined>
+          | undefined;
 
-        await Swal.fire({
-          title: 'Error al Registrar',
-          text: detalles || data.message || 'Error al registrar presentador',
-          icon: 'error',
-          confirmButtonColor: '#dc3545',
-        });
+        const detalles = fieldErrors
+          ? Object.values(fieldErrors).flat().filter(
+              (mensaje): mensaje is string => typeof mensaje === 'string'
+            )
+          : [];
+
+        await mostrarErroresValidacion(
+          'No se pudo registrar el presentador',
+          detalles,
+          data.message || 'Error al registrar presentador'
+        );
       }
     } catch {
       await Swal.fire({
@@ -129,16 +187,17 @@ export default function AdminPresentadoresView({ onNotice }: Props) {
         setCurrent(null);
         loadPresentadores();
       } else {
-        const detalle = data.detalles
-          ?.map((item: { mensaje: string }) => item.mensaje)
-          .join('\n');
+        const detalles = Array.isArray(data.detalles)
+          ? data.detalles
+              .map((item: { mensaje: string }) => item.mensaje)
+              .filter((mensaje: string) => typeof mensaje === 'string')
+          : [];
 
-        await Swal.fire({
-          title: 'Error al Actualizar',
-          text: detalle || data.mensaje || data.message || 'Error al actualizar',
-          icon: 'error',
-          confirmButtonColor: '#dc3545',
-        });
+        await mostrarErroresValidacion(
+          'No se pudo actualizar el presentador',
+          detalles,
+          data.mensaje || data.message || 'Error al actualizar'
+        );
       }
     } catch {
       await Swal.fire({

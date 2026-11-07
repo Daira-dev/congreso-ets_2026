@@ -18,14 +18,15 @@ const presenterSchema = z.object({
 
   email: z.string().trim()
     .min(1, 'El email es obligatorio')
-    .email('Email inválido')
+    .email('Ingresá un email válido')
     .max(150, 'El email no puede superar los 150 caracteres'),
 
   dni_pasaporte: z.string().trim()
-    .min(6, 'DNI o Pasaporte inválido')
+    .min(6, 'Ingresá un DNI o Pasaporte válido')
     .max(15, 'El documento no puede superar los 15 caracteres')
-    .regex(/^[A-Za-z0-9]+$/, 'El documento solo puede contener letras y números') .refine((valor) => !/^0+$/.test(valor), 'El documento no puede estar compuesto únicamente por ceros'),
-  
+    .regex(/^[A-Za-z0-9]+$/, 'Ingresá un DNI o Pasaporte válido')
+    .refine((valor) => !/^0+$/.test(valor), 'Ingresá un DNI o Pasaporte válido'),
+
   celular: z.string().trim()
     .regex(/^[0-9]+$/, 'El celular solo debe contener números')
     .min(7, 'El celular debe tener al menos 7 dígitos')
