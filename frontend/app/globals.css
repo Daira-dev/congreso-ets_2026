@@ -87,7 +87,7 @@ body:not(.admin-root) a {
 .admin-root thead tr,
 .admin-root thead th {
   background-color: var(--admin-table-header-bg, #f8fafc) !important;
-  color: var(--admin-text-muted, #64748b) !important;
+  color: #ffffff !important;
   border-color: var(--admin-border, #e2e8f0) !important;
 }
 
