@@ -11,6 +11,59 @@ const batchOperadoresSchema = z.object({
   action: z.enum(['activate', 'deactivate', 'delete']),
 });
 
+const operadorCreateSchema = z.object({
+  nombre: z.string().trim()
+    .min(1, 'El nombre es obligatorio')
+    .max(100, 'El nombre no puede superar los 100 caracteres')
+    .regex(/^[\p{L}\p{M}\s]+$/u, 'El nombre solo puede contener letras y espacios'),
+
+  apellido: z.string().trim()
+    .min(1, 'El apellido es obligatorio')
+    .max(100, 'El apellido no puede superar los 100 caracteres')
+    .regex(/^[\p{L}\p{M}\s]+$/u, 'El apellido solo puede contener letras y espacios'),
+
+  email_institucional: z.string().trim()
+    .min(1, 'El email es obligatorio')
+    .email('Ingresá un email válido')
+    .max(150, 'El email no puede superar los 150 caracteres'),
+
+  punto_acceso_default_id: z.coerce.number()
+    .int()
+    .positive('Seleccioná un punto de acceso'),
+
+  rol_id: z.coerce.number().int().positive().optional(),
+
+  password: z.string().optional(),
+  permisos: z.any().optional(),
+});
+
+const operadorUpdateSchema = z.object({
+  nombre: z.string().trim()
+    .min(1, 'El nombre es obligatorio')
+    .max(100, 'El nombre no puede superar los 100 caracteres')
+    .regex(/^[\p{L}\p{M}\s]+$/u, 'El nombre solo puede contener letras y espacios')
+    .optional(),
+
+  apellido: z.string().trim()
+    .min(1, 'El apellido es obligatorio')
+    .max(100, 'El apellido no puede superar los 100 caracteres')
+    .regex(/^[\p{L}\p{M}\s]+$/u, 'El apellido solo puede contener letras y espacios')
+    .optional(),
+
+  email_institucional: z.string().trim()
+    .min(1, 'El email es obligatorio')
+    .email('Ingresá un email válido')
+    .max(150, 'El email no puede superar los 150 caracteres')
+    .optional(),
+
+  punto_acceso_default_id: z.coerce.number().int().positive().optional(),
+  rol_id: z.coerce.number().int().positive().optional(),
+  activo: z.boolean().optional(),
+  password: z.string().optional(),
+  permisos: z.any().optional(),
+});
+
+
 /**
  * GET /api/admin/operadores
  * Listar y buscar operadores de puerta y verificadores
@@ -97,45 +150,117 @@ router.get('/:id', requirePermission('operadores', 4), async (req: Authenticated
   }
 });
 
+
+
 /**
  * POST /api/admin/operadores
  */
 router.post('/', requireHierarchy(5), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { nombre, apellido, email_institucional, punto_acceso_default_id, rol_id, password, permisos } = req.body;
+    const validation = operadorCreateSchema.safeParse(req.body);
 
-    if (!nombre || !apellido || !email_institucional || !punto_acceso_default_id) {
-      res.status(400).json({ ok: false, error: 'ERR_MISSING_FIELDS', message: 'Faltan campos obligatorios' });
+    if (!validation.success) {
+      res.status(400).json({
+        ok: false,
+        error: 'ERR_VALIDATION',
+        message: 'Hay campos inválidos o que superan la longitud permitida.',
+        details: validation.error.flatten().fieldErrors
+      });
       return;
     }
 
-    const checkEmail = await query(`SELECT id FROM operadores WHERE email_institucional = $1`, [email_institucional]);
+    const {
+      nombre,
+      apellido,
+      email_institucional,
+      punto_acceso_default_id,
+      rol_id,
+      password,
+      permisos
+    } = validation.data;
+
+    const checkEmail = await query(
+      `SELECT id FROM operadores WHERE email_institucional = $1`,
+      [email_institucional]
+    );
+
     if (checkEmail.rowCount && checkEmail.rowCount > 0) {
-      res.status(409).json({ ok: false, error: 'ERR_EMAIL_EXISTS', message: 'Ya existe un operador con ese correo institucional' });
+      res.status(409).json({
+        ok: false,
+        error: 'ERR_EMAIL_EXISTS',
+        message: 'Ya existe un operador con ese correo institucional'
+      });
       return;
     }
 
-    const passwordHash = password ? hashPassword(password) : hashPassword('Congreso2026!');
+    const passwordHash = password
+      ? hashPassword(password)
+      : hashPassword('Congreso2026!');
+
     const rolIdFinal = rol_id || 5;
-    const permisosVal = Array.isArray(permisos) ? JSON.stringify(permisos) : (permisos ? JSON.stringify(permisos) : null);
+
+    const permisosVal = Array.isArray(permisos)
+      ? JSON.stringify(permisos)
+      : (permisos ? JSON.stringify(permisos) : null);
 
     const insertRes = await query(
-      `INSERT INTO operadores (nombre, apellido, email_institucional, punto_acceso_default_id, rol_id, password_hash, permisos, activo)
+      `INSERT INTO operadores
+        (nombre, apellido, email_institucional, punto_acceso_default_id, rol_id, password_hash, permisos, activo)
        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, TRUE)
        RETURNING id, nombre, apellido, email_institucional, punto_acceso_default_id, rol_id, permisos, activo, creado_en`,
-      [nombre, apellido, email_institucional, punto_acceso_default_id, rolIdFinal, passwordHash, permisosVal]
+      [
+        nombre,
+        apellido,
+        email_institucional,
+        punto_acceso_default_id,
+        rolIdFinal,
+        passwordHash,
+        permisosVal
+      ]
     );
 
     await query(
       `INSERT INTO logs_auditoria (evento, actor_usuario, detalles, timestamp)
        VALUES ('OPERADOR_CREATE', $1, $2, NOW())`,
-      [req.operator?.email || 'SUPERADMIN', JSON.stringify({ operador: insertRes.rows[0] })]
+      [
+        req.operator?.email || 'SUPERADMIN',
+        JSON.stringify({ operador: insertRes.rows[0] })
+      ]
     );
 
-    res.status(201).json({ ok: true, operador: insertRes.rows[0] });
+    res.status(201).json({
+      ok: true,
+      operador: insertRes.rows[0]
+    });
+
   } catch (error: any) {
+    if (error.code === '23505') {
+      res.status(409).json({
+        ok: false,
+        error: 'ERR_DUPLICATE',
+        message: 'Ya existe un operador con ese correo institucional.',
+      });
+      return;
+    }
+
+    if (error.code === '22001') {
+      console.error('Error de longitud en POST /api/admin/operadores:', error);
+
+      res.status(400).json({
+        ok: false,
+        error: 'ERR_VALIDATION',
+        message: 'No se pudo completar el alta porque uno de los datos supera la longitud permitida.',
+      });
+      return;
+    }
+
     console.error('Error en POST /api/admin/operadores:', error);
-    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+
+    res.status(500).json({
+      ok: false,
+      error: 'ERR_DATABASE',
+      message: 'No se pudo registrar el operador. Intentá nuevamente.',
+    });
   }
 });
 
@@ -152,6 +277,18 @@ router.put('/:id', requireHierarchy(5), async (req: AuthenticatedRequest, res: R
       return;
     }
 
+    const validation = operadorUpdateSchema.safeParse(req.body);
+
+    if (!validation.success) {
+      res.status(400).json({
+        ok: false,
+        error: 'ERR_VALIDATION',
+        message: 'Hay campos inválidos o que superan la longitud permitida.',
+        details: validation.error.flatten().fieldErrors
+      });
+      return;
+    }
+
     const {
       nombre,
       apellido,
@@ -161,7 +298,7 @@ router.put('/:id', requireHierarchy(5), async (req: AuthenticatedRequest, res: R
       activo,
       password,
       permisos
-    } = req.body;
+    } = validation.data;
 
     // Validar que el correo no pertenezca a otro operador
     if (email_institucional) {

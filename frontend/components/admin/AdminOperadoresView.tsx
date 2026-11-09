@@ -93,9 +93,17 @@ export default function AdminOperadoresView({ catalogos, onNotice }: Props) {
         });
         loadOperadores();
       } else {
+        const errores = data.details
+          ? Object.values(data.details).flat().filter(Boolean)
+          : [];
+
         await Swal.fire({
           title: 'Error al Crear',
-          text: data.message || data.error || 'Error al crear operador',
+          html: errores.length > 0
+            ? `<div style="text-align: left;">
+                ${errores.map((error) => `<p>• ${error}</p>`).join('')}
+              </div>`
+            : data.message || data.error || 'Error al crear operador',
           icon: 'error',
           confirmButtonColor: '#dc3545',
         });
@@ -135,9 +143,17 @@ export default function AdminOperadoresView({ catalogos, onNotice }: Props) {
         setCurrent(null);
         loadOperadores();
       } else {
+        const errores = data.details
+          ? Object.values(data.details).flat().filter(Boolean)
+          : [];
+
         await Swal.fire({
           title: 'Error al Actualizar',
-          text: data.message || 'Error al actualizar',
+          html: errores.length > 0
+            ? `<div style="text-align: left;">
+                ${errores.map((error) => `<p>• ${error}</p>`).join('')}
+              </div>`
+            : data.message || data.error || 'Error al actualizar',
           icon: 'error',
           confirmButtonColor: '#dc3545',
         });
@@ -398,8 +414,8 @@ export default function AdminOperadoresView({ catalogos, onNotice }: Props) {
 
       {/* Modal Crear */}
       {isCreateOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-start sm:items-center justify-center overflow-y-auto p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="text-lg font-bold text-gray-900">➕ Nuevo Operador de Sistema</h3>
               <button onClick={() => setIsCreateOpen(false)} className="text-gray-400 hover:text-gray-600 font-bold">
@@ -511,8 +527,8 @@ export default function AdminOperadoresView({ catalogos, onNotice }: Props) {
 
       {/* Modal Editar */}
       {isEditOpen && current && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-start sm:items-center justify-center overflow-y-auto p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="text-lg font-bold text-gray-900">✏️ Editar Operador</h3>
               <button onClick={() => setIsEditOpen(false)} className="text-gray-400 hover:text-gray-600 font-bold">
