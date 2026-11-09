@@ -139,75 +139,127 @@ router.post('/', requireHierarchy(5), async (req: AuthenticatedRequest, res: Res
   }
 });
 
+
 /**
  * PUT /api/admin/operadores/:id
  */
 router.put('/:id', requireHierarchy(5), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id, 10);
+
     if (isNaN(id)) {
       res.status(400).json({ ok: false, error: 'ID inválido' });
       return;
     }
 
-    const { nombre, apellido, email_institucional, punto_acceso_default_id, rol_id, activo, password, permisos } = req.body;
+    const {
+      nombre,
+      apellido,
+      email_institucional,
+      punto_acceso_default_id,
+      rol_id,
+      activo,
+      password,
+      permisos
+    } = req.body;
 
+    // Validar que el correo no pertenezca a otro operador
     if (email_institucional) {
-      const checkEmail = await query(`SELECT id FROM operadores WHERE email_institucional = $1 AND id != $2`, [email_institucional, id]);
+      const checkEmail = await query(
+        `SELECT id FROM operadores WHERE email_institucional = $1 AND id != $2`,
+        [email_institucional, id]
+      );
+
       if (checkEmail.rowCount && checkEmail.rowCount > 0) {
-        res.status(409).json({ ok: false, error: 'ERR_EMAIL_EXISTS', message: 'El correo pertenece a otro operador' });
+        res.status(409).json({
+          ok: false,
+          error: 'ERR_EMAIL_EXISTS',
+          message: 'El correo pertenece a otro operador'
+        });
         return;
       }
     }
 
-    const permisosVal = Array.isArray(permisos) ? JSON.stringify(permisos) : (permisos !== undefined ? (permisos === null ? null : JSON.stringify(permisos)) : undefined);
+    // Construir actualización dinámica
+    const assignments = [
+      `nombre = COALESCE($1, nombre)`,
+      `apellido = COALESCE($2, apellido)`,
+      `email_institucional = COALESCE($3, email_institucional)`,
+      `punto_acceso_default_id = COALESCE($4, punto_acceso_default_id)`,
+      `rol_id = COALESCE($5, rol_id)`,
+      `activo = COALESCE($6, activo)`
+    ];
 
-    let sql = `
-      UPDATE operadores
-      SET nombre = COALESCE($1, nombre),
-          apellido = COALESCE($2, apellido),
-          email_institucional = COALESCE($3, email_institucional),
-          punto_acceso_default_id = COALESCE($4, punto_acceso_default_id),
-          rol_id = COALESCE($5, rol_id),
-          activo = COALESCE($6, activo),
-    `;
-    const params: any[] = [nombre, apellido, email_institucional, punto_acceso_default_id, rol_id, activo];
+    const params: any[] = [
+      nombre,
+      apellido,
+      email_institucional,
+      punto_acceso_default_id,
+      rol_id,
+      activo
+    ];
 
-    if (permisosVal !== undefined) {
-      sql += ` permisos = $7::jsonb, `;
-      params.push(permisosVal);
+    // Actualizar permisos cuando fueron enviados
+    if (permisos !== undefined) {
+      params.push(
+        permisos === null ? null : JSON.stringify(permisos)
+      );
+
+      assignments.push(`permisos = $${params.length}::jsonb`);
     }
 
-    sql += ` actualizado_en = NOW() `;
-
-    let pIdx = params.length + 1;
+    // Actualizar contraseña solamente si se proporcionó una nueva
     if (password && password.trim().length > 0) {
-      const newHash = hashPassword(password);
-      sql += `, password_hash = $${pIdx++} WHERE id = $${pIdx} RETURNING id, nombre, apellido, email_institucional, activo, permisos`;
-      params.push(newHash, id);
-    } else {
-      sql += ` WHERE id = $${pIdx} RETURNING id, nombre, apellido, email_institucional, activo, permisos`;
-      params.push(id);
+      params.push(hashPassword(password));
+      assignments.push(`password_hash = $${params.length}`);
     }
+
+    // ID del operador a actualizar
+    params.push(id);
+
+    const sql = `
+      UPDATE operadores
+      SET ${assignments.join(', ')}
+      WHERE id = $${params.length}
+      RETURNING id, nombre, apellido, email_institucional, activo, permisos
+    `;
 
     const updateRes = await query(sql, params);
+
     if (updateRes.rowCount === 0) {
-      res.status(404).json({ ok: false, error: 'Operador no encontrado' });
+      res.status(404).json({
+        ok: false,
+        error: 'Operador no encontrado'
+      });
       return;
     }
 
+    // Registrar operación en auditoría
     await query(
       `INSERT INTO logs_auditoria (evento, actor_usuario, detalles, timestamp)
        VALUES ('OPERADOR_UPDATE', $1, $2, NOW())`,
-      [req.operator?.email || 'SUPERADMIN', JSON.stringify({ id, activo })]
+      [
+        req.operator?.email || 'SUPERADMIN',
+        JSON.stringify({ id, activo })
+      ]
     );
 
-    res.json({ ok: true, operador: updateRes.rows[0] });
+    res.json({
+      ok: true,
+      operador: updateRes.rows[0]
+    });
+
   } catch (error: any) {
     console.error('Error en PUT /api/admin/operadores/:id:', error);
-    res.status(500).json({ ok: false, error: 'ERR_DATABASE', message: error.message });
+
+    res.status(500).json({
+      ok: false,
+      error: 'ERR_DATABASE',
+      message: error.message
+    });
   }
 });
+
 
 /**
  * DELETE /api/admin/operadores/:id
